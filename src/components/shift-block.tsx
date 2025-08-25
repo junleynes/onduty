@@ -69,8 +69,7 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
   }
 
   const employee = shift.employeeId ? getEmployeeById(shift.employeeId) : null;
-  const role = employee?.role;
-
+  
   const formatTime = (time: string) => {
     if (!time) return '';
     const [h, m] = time.split(':');
@@ -89,7 +88,6 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
       <p className="font-bold text-xs truncate">
         {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
       </p>
-      {role && <p className="text-xs opacity-80 truncate">{role} &gt;</p>}
       <p className="text-sm truncate">{shift.label}</p>
     </div>
   );

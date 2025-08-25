@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { shifts as initialShifts, employees, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
@@ -18,6 +18,7 @@ import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ScheduleView() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
@@ -29,12 +30,21 @@ export default function ScheduleView() {
 
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
-
+  
+  const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
+  const { toast } = useToast();
 
   const dateRange = useMemo(() => ({
       from: startOfWeek(currentDate, { weekStartsOn: 1 }), // Monday
       to: endOfWeek(currentDate, { weekStartsOn: 1 }),
   }), [currentDate]);
+  
+  const displayedDays = useMemo(() => {
+    if (dateRange?.from && dateRange?.to) {
+      return eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+    }
+    return [];
+  }, [dateRange]);
 
   const handleAddShiftClick = () => {
     setEditingShift({});
@@ -86,18 +96,77 @@ export default function ScheduleView() {
     setIsLeaveEditorOpen(false);
     setEditingLeave(null);
   };
-  
-  const displayedDays = useMemo(() => {
-    if (dateRange?.from && dateRange?.to) {
-      return eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
-    }
-    return [];
-  }, [dateRange]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
       const newDate = addDays(currentDate, direction === 'prev' ? -7 : 7);
       setCurrentDate(newDate);
   }
+  
+  // Action handlers
+  const handleClearWeek = () => {
+    setShifts(currentShifts => currentShifts.filter(shift => !displayedDays.some(day => isSameDay(shift.date, day))));
+    toast({ title: "Week Cleared", description: "All shifts for the current week have been removed." });
+  };
+
+  const handleUnassignWeek = () => {
+    setShifts(currentShifts => currentShifts.map(shift => 
+      displayedDays.some(day => isSameDay(shift.date, day)) 
+        ? { ...shift, employeeId: null } 
+        : shift
+    ));
+    toast({ title: "Week Unassigned", description: "All shifts for the current week have been moved to unassigned." });
+  };
+
+  const handleCopyPreviousWeek = () => {
+    const prevWeekStart = subDays(dateRange.from, 7);
+    const prevWeekEnd = subDays(dateRange.to, 7);
+    const prevWeekShifts = shifts.filter(shift => shift.date >= prevWeekStart && shift.date <= prevWeekEnd);
+
+    const newShifts = prevWeekShifts.map(shift => ({
+      ...shift,
+      id: `sh-${Date.now()}-${Math.random()}`,
+      date: addDays(shift.date, 7)
+    }));
+
+    setShifts(currentShifts => [...currentShifts, ...newShifts]);
+    toast({ title: "Previous Week Copied", description: "Shifts from the previous week have been copied over." });
+  };
+
+  const handleSaveTemplate = () => {
+    const shiftsInView = shifts.filter(shift => displayedDays.some(day => isSameDay(shift.date, day)));
+    const template = shiftsInView.map(({ id, date, ...rest }) => ({
+      ...rest,
+      dayOfWeek: date.getDay(), // 0 for Sunday, 1 for Monday, etc.
+    }));
+    setWeekTemplate(template as any); // Type casting to avoid complex dayOfWeek type
+    toast({ title: "Template Saved", description: "Current week's layout has been saved as a template." });
+  };
+
+  const handleLoadTemplate = () => {
+    if (!weekTemplate) {
+      toast({ variant: 'destructive', title: "No Template Saved", description: "Save a week as a template first." });
+      return;
+    }
+    
+    // Clear current week before applying template
+    const shiftsOutsideCurrentWeek = shifts.filter(shift => !displayedDays.some(day => isSameDay(shift.date, day)));
+    
+    const newShifts = weekTemplate.map((templateShift: any) => {
+        const targetDay = displayedDays.find(d => d.getDay() === templateShift.dayOfWeek);
+        if (!targetDay) return null;
+        
+        const { dayOfWeek, ...rest } = templateShift;
+        return {
+            ...rest,
+            id: `sh-${Date.now()}-${Math.random()}`,
+            date: targetDay,
+        };
+    }).filter(Boolean);
+
+    setShifts([...shiftsOutsideCurrentWeek, ...newShifts as Shift[]]);
+    toast({ title: "Template Loaded", description: "The saved template has been applied to the current week." });
+  };
+
 
   const allEmployees = [{ id: 'unassigned', name: 'Unassigned Shifts', role: 'Special', avatar: '' }, ...employees];
 
@@ -214,28 +283,26 @@ export default function ScheduleView() {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
                 <DropdownMenuGroup>
-                    <DropdownMenuLabel>Week actions</DropdownMenuLabel>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleCopyPreviousWeek}>
                         <Copy className="mr-2 h-4 w-4" />
                         <span>Copy previous week</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleClearWeek}>
                         <CircleSlash className="mr-2 h-4 w-4" />
                         <span>Clear week</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleUnassignWeek}>
                         <UserX className="mr-2 h-4 w-4" />
                         <span>Unassign week</span>
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                    <DropdownMenuLabel>Templates</DropdownMenuLabel>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSaveTemplate}>
                         <Download className="mr-2 h-4 w-4" />
                         <span>Save week as template</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLoadTemplate}>
                         <Upload className="mr-2 h-4 w-4" />
                         <span>Load week template</span>
                     </DropdownMenuItem>
@@ -255,8 +322,7 @@ export default function ScheduleView() {
             </div>
             {displayedDays.map((day) => (
               <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-3 text-center font-semibold bg-card border-b border-l">
-                <div className="text-sm text-muted-foreground">{format(day, 'E')}</div>
-                <div className="text-xl">{format(day, 'd')}</div>
+                <div className="text-xl">{format(day, 'E d')}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                     {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
                 </div>
