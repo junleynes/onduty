@@ -1,5 +1,5 @@
 'use client';
-import { CalendarDays, Users, Calendar, Clock, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Users, Calendar, Clock, ClipboardList, type LucideIcon } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
 import type { NavItem } from '@/app/page';
@@ -13,6 +13,7 @@ interface SidebarNavProps {
 const adminNavItems: { view: NavItem; label: string; icon: LucideIcon }[] = [
   { view: 'schedule', label: 'Schedule', icon: CalendarDays },
   { view: 'team', label: 'Team', icon: Users },
+  { view: 'templates', label: 'Templates', icon: ClipboardList },
 ];
 
 const employeeNavItems: { view: NavItem; label: string; icon: LucideIcon }[] = [

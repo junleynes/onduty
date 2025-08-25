@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import type { Shift, Leave, Employee } from '@/types';
+import type { Shift, Leave } from '@/types';
 import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
 
@@ -27,18 +27,19 @@ interface ShiftBlockProps extends VariantProps<typeof blockVariants> {
   onClick: () => void;
 }
 
-const leaveColors = {
+const leaveColors: { [key: string]: string } = {
     'Vacation': 'bg-pink-500/80',
     'Emergency': 'bg-red-600/80',
     'Unavailable': 'bg-gray-500/80',
     'Time Off Request': 'bg-orange-500/80',
+    'Day Off': 'bg-indigo-500/80',
 };
 
 function isLeave(item: Shift | Leave): item is Leave {
   return 'type' in item;
 }
 
-export function ShiftBlock({ item, onClick, type }: ShiftBlockProps) {
+export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
   if (isLeave(item)) {
     const employee = getEmployeeById(item.employeeId);
     if (!employee) return null;

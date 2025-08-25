@@ -17,7 +17,7 @@ export type Shift = {
   color?: string;
 };
 
-export type LeaveType = 'Vacation' | 'Emergency' | 'Unavailable' | 'Time Off Request';
+export type LeaveType = 'Vacation' | 'Emergency' | 'Unavailable' | 'Time Off Request' | 'Day Off';
 
 export type Leave = {
   id: string;

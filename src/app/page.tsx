@@ -11,9 +11,10 @@ import ScheduleView from '@/components/schedule-view';
 import MyScheduleView from '@/components/my-schedule-view';
 import AvailabilityView from '@/components/availability-view';
 import TeamView from '@/components/team-view';
+import TemplatesView from '@/components/templates-view';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
+export type NavItem = 'schedule' | 'team' | 'templates' | 'my-schedule' | 'availability';
 
 export default function Home() {
   const [role, setRole] = useState<UserRole>('admin');
@@ -36,9 +37,11 @@ export default function Home() {
   const currentView = useMemo(() => {
     switch (activeView) {
       case 'schedule':
-        return role === 'admin' ? <ScheduleView /> : <MyScheduleView />;
+        return <ScheduleView />;
       case 'team':
         return role === 'admin' ? <TeamView /> : null;
+      case 'templates':
+        return role === 'admin' ? <TemplatesView /> : null;
       case 'my-schedule':
         return <MyScheduleView />;
       case 'availability':

@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
 import { Card, CardContent } from '@/components/ui/card';
 import { shifts as initialShifts, employees, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
@@ -15,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { ShiftEditor } from './shift-editor';
+import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -24,8 +24,12 @@ export default function ScheduleView() {
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
   
   const [currentDate, setCurrentDate] = useState(new Date(2024, 6, 21)); // July 21, 2024
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Shift | Partial<Shift> | null>(null);
+  const [isShiftEditorOpen, setIsShiftEditorOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<Shift | Partial<Shift> | null>(null);
+
+  const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
+  const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
+
 
   const dateRange = useMemo(() => ({
       from: startOfWeek(currentDate, { weekStartsOn: 1 }), // Monday
@@ -33,34 +37,54 @@ export default function ScheduleView() {
   }), [currentDate]);
 
   const handleAddShiftClick = () => {
-    setEditingItem({});
-    setIsEditorOpen(true);
+    setEditingShift({});
+    setIsShiftEditorOpen(true);
+  };
+  
+  const handleAddLeaveClick = (type: 'Day Off' | 'Time Off Request') => {
+    setEditingLeave({ type, isAllDay: true });
+    setIsLeaveEditorOpen(true);
   };
 
   const handleEmptyCellClick = (employeeId: string | null, date: Date) => {
-    setEditingItem({ employeeId, date });
-    setIsEditorOpen(true);
+    setEditingShift({ employeeId, date });
+    setIsShiftEditorOpen(true);
   };
 
   const handleEditItemClick = (item: Shift | Leave) => {
     if ('label' in item) { // It's a shift
-        setEditingItem(item);
-        setIsEditorOpen(true);
+        setEditingShift(item);
+        setIsShiftEditorOpen(true);
+    } else { // It's leave
+        setEditingLeave(item);
+        setIsLeaveEditorOpen(true);
     }
-    // Note: Editing leave is not implemented in this version
   };
 
-  const handleSaveShift = (savedShift: Shift) => {
+  const handleSaveShift = (savedShift: Shift | Partial<Shift>) => {
     if ('id' in savedShift && savedShift.id) {
       // Update existing shift
-      setShifts(shifts.map(s => s.id === savedShift.id ? savedShift : s));
+      setShifts(shifts.map(s => s.id === savedShift.id ? savedShift as Shift : s));
     } else {
       // Add new shift
       const newShiftWithId = { ...savedShift, id: `sh-${Date.now()}` };
       setShifts([...shifts, newShiftWithId as Shift]);
     }
-    setIsEditorOpen(false);
-    setEditingItem(null);
+    setIsShiftEditorOpen(false);
+    setEditingShift(null);
+  };
+
+  const handleSaveLeave = (savedLeave: Leave | Partial<Leave>) => {
+    if ('id' in savedLeave && savedLeave.id) {
+      // Update existing leave
+      setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
+    } else {
+      // Add new leave
+      const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` };
+      setLeave([...leave, newLeaveWithId as Leave]);
+    }
+    setIsLeaveEditorOpen(false);
+    setEditingLeave(null);
   };
   
   const displayedDays = useMemo(() => {
@@ -181,7 +205,8 @@ export default function ScheduleView() {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={handleAddShiftClick}>Add Shift</DropdownMenuItem>
-              <DropdownMenuItem>Add Time Off</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAddLeaveClick('Time Off Request')}>Add Time Off</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAddLeaveClick('Day Off')}>Add Day Off</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -327,10 +352,17 @@ export default function ScheduleView() {
     </div>
 
       <ShiftEditor
-        isOpen={isEditorOpen}
-        setIsOpen={setIsEditorOpen}
-        shift={editingItem}
+        isOpen={isShiftEditorOpen}
+        setIsOpen={setIsShiftEditorOpen}
+        shift={editingShift}
         onSave={handleSaveShift}
+        employees={employees}
+      />
+      <LeaveEditor
+        isOpen={isLeaveEditorOpen}
+        setIsOpen={setIsLeaveEditorOpen}
+        leave={editingLeave}
+        onSave={handleSaveLeave}
         employees={employees}
       />
     </div>
