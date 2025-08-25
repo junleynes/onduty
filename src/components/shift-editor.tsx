@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, FileText } from 'lucide-react';
+import { CalendarIcon, FileText, MoreHorizontal, Pencil, Copy, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Employee, Shift } from '@/types';
@@ -27,6 +27,7 @@ import { Checkbox } from './ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Card } from './ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 const shiftSchema = z.object({
   employeeId: z.string().nullable(),
@@ -315,14 +316,37 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                 <ScrollArea className="h-96">
                     <div className="space-y-2 p-4">
                         {shiftTemplates.map((template) => (
-                           <Card key={template.name} className="p-3 hover:bg-muted cursor-pointer" onClick={() => handleTemplateClick(template)}>
-                               <div className="flex items-start gap-3">
-                                   <FileText className="h-5 w-5 text-muted-foreground mt-1" />
-                                   <div>
-                                     <p className="font-semibold">{template.name}</p>
-                                     <p className="text-sm text-muted-foreground">{template.startTime} - {template.endTime}</p>
-                                     <p className="text-sm text-muted-foreground">Label: {template.label}</p>
+                           <Card key={template.name} className="p-3 hover:bg-muted group">
+                               <div className="flex items-center justify-between">
+                                   <div className="flex items-start gap-3 cursor-pointer" onClick={() => handleTemplateClick(template)}>
+                                       <FileText className="h-5 w-5 text-muted-foreground mt-1" />
+                                       <div>
+                                         <p className="font-semibold">{template.name}</p>
+                                         <p className="text-sm text-muted-foreground">{template.startTime} - {template.endTime}</p>
+                                         <p className="text-sm text-muted-foreground">Label: {template.label}</p>
+                                       </div>
                                    </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => console.log('Edit template')}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                <span>Edit</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => console.log('Duplicate template')}>
+                                                <Copy className="mr-2 h-4 w-4" />
+                                                <span>Duplicate</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Delete</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                </div>
                            </Card>
                         ))}
