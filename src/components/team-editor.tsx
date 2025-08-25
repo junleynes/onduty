@@ -286,7 +286,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                         onDateChange={field.onChange}
                         dateProps={{
                             captionLayout: "dropdown-buttons",
-                            fromYear: 2010,
+                            fromYear: 1950,
                             toYear: new Date().getFullYear()
                         }}
                     />
