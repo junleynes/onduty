@@ -1,5 +1,5 @@
 'use client';
-import { CalendarDays, Wand2, Users, Calendar, Clock, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Users, Calendar, Clock, type LucideIcon } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
 import type { NavItem } from '@/app/page';
@@ -12,7 +12,6 @@ interface SidebarNavProps {
 
 const adminNavItems: { view: NavItem; label: string; icon: LucideIcon }[] = [
   { view: 'schedule', label: 'Schedule', icon: CalendarDays },
-  { view: 'smart-schedule', label: 'Smart Scheduler', icon: Wand2 },
   { view: 'team', label: 'Team', icon: Users },
 ];
 

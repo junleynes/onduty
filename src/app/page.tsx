@@ -10,11 +10,10 @@ import SidebarNav from '@/components/sidebar-nav';
 import ScheduleView from '@/components/schedule-view';
 import MyScheduleView from '@/components/my-schedule-view';
 import AvailabilityView from '@/components/availability-view';
-import SmartSchedulerView from '@/components/smart-scheduler-view';
 import TeamView from '@/components/team-view';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
-export type NavItem = 'schedule' | 'smart-schedule' | 'team' | 'my-schedule' | 'availability';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 
 export default function Home() {
   const [role, setRole] = useState<UserRole>('admin');
@@ -38,8 +37,6 @@ export default function Home() {
     switch (activeView) {
       case 'schedule':
         return role === 'admin' ? <ScheduleView /> : <MyScheduleView />;
-      case 'smart-schedule':
-        return role === 'admin' ? <SmartSchedulerView /> : null;
       case 'team':
         return role === 'admin' ? <TeamView /> : null;
       case 'my-schedule':
