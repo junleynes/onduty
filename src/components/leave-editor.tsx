@@ -159,7 +159,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
                           )}
                         >
                           {field.value ? (
-                            format(field.value, 'PPP')
+                            format(field.value, 'MM/dd/yyyy')
                           ) : (
                             <span>Pick a date</span>
                           )}

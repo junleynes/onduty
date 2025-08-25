@@ -264,10 +264,10 @@ export default function ScheduleView() {
                 {dateRange?.from ? (
                   dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
                     <>
-                      {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
+                      {format(dateRange.from, 'MM/dd/yyyy')} - {format(dateRange.to, 'MM/dd/yyyy')}
                     </>
                   ) : (
-                    format(dateRange.from, 'LLL dd, y')
+                    format(dateRange.from, 'MM/dd/yyyy')
                   )
                 ) : (
                   <span>Pick a date</span>
