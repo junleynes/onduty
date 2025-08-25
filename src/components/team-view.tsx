@@ -1,14 +1,14 @@
+
 'use client';
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { employees as initialEmployees } from '@/lib/data';
 import type { Employee } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, PlusCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { TeamEditor } from './team-editor';
@@ -21,8 +21,12 @@ const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'ou
   Cashier: 'outline',
 };
 
-export default function TeamView() {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+type TeamViewProps = {
+    employees: Employee[];
+    setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
+};
+
+export default function TeamView({ employees, setEmployees }: TeamViewProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const { toast } = useToast();

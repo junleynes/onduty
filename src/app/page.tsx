@@ -1,12 +1,14 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { UserRole } from '@/types';
+import type { UserRole, Employee } from '@/types';
 import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { employees as initialEmployees } from '@/lib/data';
 
 // Views
 import ScheduleView from '@/components/schedule-view';
@@ -21,6 +23,7 @@ function AppContent() {
   const [role, setRole] = useState<UserRole>('admin');
   const [activeView, setActiveView] = useState<NavItem>(role === 'admin' ? 'schedule' : 'my-schedule');
   const { isMobile } = useSidebar();
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
 
 
   const handleNavigate = (view: NavItem) => {
@@ -40,9 +43,9 @@ function AppContent() {
   const currentView = useMemo(() => {
     switch (activeView) {
       case 'schedule':
-        return <ScheduleView />;
+        return <ScheduleView employees={employees} />;
       case 'team':
-        return role === 'admin' ? <TeamView /> : null;
+        return role === 'admin' ? <TeamView employees={employees} setEmployees={setEmployees} /> : null;
       case 'my-schedule':
         return <MyScheduleView />;
       case 'availability':
@@ -60,7 +63,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, role]);
+  }, [activeView, role, employees]);
 
   return (
     <>

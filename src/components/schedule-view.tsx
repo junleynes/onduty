@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import { shifts as initialShifts, employees as initialEmployees, leave as initialLeave } from '@/lib/data';
+import { shifts as initialShifts, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -24,10 +24,13 @@ import { ScheduleImporter } from './schedule-importer';
 
 type ViewMode = 'day' | 'week' | 'month';
 
-export default function ScheduleView() {
+type ScheduleViewProps = {
+  employees: Employee[];
+}
+
+export default function ScheduleView({ employees }: ScheduleViewProps) {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
