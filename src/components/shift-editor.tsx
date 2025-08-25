@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, FileText, MoreHorizontal, Pencil, Copy, Trash2 } from 'lucide-react';
+import { CalendarIcon, FileText, MoreHorizontal, Pencil, Copy, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Employee, Shift } from '@/types';
@@ -57,6 +57,14 @@ type ShiftEditorProps = {
   employees: Employee[];
 };
 
+type ShiftTemplate = {
+  name: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  color: string;
+};
+
 const roleColors: { [key: string]: string } = {
   Manager: 'hsl(var(--chart-2))',
   Chef: 'hsl(var(--chart-1))',
@@ -73,18 +81,20 @@ const shiftColorOptions = [
     { label: 'Purple', value: '#9b59b6' },
 ];
 
-const initialShiftTemplates = [
-    { name: 'Morning Shift', label: 'Morning Coverage', startTime: '08:00', endTime: '16:00' },
-    { name: 'Evening Shift', label: 'Evening Coverage', startTime: '16:00', endTime: '00:00' },
-    { name: 'Manager Open', label: 'Manager Opening', startTime: '07:00', endTime: '15:00' },
-    { name: 'Lunch Rush', label: 'Lunch Rush', startTime: '11:00', endTime: '15:00' },
-    { name: 'Closing Shift', label: 'Closing Duties', startTime: '18:00', endTime: '02:00' },
+const initialShiftTemplates: ShiftTemplate[] = [
+    { name: 'Morning Shift', label: 'Morning Coverage', startTime: '08:00', endTime: '16:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Evening Shift', label: 'Evening Coverage', startTime: '16:00', endTime: '00:00', color: 'hsl(var(--chart-1))' },
+    { name: 'Manager Open', label: 'Manager Opening', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Lunch Rush', label: 'Lunch Rush', startTime: '11:00', endTime: '15:00', color: 'hsl(var(--chart-4))' },
+    { name: 'Closing Shift', label: 'Closing Duties', startTime: '18:00', endTime: '02:00', color: 'hsl(var(--chart-5))' },
 ];
 
 
 export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees }: ShiftEditorProps) {
   const { toast } = useToast();
   const [shiftTemplates, setShiftTemplates] = useState(initialShiftTemplates);
+  const [editingTemplate, setEditingTemplate] = useState<ShiftTemplate | null>(null);
+  const [activeTab, setActiveTab] = useState('details');
 
   const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
   const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : '';
@@ -106,19 +116,43 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   useEffect(() => {
     const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
     const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : shiftColorOptions[1].value;
-    form.reset({
-      id: shift?.id || undefined,
-      employeeId: shift?.employeeId || null,
-      label: shift?.label || '',
-      date: shift?.date || new Date(),
-      startTime: shift?.startTime || '',
-      endTime: shift?.endTime || '',
-      color: shift?.color || defaultColor,
-      isDayOff: shift?.isDayOff || false,
-    });
-  }, [shift, form, employees]);
+    if (!editingTemplate) {
+        form.reset({
+        id: shift?.id || undefined,
+        employeeId: shift?.employeeId || null,
+        label: shift?.label || '',
+        date: shift?.date || new Date(),
+        startTime: shift?.startTime || '',
+        endTime: shift?.endTime || '',
+        color: shift?.color || defaultColor,
+        isDayOff: shift?.isDayOff || false,
+        });
+    }
+  }, [shift, form, employees, editingTemplate]);
+
+  const handleEditTemplate = (template: ShiftTemplate) => {
+    setEditingTemplate(template);
+    form.setValue('label', template.label);
+    form.setValue('startTime', template.startTime);
+    form.setValue('endTime', template.endTime);
+    form.setValue('color', template.color);
+    setActiveTab('details');
+  };
 
   const onSubmit = (values: z.infer<typeof shiftSchema>) => {
+    if (editingTemplate) {
+        const updatedTemplate = {
+            ...editingTemplate,
+            ...form.getValues(),
+        };
+        setShiftTemplates(prev => 
+            prev.map(t => t.name === editingTemplate.name ? updatedTemplate : t)
+        );
+        toast({ title: 'Template Updated', description: `The "${updatedTemplate.name}" template has been updated.` });
+        setEditingTemplate(null);
+        return;
+    }
+
     const finalValues = { ...values };
     if (values.isDayOff) {
         finalValues.label = 'Day Off';
@@ -144,6 +178,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
     form.setValue('label', template.label);
     form.setValue('startTime', template.startTime);
     form.setValue('endTime', template.endTime);
+    form.setValue('color', template.color);
     toast({ title: 'Template Applied', description: `The "${template.name}" template has been applied.`});
   }
 
@@ -169,21 +204,39 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         label: currentValues.label,
         startTime: currentValues.startTime,
         endTime: currentValues.endTime,
+        color: currentValues.color || 'default',
     };
     setShiftTemplates(prev => [...prev, newTemplate]);
     toast({ title: 'Template Saved', description: `New template "${newTemplate.name}" has been created.` });
   }
 
+  const cancelEditTemplate = () => {
+    setEditingTemplate(null);
+    form.reset({
+        id: shift?.id || undefined,
+        employeeId: shift?.employeeId || null,
+        label: shift?.label || '',
+        date: shift?.date || new Date(),
+        startTime: shift?.startTime || '',
+        endTime: shift?.endTime || '',
+        color: shift?.color || defaultColor,
+        isDayOff: shift?.isDayOff || false,
+    });
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        if(!open) setEditingTemplate(null); // Reset editing state on close
+        setIsOpen(open);
+    }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{shift?.id ? 'Edit Shift' : 'Add New Shift'}</DialogTitle>
+          <DialogTitle>{editingTemplate ? `Editing Template: ${editingTemplate.name}` : (shift?.id ? 'Edit Shift' : 'Add New Shift')}</DialogTitle>
           <DialogDescription>
-            {shift?.id ? "Update the details for this shift." : "Fill in the details for the new shift."}
+            {editingTemplate ? "Modify the template details below." : (shift?.id ? "Update the details for this shift." : "Fill in the details for the new shift.")}
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="details" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="details">Details</TabsTrigger>
                 <TabsTrigger value="templates">Templates</TabsTrigger>
@@ -191,88 +244,93 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
             <TabsContent value="details">
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                        <FormField
-                        control={form.control}
-                        name="employeeId"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Employee</FormLabel>
-                            <Select onValueChange={(value) => field.onChange(value === 'unassigned' ? null : value)} defaultValue={field.value || 'unassigned'}>
-                                <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select an employee" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                <SelectItem value={'unassigned'}>Unassigned</SelectItem>
-                                {employees.map(emp => (
-                                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
+                        {!editingTemplate && (
+                            <>
+                            <FormField
+                                control={form.control}
+                                name="employeeId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Employee</FormLabel>
+                                    <Select onValueChange={(value) => field.onChange(value === 'unassigned' ? null : value)} defaultValue={field.value || 'unassigned'}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select an employee" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        <SelectItem value={'unassigned'}>Unassigned</SelectItem>
+                                        {employees.map(emp => (
+                                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="date"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Date</FormLabel>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant={'outline'}
+                                            className={cn(
+                                                'w-full pl-3 text-left font-normal',
+                                                !field.value && 'text-muted-foreground'
+                                            )}
+                                            >
+                                            {field.value ? (
+                                                format(field.value, 'PPP')
+                                            ) : (
+                                                <span>Pick a date</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            initialFocus
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="isDayOff"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                            Day Off
+                                            </FormLabel>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
+                            </>
                         )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="date"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                            <FormLabel>Date</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button
-                                    variant={'outline'}
-                                    className={cn(
-                                        'w-full pl-3 text-left font-normal',
-                                        !field.value && 'text-muted-foreground'
-                                    )}
-                                    >
-                                    {field.value ? (
-                                        format(field.value, 'PPP')
-                                    ) : (
-                                        <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                    </Button>
-                                </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="isDayOff"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                <FormControl>
-                                    <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                <div className="space-y-1 leading-none">
-                                    <FormLabel>
-                                    Day Off
-                                    </FormLabel>
-                                </div>
-                            </FormItem>
-                        )}
-                        />
+                        
 
-                        {!isDayOff && (
+                        {(!isDayOff || editingTemplate) && (
                         <>
                             <FormField
                             control={form.control}
@@ -345,15 +403,20 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                         </>
                         )}
                         <DialogFooter className="sm:justify-between">
-                            {shift?.id ? (
+                            {shift?.id && !editingTemplate ? (
                                 <Button type="button" variant="destructive" onClick={handleDelete} className="sm:mr-auto">
                                     <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
+                                    Delete Shift
                                 </Button>
-                            ) : <div></div>}
+                            ) : editingTemplate ? (
+                                <Button type="button" variant="ghost" onClick={cancelEditTemplate} className="sm:mr-auto">
+                                    <X className="mr-2 h-4 w-4" />
+                                    Cancel Edit
+                                </Button>
+                            ): <div></div>}
                             <div className="flex gap-2">
                                <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                               <Button type="submit">Save Shift</Button>
+                               <Button type="submit">{editingTemplate ? "Save Template" : "Save Shift"}</Button>
                             </div>
                         </DialogFooter>
                     </form>
@@ -370,7 +433,10 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                        <div>
                                          <p className="font-semibold">{template.name}</p>
                                          <p className="text-sm text-muted-foreground">{template.startTime} - {template.endTime}</p>
-                                         <p className="text-sm text-muted-foreground">Label: {template.label}</p>
+                                         <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: template.color }}></span> 
+                                            Label: {template.label}
+                                         </p>
                                        </div>
                                    </div>
                                     <DropdownMenu>
@@ -380,7 +446,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem disabled>
+                                            <DropdownMenuItem onClick={() => handleEditTemplate(template)}>
                                                 <Pencil className="mr-2 h-4 w-4" />
                                                 <span>Edit</span>
                                             </DropdownMenuItem>
@@ -408,3 +474,5 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
     </Dialog>
   );
 }
+
+    
