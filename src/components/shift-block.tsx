@@ -14,6 +14,7 @@ const blockVariants = cva(
       type: {
         shift: '',
         leave: 'bg-destructive/80 border-destructive',
+        dayOff: 'bg-gray-400/80 border-gray-500 text-center',
       },
     },
     defaultVariants: {
@@ -32,7 +33,6 @@ const leaveColors: { [key: string]: string } = {
     'Emergency': 'bg-red-600/80',
     'Unavailable': 'bg-gray-500/80',
     'Time Off Request': 'bg-orange-500/80',
-    'Day Off': 'bg-indigo-500/80',
 };
 
 function isLeave(item: Shift | Leave): item is Leave {
@@ -56,6 +56,18 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
   }
 
   const shift = item;
+
+  if (shift.isDayOff) {
+    return (
+       <div
+        onClick={onClick}
+        className={cn(blockVariants({ type: 'dayOff' }))}
+      >
+        <p className="font-bold text-xs truncate">DAY OFF</p>
+      </div>
+    )
+  }
+
   const employee = shift.employeeId ? getEmployeeById(shift.employeeId) : null;
   const role = employee?.role;
 

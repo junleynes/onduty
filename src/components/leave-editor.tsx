@@ -27,7 +27,7 @@ import { Input } from './ui/input';
 
 const leaveSchema = z.object({
   employeeId: z.string().min(1, { message: 'Employee is required.' }),
-  type: z.enum(['Vacation', 'Emergency', 'Unavailable', 'Time Off Request', 'Day Off']),
+  type: z.enum(['Vacation', 'Emergency', 'Unavailable', 'Time Off Request']),
   date: z.date({ required_error: 'A date is required.' }),
   isAllDay: z.boolean(),
   startTime: z.string().optional(),
@@ -46,7 +46,7 @@ type LeaveEditorProps = {
   employees: Employee[];
 };
 
-const leaveTypes: LeaveType[] = ['Day Off', 'Time Off Request', 'Unavailable', 'Vacation', 'Emergency'];
+const leaveTypes: LeaveType[] = ['Time Off Request', 'Unavailable', 'Vacation', 'Emergency'];
 
 export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, employees }: LeaveEditorProps) {
   const form = useForm<z.infer<typeof leaveSchema>>({
@@ -54,7 +54,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, employees }: Lea
     defaultValues: {
       id: leave?.id || undefined,
       employeeId: leave?.employeeId || '',
-      type: leave?.type || 'Day Off',
+      type: leave?.type || 'Time Off Request',
       date: leave?.date || new Date(),
       isAllDay: leave?.isAllDay ?? true,
       startTime: leave?.startTime || '',
@@ -66,7 +66,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, employees }: Lea
     form.reset({
       id: leave?.id || undefined,
       employeeId: leave?.employeeId || '',
-      type: leave?.type || 'Day Off',
+      type: leave?.type || 'Time Off Request',
       date: leave?.date || new Date(),
       isAllDay: leave?.isAllDay ?? true,
       startTime: leave?.startTime || '',

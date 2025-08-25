@@ -1,3 +1,4 @@
+
 import type { Employee, Shift, Leave } from '@/types';
 
 export const employees: Employee[] = [
@@ -28,13 +29,14 @@ export const shifts: Shift[] = [
   { id: 'sh-13', employeeId: 'emp-001', date: new Date(2024, 6, 26), startTime: '08:00', endTime: '16:00', label: 'Weekend Manager', color: 'hsl(var(--chart-2))' },
   { id: 'sh-14', employeeId: 'emp-002', date: new Date(2024, 6, 27), startTime: '14:00', endTime: '22:00', label: 'Dinner Service', color: 'hsl(var(--chart-1))' },
   { id: 'sh-15', employeeId: 'emp-006', date: new Date(2024, 6, 27), startTime: '14:00', endTime: '22:00', label: 'Dinner Service', color: 'hsl(var(--chart-1))' },
+  { id: 'sh-16', employeeId: 'emp-001', date: new Date(2024, 6, 25), startTime: '', endTime: '', label: 'Day Off', isDayOff: true },
+
 ];
 
 export const leave: Leave[] = [
     { id: 'leave-1', employeeId: 'emp-006', type: 'Vacation', date: new Date(2024, 6, 22), isAllDay: true },
     { id: 'leave-2', employeeId: 'emp-004', type: 'Unavailable', date: new Date(2024, 6, 26), isAllDay: true },
     { id: 'leave-3', employeeId: 'emp-005', type: 'Time Off Request', date: new Date(2024, 6, 23), isAllDay: false, startTime: '08:00', endTime: '12:00' },
-    { id: 'leave-4', employeeId: 'emp-001', type: 'Day Off', date: new Date(2024, 6, 25), isAllDay: true },
 ];
 
 

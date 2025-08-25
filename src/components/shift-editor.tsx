@@ -23,16 +23,25 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Employee, Shift } from '@/types';
+import { Checkbox } from './ui/checkbox';
 
 const shiftSchema = z.object({
   employeeId: z.string().nullable(),
-  label: z.string().min(1, { message: 'Label is required.' }),
+  label: z.string().optional(),
   date: z.date({ required_error: 'A date is required.' }),
-  startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format (HH:MM).' }),
-  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format (HH:MM).' }),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
   color: z.string().optional(),
   id: z.string().optional(),
+  isDayOff: z.boolean().default(false),
+}).refine(data => {
+    if (data.isDayOff) return true;
+    return !!data.label && !!data.startTime && !!data.endTime;
+}, {
+    message: "Label, start time, and end time are required for shifts.",
+    path: ["label"],
 });
+
 
 type ShiftEditorProps = {
   isOpen: boolean;
@@ -72,6 +81,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
       startTime: shift?.startTime || '',
       endTime: shift?.endTime || '',
       color: shift?.color || defaultColor,
+      isDayOff: shift?.isDayOff || false,
     },
   });
 
@@ -86,17 +96,25 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
       startTime: shift?.startTime || '',
       endTime: shift?.endTime || '',
       color: shift?.color || defaultColor,
+      isDayOff: shift?.isDayOff || false,
     });
   }, [shift, form, employees]);
 
   const onSubmit = (values: z.infer<typeof shiftSchema>) => {
     const finalValues = { ...values };
-    if (finalValues.color === 'default' || !finalValues.color) {
+    if (values.isDayOff) {
+        finalValues.label = 'Day Off';
+        finalValues.startTime = '';
+        finalValues.endTime = '';
+        finalValues.color = 'transparent';
+    } else if (finalValues.color === 'default' || !finalValues.color) {
         const employee = employees.find(e => e.id === values.employeeId);
         finalValues.color = employee ? roleColors[employee.role] : shiftColorOptions[1].value;
     }
     onSave(finalValues);
   };
+  
+  const isDayOff = form.watch('isDayOff');
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -109,19 +127,6 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="label"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Shift Label</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Morning Shift" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="employeeId"
@@ -183,61 +188,98 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="startTime"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Start Time</FormLabel>
-                            <FormControl>
-                                <Input type="time" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="endTime"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>End Time</FormLabel>
-                            <FormControl>
-                                <Input type="time" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
             <FormField
               control={form.control}
-              name="color"
+              name="isDayOff"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Shift Color</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                          <SelectValue placeholder="Select a color" />
-                      </SelectTrigger>
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                     <FormControl>
+                        <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        />
                     </FormControl>
-                    <SelectContent>
-                      {shiftColorOptions.map(option => (
-                        <SelectItem key={option.label} value={option.value}>
-                           <div className="flex items-center gap-2">
-                                {option.value && option.value !== 'default' && <div className="w-4 h-4 rounded-full" style={{backgroundColor: option.value}} />}
-                                <span>{option.label}</span>
-                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                    <div className="space-y-1 leading-none">
+                        <FormLabel>
+                        Day Off
+                        </FormLabel>
+                    </div>
                 </FormItem>
               )}
             />
+
+            {!isDayOff && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="label"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Shift Label</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Morning Shift" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="startTime"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Start Time</FormLabel>
+                                <FormControl>
+                                    <Input type="time" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="endTime"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>End Time</FormLabel>
+                                <FormControl>
+                                    <Input type="time" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="color"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Shift Color</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                              <SelectValue placeholder="Select a color" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {shiftColorOptions.map(option => (
+                            <SelectItem key={option.label} value={option.value}>
+                               <div className="flex items-center gap-2">
+                                    {option.value && option.value !== 'default' && <div className="w-4 h-4 rounded-full" style={{backgroundColor: option.value}} />}
+                                    <span>{option.label}</span>
+                               </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
               <Button type="submit">Save Shift</Button>

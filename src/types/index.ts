@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'employee';
 
 export type Employee = {
@@ -15,9 +16,10 @@ export type Shift = {
   endTime: string; // e.g., "17:00"
   date: Date;
   color?: string;
+  isDayOff?: boolean;
 };
 
-export type LeaveType = 'Vacation' | 'Emergency' | 'Unavailable' | 'Time Off Request' | 'Day Off';
+export type LeaveType = 'Vacation' | 'Emergency' | 'Unavailable' | 'Time Off Request';
 
 export type Leave = {
   id: string;

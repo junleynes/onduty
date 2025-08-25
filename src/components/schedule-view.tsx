@@ -41,8 +41,8 @@ export default function ScheduleView() {
     setIsShiftEditorOpen(true);
   };
   
-  const handleAddLeaveClick = (type: 'Day Off' | 'Time Off Request') => {
-    setEditingLeave({ type, isAllDay: true });
+  const handleAddLeaveClick = () => {
+    setEditingLeave({ type: 'Time Off Request', isAllDay: true });
     setIsLeaveEditorOpen(true);
   };
 
@@ -205,8 +205,7 @@ export default function ScheduleView() {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={handleAddShiftClick}>Add Shift</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddLeaveClick('Time Off Request')}>Add Time Off</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleAddLeaveClick('Day Off')}>Add Day Off</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
