@@ -17,8 +17,9 @@ import { ShiftEditor } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { SidebarTrigger } from './ui/sidebar';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -124,9 +125,17 @@ export default function ScheduleView() {
   };
 
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-      const daysToAdd = viewMode === 'week' ? 7 : 1;
-      const newDate = addDays(currentDate, direction === 'prev' ? -daysToAdd : daysToAdd);
+  const navigateDate = (direction: 'prev' | 'next') => {
+      let daysToAdd = 0;
+      if (viewMode === 'week') daysToAdd = 7;
+      if (viewMode === 'day') daysToAdd = 1;
+      
+      let newDate;
+      if (viewMode === 'month') {
+        newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + (direction === 'prev' ? -1 : 1), 1);
+      } else {
+        newDate = addDays(currentDate, direction === 'prev' ? -daysToAdd : daysToAdd);
+      }
       setCurrentDate(newDate);
   }
   
@@ -242,16 +251,17 @@ export default function ScheduleView() {
     <div className="flex flex-col gap-4 h-full">
       <header className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-4">
+          <SidebarTrigger className="md:hidden"/>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 id="date"
                 variant={'outline'}
-                className={cn('w-[280px] justify-start text-left font-normal')}
+                className={cn('w-[240px] justify-start text-left font-normal text-sm')}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
-                  dateRange.to ? (
+                  dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
                     <>
                       {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
                     </>
@@ -273,11 +283,11 @@ export default function ScheduleView() {
             </PopoverContent>
           </Popover>
           <div className="flex items-center gap-1 rounded-md border bg-card p-1">
-            <Button variant="ghost" size="icon" onClick={() => navigateWeek('prev')}>
+            <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
-            <Button variant="ghost" size="icon" onClick={() => navigateWeek('next')}>
+            <Button variant="ghost" size="icon" onClick={() => navigateDate('next')}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -345,12 +355,13 @@ export default function ScheduleView() {
         <CardContent className="p-0">
           <div className="grid" style={{gridTemplateColumns: `250px repeat(${displayedDays.length}, 1fr)`}}>
             {/* Header Row */}
-            <div className="sticky top-0 z-10 p-3 bg-card border-b border-r">
-              <span className="font-semibold">Employees</span>
+            <div className="sticky top-0 z-10 p-3 bg-card border-b border-r flex items-center">
+               <SidebarTrigger className="hidden md:flex mr-2" />
+               <span className="font-semibold">Employees</span>
             </div>
             {displayedDays.map((day) => (
               <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-3 text-center font-semibold bg-card border-b border-l">
-                <div className="text-xl">{format(day, 'E d')}</div>
+                <div className="text-lg whitespace-nowrap">{format(day, 'E d')}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                     {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
                 </div>

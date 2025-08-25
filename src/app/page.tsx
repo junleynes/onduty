@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { UserRole } from '@/types';
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 
@@ -15,9 +15,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 
-export default function Home() {
+function AppContent() {
   const [role, setRole] = useState<UserRole>('admin');
   const [activeView, setActiveView] = useState<NavItem>(role === 'admin' ? 'schedule' : 'my-schedule');
+  const { open } = useSidebar();
 
   const handleNavigate = (view: NavItem) => {
     setActiveView(view);
@@ -59,8 +60,8 @@ export default function Home() {
   }, [activeView, role]);
 
   return (
-    <SidebarProvider>
-      <Sidebar>
+    <>
+      <Sidebar collapsible="icon">
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <SidebarInset>
@@ -71,6 +72,14 @@ export default function Home() {
           </main>
         </div>
       </SidebarInset>
+    </>
+  );
+}
+
+export default function Home() {
+  return (
+    <SidebarProvider>
+      <AppContent />
     </SidebarProvider>
   );
 }
