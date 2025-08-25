@@ -125,7 +125,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem>
                     <FormLabel>Employee Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., 12345" {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -138,7 +138,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem>
                     <FormLabel>Position</FormLabel>
                     <FormControl>
-                        <Input list="positions-list" placeholder="e.g., Barista" {...field} />
+                        <Input list="positions-list" {...field} />
                     </FormControl>
                     <datalist id="positions-list">
                         {positions.map(pos => <option key={pos} value={pos} />)}
@@ -157,7 +157,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Jane" {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -170,7 +170,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Doe" {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -183,7 +183,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem>
                     <FormLabel>M.I.</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., C" {...field} />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -199,7 +199,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., jane.doe@example.com" {...field} type="email" />
+                      <Input {...field} type="email" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -212,7 +212,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., (123) 456-7890" {...field} type="tel" />
+                      <Input {...field} type="tel" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -228,7 +228,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                     <FormItem>
                       <FormLabel>Department</FormLabel>
                       <FormControl>
-                        <Input list="departments-list" placeholder="e.g., Front of House" {...field} />
+                        <Input list="departments-list" {...field} />
                       </FormControl>
                       <datalist id="departments-list">
                           {departments.map(dep => <option key={dep} value={dep} />)}
@@ -244,7 +244,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                     <FormItem>
                       <FormLabel>Section</FormLabel>
                        <FormControl>
-                        <Input list="sections-list" placeholder="e.g., Coffee Bar" {...field} />
+                        <Input list="sections-list" {...field} />
                        </FormControl>
                        <datalist id="sections-list">
                           {sections.map(sec => <option key={sec} value={sec} />)}
