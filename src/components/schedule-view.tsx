@@ -38,6 +38,11 @@ export default function ScheduleView() {
     setIsEditorOpen(true);
   };
 
+  const handleEmptyCellClick = (employeeId: string | null, date: Date) => {
+    setEditingItem({ employeeId, date });
+    setIsEditorOpen(true);
+  };
+
   const handleEditItemClick = (item: Shift | Leave) => {
     if ('label' in item) { // It's a shift
         setEditingItem(item);
@@ -91,6 +96,27 @@ export default function ScheduleView() {
     return new Set(shifts.filter(s => isSameDay(s.date, day) && s.employeeId).map(s => s.employeeId)).size;
   }
 
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, shiftId: string) => {
+    e.dataTransfer.setData("shiftId", shiftId);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetEmployeeId: string | null, targetDate: Date) => {
+    e.preventDefault();
+    const shiftId = e.dataTransfer.getData("shiftId");
+    
+    setShifts(prevShifts => 
+      prevShifts.map(shift =>
+        shift.id === shiftId
+          ? { ...shift, employeeId: targetEmployeeId, date: targetDate }
+          : shift
+      )
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -274,15 +300,23 @@ export default function ScheduleView() {
                   return (
                     <div
                       key={`${employee.id}-${day.toISOString()}`}
-                      className="col-start-auto p-2 border-b border-l min-h-[80px] space-y-1 bg-background/30"
+                      className="group/cell col-start-auto p-2 border-b border-l min-h-[80px] space-y-1 bg-background/30 relative"
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                     >
                       {itemsForDay.map((item) => (
-                        <ShiftBlock
-                          key={item.id}
-                          item={item}
-                          onClick={() => handleEditItemClick(item)}
-                        />
+                        <div key={item.id} draggable onDragStart={(e) => 'label' in item && handleDragStart(e, item.id)}>
+                          <ShiftBlock
+                            item={item}
+                            onClick={() => handleEditItemClick(item)}
+                          />
+                        </div>
                       ))}
+                      {itemsForDay.length === 0 && (
+                        <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
+                           <PlusCircle className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                      )}
                     </div>
                   );
                 })}

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
 
 const blockVariants = cva(
-  'w-full p-2 rounded-md text-left text-white overflow-hidden',
+  'w-full p-2 rounded-md text-left text-white overflow-hidden cursor-pointer',
   {
     variants: {
       type: {
@@ -43,14 +43,14 @@ export function ShiftBlock({ item, onClick, type }: ShiftBlockProps) {
     const employee = getEmployeeById(item.employeeId);
     if (!employee) return null;
     return (
-      <button
+      <div
         onClick={onClick}
         className={cn(blockVariants({ type: 'leave' }), leaveColors[item.type])}
       >
         <p className="font-bold text-xs truncate">{item.type}</p>
         <p className="text-xs truncate">{employee.name}</p>
         {!item.isAllDay && <p className="text-xs truncate">{item.startTime} - {item.endTime}</p>}
-      </button>
+      </div>
     );
   }
 
@@ -59,6 +59,7 @@ export function ShiftBlock({ item, onClick, type }: ShiftBlockProps) {
   const role = employee?.role;
 
   const formatTime = (time: string) => {
+    if (!time) return '';
     const [h, m] = time.split(':');
     const hour = parseInt(h, 10);
     const suffix = hour >= 12 ? 'p' : 'a';
@@ -67,7 +68,7 @@ export function ShiftBlock({ item, onClick, type }: ShiftBlockProps) {
   };
 
   return (
-    <button
+    <div
       onClick={onClick}
       className={cn(blockVariants({ type: 'shift' }))}
       style={{ backgroundColor: shift.color }}
@@ -77,6 +78,6 @@ export function ShiftBlock({ item, onClick, type }: ShiftBlockProps) {
       </p>
       {role && <p className="text-xs opacity-80 truncate">{role} &gt;</p>}
       <p className="text-sm truncate">{shift.label}</p>
-    </button>
+    </div>
   );
 }
