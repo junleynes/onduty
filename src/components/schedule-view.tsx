@@ -247,6 +247,20 @@ export default function ScheduleView() {
       )
     );
   };
+  
+  const formatRange = (start: Date, end: Date) => {
+      if (isSameDay(start, end)) {
+          return format(start, 'MMM d, yyyy');
+      }
+      if (start.getFullYear() !== end.getFullYear()) {
+          return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`;
+      }
+      if (start.getMonth() !== end.getMonth()) {
+          return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+      }
+      return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
+  }
+
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -258,16 +272,14 @@ export default function ScheduleView() {
               <Button
                 id="date"
                 variant={'outline'}
-                className={cn('w-[240px] justify-start text-left font-normal text-sm')}
+                className={cn('w-[260px] justify-start text-left font-normal text-sm')}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
-                  dateRange.to && !isSameDay(dateRange.from, dateRange.to) ? (
-                    <>
-                      {format(dateRange.from, 'MM/dd/yyyy')} - {format(dateRange.to, 'MM/dd/yyyy')}
-                    </>
+                  dateRange.to ? (
+                    formatRange(dateRange.from, dateRange.to)
                   ) : (
-                    format(dateRange.from, 'MM/dd/yyyy')
+                    format(dateRange.from, 'MMM d, yyyy')
                   )
                 ) : (
                   <span>Pick a date</span>
@@ -378,7 +390,7 @@ export default function ScheduleView() {
                 <div className="p-2 border-b border-r flex items-center gap-3 min-h-[70px] sticky left-0 bg-card z-10">
                   {employee.id !== 'unassigned' ? (
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" />
+                    <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
                     <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
                       {getInitials(getFullName(employee))}
                     </AvatarFallback>

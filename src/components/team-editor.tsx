@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,6 +23,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Employee } from '@/types';
+import { employees as initialEmployees } from '@/lib/data';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
@@ -32,8 +33,8 @@ const employeeSchema = z.object({
   middleInitial: z.string().max(1).optional(),
   email: z.string().email('Invalid email address'),
   phone: z.string().min(1, 'Phone number is required'),
-  birthDate: z.date({ required_error: 'Birth date is required' }),
-  startDate: z.date({ required_error: 'Start date is required' }),
+  birthDate: z.date({ required_error: 'Birth date is required.' }),
+  startDate: z.date({ required_error: 'Start date is required.' }),
   position: z.enum(['Manager', 'Chef', 'Barista', 'Cashier']),
   department: z.string().min(1, 'Department is required'),
   section: z.string().min(1, 'Section is required'),
@@ -48,6 +49,8 @@ type TeamEditorProps = {
 };
 
 const positions: Employee['position'][] = ['Manager', 'Chef', 'Barista', 'Cashier'];
+const departments = [...new Set(initialEmployees.map(e => e.department))];
+const sections = [...new Set(initialEmployees.map(e => e.section))];
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorProps) {
   const form = useForm<z.infer<typeof employeeSchema>>({
@@ -213,32 +216,50 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               <FormField
-                control={form.control}
-                name="department"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Department</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Operations" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
-                control={form.control}
-                name="section"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Section</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Front of House" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  control={form.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a department" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {departments.map(dep => (
+                            <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="section"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Section</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a section" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {sections.map(sec => (
+                            <SelectItem key={sec} value={sec}>{sec}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -293,7 +314,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={2010} toYear={new Date().getFullYear()} initialFocus />
                       </PopoverContent>
                     </Popover>
                     <FormMessage />
