@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect } from 'react';
@@ -24,7 +25,8 @@ import { cn } from '@/lib/utils';
 import type { Employee, Shift } from '@/types';
 
 const shiftSchema = z.object({
-  employeeId: z.string().min(1, { message: 'Employee is required.' }),
+  employeeId: z.string().nullable(),
+  label: z.string().min(1, { message: 'Label is required.' }),
   date: z.date({ required_error: 'A date is required.' }),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format (HH:MM).' }),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format (HH:MM).' }),
@@ -41,19 +43,19 @@ type ShiftEditorProps = {
 };
 
 const roleColors: { [key: string]: string } = {
-  Manager: 'hsl(var(--accent))',
+  Manager: 'hsl(var(--chart-2))',
   Chef: 'hsl(var(--chart-1))',
-  Barista: 'hsl(var(--chart-2))',
+  Barista: 'hsl(var(--chart-5))',
   Cashier: 'hsl(var(--chart-3))',
 };
 
 const shiftColorOptions = [
     { label: 'Default', value: 'default' },
+    { label: 'Orange', value: 'hsl(var(--chart-4))' },
+    { label: 'Red', value: 'hsl(var(--chart-1))' },
     { label: 'Blue', value: '#3498db' },
-    { label: 'Green', value: '#2ecc71' },
+    { label: 'Green', value: 'hsl(var(--chart-2))' },
     { label: 'Purple', value: '#9b59b6' },
-    { label: 'Orange', value: '#e67e22' },
-    { label: 'Red', value: '#e74c3c' },
 ];
 
 export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: ShiftEditorProps) {
@@ -64,7 +66,8 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
     resolver: zodResolver(shiftSchema),
     defaultValues: {
       id: shift?.id || undefined,
-      employeeId: shift?.employeeId || '',
+      employeeId: shift?.employeeId || null,
+      label: shift?.label || '',
       date: shift?.date || new Date(),
       startTime: shift?.startTime || '',
       endTime: shift?.endTime || '',
@@ -74,10 +77,11 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
 
   useEffect(() => {
     const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : '';
+    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : shiftColorOptions[1].value;
     form.reset({
       id: shift?.id || undefined,
-      employeeId: shift?.employeeId || '',
+      employeeId: shift?.employeeId || null,
+      label: shift?.label || '',
       date: shift?.date || new Date(),
       startTime: shift?.startTime || '',
       endTime: shift?.endTime || '',
@@ -89,7 +93,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
     const finalValues = { ...values };
     if (finalValues.color === 'default' || !finalValues.color) {
         const employee = employees.find(e => e.id === values.employeeId);
-        finalValues.color = employee ? roleColors[employee.role] : undefined;
+        finalValues.color = employee ? roleColors[employee.role] : shiftColorOptions[1].value;
     }
     onSave(finalValues);
   };
@@ -107,17 +111,31 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
+              name="label"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shift Label</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Morning Shift" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name="employeeId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Employee</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={(value) => field.onChange(value === 'unassigned' ? null : value)} defaultValue={field.value || 'unassigned'}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select an employee" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value={'unassigned'}>Unassigned</SelectItem>
                       {employees.map(emp => (
                         <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
                       ))}

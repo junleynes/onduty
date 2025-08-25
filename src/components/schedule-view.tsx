@@ -1,11 +1,12 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { Card, CardContent } from '@/components/ui/card';
-import { shifts as initialShifts, employees } from '@/lib/data';
-import type { Employee, Shift } from '@/types';
+import { shifts as initialShifts, employees, leave as initialLeave } from '@/lib/data';
+import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
@@ -14,31 +15,34 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { ShiftEditor } from './shift-editor';
-
-const roleColors: { [key: string]: string } = {
-  Manager: 'hsl(var(--accent))',
-  Chef: 'hsl(var(--chart-1))',
-  Barista: 'hsl(var(--chart-2))',
-  Cashier: 'hsl(var(--chart-3))',
-};
+import { Progress } from './ui/progress';
+import { LaborSummary } from './labor-summary';
+import { ShiftBlock } from './shift-block';
 
 export default function ScheduleView() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(2024, 6, 21), // July 21, 2024
-    to: addDays(new Date(2024, 6, 21), 6),
-  });
+  const [leave, setLeave] = useState<Leave[]>(initialLeave);
+  
+  const [currentDate, setCurrentDate] = useState(new Date(2024, 6, 21)); // July 21, 2024
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingShift, setEditingShift] = useState<Shift | Partial<Shift> | null>(null);
+  const [editingItem, setEditingItem] = useState<Shift | Partial<Shift> | null>(null);
+
+  const dateRange = useMemo(() => ({
+      from: startOfWeek(currentDate, { weekStartsOn: 1 }), // Monday
+      to: endOfWeek(currentDate, { weekStartsOn: 1 }),
+  }), [currentDate]);
 
   const handleAddShiftClick = () => {
-    setEditingShift({});
+    setEditingItem({});
     setIsEditorOpen(true);
   };
 
-  const handleEditShiftClick = (shift: Shift) => {
-    setEditingShift(shift);
-    setIsEditorOpen(true);
+  const handleEditItemClick = (item: Shift | Leave) => {
+    if ('label' in item) { // It's a shift
+        setEditingItem(item);
+        setIsEditorOpen(true);
+    }
+    // Note: Editing leave is not implemented in this version
   };
 
   const handleSaveShift = (savedShift: Shift) => {
@@ -51,24 +55,87 @@ export default function ScheduleView() {
       setShifts([...shifts, newShiftWithId as Shift]);
     }
     setIsEditorOpen(false);
-    setEditingShift(null);
+    setEditingItem(null);
   };
   
   const displayedDays = useMemo(() => {
-    if (date?.from && date?.to) {
-      return eachDayOfInterval({ start: date.from, end: date.to });
+    if (dateRange?.from && dateRange?.to) {
+      return eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
     }
     return [];
-  }, [date]);
+  }, [dateRange]);
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+      const newDate = addDays(currentDate, direction === 'prev' ? -7 : 7);
+      setCurrentDate(newDate);
+  }
+
+  const allEmployees = [{ id: 'unassigned', name: 'Unassigned Shifts', role: 'Special', avatar: '' }, ...employees];
+
+  const calculateDailyHours = (day: Date) => {
+    const dailyShifts = shifts.filter(s => isSameDay(s.date, day));
+    return dailyShifts.reduce((acc, shift) => {
+        const start = parseInt(shift.startTime.split(':')[0]);
+        const end = parseInt(shift.endTime.split(':')[0]);
+        return acc + (end - start);
+    }, 0);
+  }
+
+  const dailyShiftCount = (day: Date) => {
+    return shifts.filter(s => isSameDay(s.date, day)).length;
+  }
+
+  const dailyEmployeeCount = (day: Date) => {
+    return new Set(shifts.filter(s => isSameDay(s.date, day) && s.employeeId).map(s => s.employeeId)).size;
+  }
+
 
   return (
-    <div className="flex flex-col gap-4">
-      <header className="flex items-center justify-between">
+    <div className="flex flex-col gap-4 h-full">
+      <header className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-semibold">Job Scheduler</h1>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date"
+                variant={'outline'}
+                className={cn('w-[280px] justify-start text-left font-normal')}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
+                    </>
+                  ) : (
+                    format(dateRange.from, 'LLL dd, y')
+                  )
+                ) : (
+                  <span>Pick a date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                initialFocus
+                mode="single"
+                selected={currentDate}
+                onSelect={(date) => date && setCurrentDate(date)}
+              />
+            </PopoverContent>
+          </Popover>
+          <div className="flex items-center gap-1 rounded-md border bg-card p-1">
+            <Button variant="ghost" size="icon" onClick={() => navigateWeek('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
+            <Button variant="ghost" size="icon" onClick={() => navigateWeek('next')}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Select defaultValue="week">
+           <Select defaultValue="week">
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="View" />
             </SelectTrigger>
@@ -78,60 +145,18 @@ export default function ScheduleView() {
               <SelectItem value="month">Month</SelectItem>
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-1 rounded-md border bg-card p-1">
-            <Button variant="ghost" size="icon">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date"
-                  variant={'ghost'}
-                  className={cn(
-                    'w-[260px] justify-start text-left font-normal',
-                    !date && 'text-muted-foreground'
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date?.from ? (
-                    date.to ? (
-                      <>
-                        {format(date.from, 'LLL dd, y')} - {format(date.to, 'LLL dd, y')}
-                      </>
-                    ) : (
-                      format(date.from, 'LLL dd, y')
-                    )
-                  ) : (
-                    <span>Pick a date</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={date?.from}
-                  selected={date}
-                  onSelect={setDate}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-            <Button variant="ghost" size="icon">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
           <Button onClick={handleAddShiftClick}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Shift
           </Button>
-          <Button variant="outline">Publish</Button>
+          <Button variant="outline">Actions</Button>
         </div>
       </header>
-
-      <Card>
+    
+    <div className="flex-1 overflow-auto">
+      <Card className="h-full">
         <CardContent className="p-0">
-          <div className="grid grid-cols-[250px_repeat(7,1fr)]">
+          <div className="grid" style={{gridTemplateColumns: `250px repeat(${displayedDays.length}, 1fr)`}}>
             {/* Header Row */}
             <div className="sticky top-0 z-10 p-3 bg-card border-b border-r">
               <span className="font-semibold">Employees</span>
@@ -140,48 +165,52 @@ export default function ScheduleView() {
               <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-3 text-center font-semibold bg-card border-b border-l">
                 <div className="text-sm text-muted-foreground">{format(day, 'E')}</div>
                 <div className="text-xl">{format(day, 'd')}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                    {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
+                </div>
+                <Progress value={(calculateDailyHours(day) / 40) * 100} className="h-1 mt-1"/>
+                <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
               </div>
             ))}
 
             {/* Employee Rows */}
-            {employees.map((employee) => (
+            {allEmployees.map((employee) => (
               <React.Fragment key={employee.id}>
                 {/* Employee Cell */}
-                <div className="p-3 border-b border-r flex items-center gap-3 min-h-[80px]">
+                <div className="p-3 border-b border-r flex items-center gap-3 min-h-[80px] sticky left-0 bg-card z-10">
+                  {employee.id !== 'unassigned' ? (
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" />
                     <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
                   </Avatar>
+                  ) : <div className="w-10 h-10"/>}
                   <div>
                     <p className="font-semibold">{employee.name}</p>
-                    <p className="text-sm text-muted-foreground">{employee.role}</p>
+                    {employee.id !== 'unassigned' && <p className="text-sm text-muted-foreground">{employee.role}</p>}
                   </div>
                 </div>
 
                 {/* Day Cells for Shifts */}
                 {displayedDays.map((day) => {
-                  const employeeShifts = shifts.filter(
-                    (s) => s.employeeId === employee.id && isSameDay(s.date, day)
-                  );
+                  const itemsForDay = [
+                      ...shifts.filter(
+                        (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
+                      ),
+                      ...leave.filter(
+                        (l) => l.employeeId === employee.id && isSameDay(l.date, day)
+                      )
+                  ];
                   return (
                     <div
                       key={`${employee.id}-${day.toISOString()}`}
-                      className="col-start-auto p-2 border-b border-l min-h-[80px] space-y-1"
+                      className="col-start-auto p-2 border-b border-l min-h-[80px] space-y-1 bg-background/30"
                     >
-                      {employeeShifts.map((shift) => (
-                        <button
-                          key={shift.id}
-                          onClick={() => handleEditShiftClick(shift)}
-                          className="w-full p-2 rounded-md text-left"
-                          style={{ backgroundColor: shift.color || roleColors[employee.role] }}
-                        >
-                          <p className="font-bold text-xs text-card-foreground/80">
-                            {shift.startTime} - {shift.endTime}
-                          </p>
-                          <p className="text-xs text-card-foreground/60">
-                            {employee.role} Shift
-                          </p>
-                        </button>
+                      {itemsForDay.map((item) => (
+                        <ShiftBlock
+                          key={item.id}
+                          item={item}
+                          onClick={() => handleEditItemClick(item)}
+                        />
                       ))}
                     </div>
                   );
@@ -191,15 +220,17 @@ export default function ScheduleView() {
           </div>
         </CardContent>
       </Card>
+    </div>
       
+      <LaborSummary shifts={shifts} employees={employees} />
+
       <ShiftEditor
         isOpen={isEditorOpen}
         setIsOpen={setIsEditorOpen}
-        shift={editingShift}
+        shift={editingItem}
         onSave={handleSaveShift}
         employees={employees}
       />
-      
     </div>
   );
 }
