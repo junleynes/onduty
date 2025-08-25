@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { employees } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone } from 'lucide-react';
+import { Mail, Phone, PlusCircle } from 'lucide-react';
 
 const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
   Manager: 'default',
@@ -18,9 +18,15 @@ const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'ou
 export default function TeamView() {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Team Members</CardTitle>
-        <CardDescription>Manage your team members and their roles.</CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+            <CardTitle>Team Members</CardTitle>
+            <CardDescription>Manage your team members and their roles.</CardDescription>
+        </div>
+        <Button>
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Member
+        </Button>
       </CardHeader>
       <CardContent>
         <Table>

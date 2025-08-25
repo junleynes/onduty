@@ -1,92 +1,106 @@
 'use client';
 
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { shifts, weekDays, getEmployeeById } from '@/lib/data';
-import type { Shift } from '@/types';
+import { shifts, weekDays, employees, getEmployeeById } from '@/lib/data';
+import type { Employee, Shift } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Button } from './ui/button';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
-    Manager: 'default',
-    Chef: 'destructive',
-    Barista: 'secondary',
-    Cashier: 'outline',
+const roleColors: { [key: string]: string } = {
+    Manager: 'bg-accent',
+    Chef: 'bg-red-200',
+    Barista: 'bg-blue-200',
+    Cashier: 'bg-green-200',
   };
   
 export default function ScheduleView() {
-  const timeSlots = Array.from({ length: 15 }, (_, i) => `${(i + 8).toString().padStart(2, '0')}:00`);
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Weekly Schedule</CardTitle>
-        <CardDescription>A visual overview of the weekly shift schedule.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="relative">
-            <div className="grid grid-cols-[auto_repeat(7,1fr)]">
-                <div className="row-start-1 sticky top-0 bg-background z-10">&nbsp;</div>
+    <div className="flex flex-col gap-4">
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-semibold">Job Scheduler</h1>
+        </div>
+        <div className="flex items-center gap-2">
+            <Select defaultValue="week">
+                <SelectTrigger className="w-[120px]">
+                    <SelectValue placeholder="View" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="day">Day</SelectItem>
+                    <SelectItem value="week">Week</SelectItem>
+                    <SelectItem value="month">Month</SelectItem>
+                </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1 rounded-md border bg-card p-1">
+                <Button variant="ghost" size="icon">
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" className="px-3">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    Jul 21 - 27
+                </Button>
+                <Button variant="ghost" size="icon">
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Shift
+            </Button>
+            <Button variant="outline">Publish</Button>
+        </div>
+      </header>
+
+      <Card>
+        <CardContent className="p-0">
+            <div className="grid grid-cols-[250px_repeat(7,1fr)]">
+                {/* Header Row */}
+                <div className="sticky top-0 z-10 p-3 bg-card border-b border-r">
+                    <span className="font-semibold">Employees</span>
+                </div>
                 {weekDays.map(day => (
-                  <div key={day} className="col-start-auto row-start-1 p-2 text-center font-semibold sticky top-0 bg-background z-10 border-b">
+                  <div key={day} className="sticky top-0 z-10 col-start-auto p-3 text-center font-semibold bg-card border-b border-l">
                     {day}
                   </div>
                 ))}
 
-                <div className="col-start-1 grid">
-                    {timeSlots.map(time => (
-                        <div key={time} className="h-20 flex items-center pr-2">
-                             <span className="text-xs text-muted-foreground">{time}</span>
+                {/* Employee Rows */}
+                {employees.map(employee => (
+                    <React.Fragment key={employee.id}>
+                        {/* Employee Cell */}
+                        <div className="p-3 border-b border-r flex items-center gap-3 min-h-[80px]">
+                            <Avatar className="h-10 w-10">
+                                <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" />
+                                <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="font-semibold">{employee.name}</p>
+                                <p className="text-sm text-muted-foreground">{employee.role}</p>
+                            </div>
                         </div>
-                    ))}
-                </div>
 
-                {weekDays.map((day, dayIndex) => (
-                    <div key={day} className="col-start-auto relative grid" style={{gridTemplateRows: `repeat(${timeSlots.length}, 5rem)`}}>
-                         {/* Grid lines */}
-                        {timeSlots.map((time, timeIndex) => (
-                          <div key={`${day}-${time}`} className="border-t border-l"></div>
-                        ))}
-
-                        {/* Shifts */}
-                        {shifts
-                            .filter(shift => shift.day === day)
-                            .map(shift => {
-                                const employee = getEmployeeById(shift.employeeId);
-                                if (!employee) return null;
-
-                                const startHour = parseInt(shift.startTime.split(':')[0]);
-                                const endHour = parseInt(shift.endTime.split(':')[0]);
-                                const duration = endHour - startHour;
-                                const top = (startHour - 8) * 5; // 5rem per hour, starting from 8:00
-
-                                return (
-                                    <div
-                                        key={shift.id}
-                                        className="absolute w-full p-1"
-                                        style={{ top: `${top}rem`, height: `${duration * 5}rem` }}
-                                    >
-                                        <div className="bg-card rounded-lg p-2 shadow-sm border-l-4 border-primary h-full flex flex-col justify-between cursor-pointer hover:shadow-md transition-shadow">
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <Avatar className="h-6 w-6">
-                                                        <AvatarImage src={`https://placehold.co/32x32.png`} data-ai-hint="profile picture" />
-                                                        <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
-                                                    </Avatar>
-                                                    <p className="font-semibold text-sm truncate">{employee.name}</p>
-                                                </div>
-                                                <Badge variant={roleColors[employee.role]} className="mb-1">{employee.role}</Badge>
-                                            </div>
-                                            <p className="text-xs text-muted-foreground mt-1">{shift.startTime} - {shift.endTime}</p>
+                        {/* Day Cells for Shifts */}
+                        {weekDays.map(day => {
+                            const employeeShifts = shifts.filter(s => s.employeeId === employee.id && s.day === day);
+                            return (
+                                <div key={`${employee.id}-${day}`} className="col-start-auto p-2 border-b border-l min-h-[80px] space-y-1">
+                                    {employeeShifts.map(shift => (
+                                        <div key={shift.id} className={`p-2 rounded-md ${roleColors[employee.role] || 'bg-gray-200'}`}>
+                                            <p className="font-bold text-xs text-card-foreground/80">{shift.startTime} - {shift.endTime}</p>
+                                            <p className="text-xs text-card-foreground/60">{employee.role} Shift</p>
                                         </div>
-                                    </div>
-                                );
-                            })
-                        }
-                    </div>
+                                    ))}
+                                </div>
+                            );
+                        })}
+                    </React.Fragment>
                 ))}
             </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

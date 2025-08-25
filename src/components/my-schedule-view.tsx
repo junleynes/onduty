@@ -8,6 +8,13 @@ import type { Shift } from '@/types';
 // Let's assume the logged-in employee is 'emp-003' (Charlie Brown) for demonstration
 const LOGGED_IN_EMPLOYEE_ID = 'emp-003';
 
+const roleColors: { [key: string]: string } = {
+  Manager: 'bg-accent/50 border-accent',
+  Chef: 'bg-red-100 border-red-200',
+  Barista: 'bg-blue-100 border-blue-200',
+  Cashier: 'bg-green-100 border-green-200',
+};
+
 export default function MyScheduleView() {
   const myShifts = shifts.filter(shift => shift.employeeId === LOGGED_IN_EMPLOYEE_ID);
   const employee = getEmployeeById(LOGGED_IN_EMPLOYEE_ID);
@@ -32,11 +39,12 @@ export default function MyScheduleView() {
                 <div className="space-y-4">
                   {shifts.map(shift => {
                     const shiftEmployee = getEmployeeById(shift.employeeId);
+                    if (!shiftEmployee) return null;
                     return (
-                      <Card key={shift.id} className="bg-primary/10">
+                      <Card key={shift.id} className={`${roleColors[shiftEmployee.role]} border-l-4`}>
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
-                            <Clock className="h-6 w-6 text-primary" />
+                            <Clock className="h-6 w-6 text-foreground/80" />
                             <div>
                               <p className="font-bold text-base">{shift.startTime} - {shift.endTime}</p>
                               <p className="text-sm text-muted-foreground flex items-center gap-1">
