@@ -13,7 +13,6 @@ interface SidebarNavProps {
 const adminNavItems: { view: NavItem; label: string; icon: LucideIcon }[] = [
   { view: 'schedule', label: 'Schedule', icon: CalendarDays },
   { view: 'team', label: 'Team', icon: Users },
-  { view: 'templates', label: 'Templates', icon: ClipboardList },
 ];
 
 const employeeNavItems: { view: NavItem; label: string; icon: LucideIcon }[] = [

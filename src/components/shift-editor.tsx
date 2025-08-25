@@ -280,9 +280,12 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                 />
               </>
             )}
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit">Save Shift</Button>
+            <DialogFooter className="justify-between">
+              <Button type="button" variant="outline">Save as template</Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit">Save Shift</Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
