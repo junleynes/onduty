@@ -17,11 +17,8 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, FileText, MoreHorizontal, Pencil, Copy, Trash2, X } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn, getFullName } from '@/lib/utils';
+import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X } from 'lucide-react';
+import { getFullName } from '@/lib/utils';
 import type { Employee, Shift } from '@/types';
 import { Checkbox } from './ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -29,6 +26,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Card } from './ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { DatePicker } from './ui/date-picker';
 
 const shiftSchema = z.object({
   employeeId: z.string().nullable(),
@@ -278,42 +276,18 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                 )}
                             />
                             <FormField
-                                control={form.control}
-                                name="date"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                    <FormLabel>Date</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                        <FormControl>
-                                            <Button
-                                            variant={'outline'}
-                                            className={cn(
-                                                'w-full pl-3 text-left font-normal',
-                                                !field.value && 'text-muted-foreground'
-                                            )}
-                                            >
-                                            {field.value ? (
-                                                format(field.value, 'MM/dd/yyyy')
-                                            ) : (
-                                                <span>Pick a date</span>
-                                            )}
-                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={field.value}
-                                            onSelect={field.onChange}
-                                            initialFocus
-                                        />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
+                              control={form.control}
+                              name="date"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                  <FormLabel>Date</FormLabel>
+                                   <DatePicker
+                                        date={field.value}
+                                        onDateChange={field.onChange}
+                                    />
+                                  <FormMessage />
+                                </FormItem>
+                              )}
                             />
                             <FormField
                                 control={form.control}
