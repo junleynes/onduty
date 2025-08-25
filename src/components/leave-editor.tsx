@@ -18,7 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Employee, Leave, LeaveType } from '@/types';
@@ -43,12 +43,13 @@ type LeaveEditorProps = {
   setIsOpen: (isOpen: boolean) => void;
   leave: Partial<Leave> | null;
   onSave: (leave: Leave | Partial<Leave>) => void;
+  onDelete: (leaveId: string) => void;
   employees: Employee[];
 };
 
 const leaveTypes: LeaveType[] = ['Time Off Request', 'Unavailable', 'Vacation', 'Emergency'];
 
-export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, employees }: LeaveEditorProps) {
+export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employees }: LeaveEditorProps) {
   const form = useForm<z.infer<typeof leaveSchema>>({
     resolver: zodResolver(leaveSchema),
     defaultValues: {
@@ -76,6 +77,12 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, employees }: Lea
 
   const onSubmit = (values: z.infer<typeof leaveSchema>) => {
     onSave(values);
+  };
+  
+  const handleDelete = () => {
+    if (leave?.id) {
+        onDelete(leave.id);
+    }
   };
 
   const isAllDay = form.watch('isAllDay');
@@ -224,9 +231,17 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, employees }: Lea
                 </div>
             )}
             
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit">Save</Button>
+            <DialogFooter className="sm:justify-between">
+              {leave?.id ? (
+                <Button type="button" variant="destructive" onClick={handleDelete} className="sm:mr-auto">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                </Button>
+              ) : <div></div>}
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit">Save</Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>

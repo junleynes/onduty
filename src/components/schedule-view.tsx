@@ -83,6 +83,14 @@ export default function ScheduleView() {
     setIsShiftEditorOpen(false);
     setEditingShift(null);
   };
+  
+  const handleDeleteShift = (shiftId: string) => {
+    setShifts(shifts.filter(s => s.id !== shiftId));
+    setIsShiftEditorOpen(false);
+    setEditingShift(null);
+    toast({ title: "Shift Deleted", variant: "destructive" });
+  };
+
 
   const handleSaveLeave = (savedLeave: Leave | Partial<Leave>) => {
     if ('id' in savedLeave && savedLeave.id) {
@@ -96,6 +104,14 @@ export default function ScheduleView() {
     setIsLeaveEditorOpen(false);
     setEditingLeave(null);
   };
+  
+  const handleDeleteLeave = (leaveId: string) => {
+    setLeave(leave.filter(l => l.id !== leaveId));
+    setIsLeaveEditorOpen(false);
+    setEditingLeave(null);
+    toast({ title: "Leave Deleted", variant: "destructive" });
+  };
+
 
   const navigateWeek = (direction: 'prev' | 'next') => {
       const newDate = addDays(currentDate, direction === 'prev' ? -7 : 7);
@@ -344,7 +360,7 @@ export default function ScheduleView() {
                   ) : <div className="w-10 h-10"/>}
                   <div>
                     <p className="font-semibold">{employee.name}</p>
-                    {employee.id !== 'unassigned' && <p className="text-sm text-muted-foreground">{employee.role}</p>}
+                    <p className="text-sm text-muted-foreground">{employee.role}</p>
                   </div>
                 </div>
 
@@ -393,6 +409,7 @@ export default function ScheduleView() {
         setIsOpen={setIsShiftEditorOpen}
         shift={editingShift}
         onSave={handleSaveShift}
+        onDelete={handleDeleteShift}
         employees={employees}
       />
       <LeaveEditor
@@ -400,6 +417,7 @@ export default function ScheduleView() {
         setIsOpen={setIsLeaveEditorOpen}
         leave={editingLeave}
         onSave={handleSaveLeave}
+        onDelete={handleDeleteLeave}
         employees={employees}
       />
     </div>

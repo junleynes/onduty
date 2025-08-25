@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Card } from './ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
 
 const shiftSchema = z.object({
   employeeId: z.string().nullable(),
@@ -52,6 +53,7 @@ type ShiftEditorProps = {
   setIsOpen: (isOpen: boolean) => void;
   shift: Shift | Partial<Shift> | null;
   onSave: (shift: Shift | Partial<Shift>) => void;
+  onDelete: (shiftId: string) => void;
   employees: Employee[];
 };
 
@@ -71,7 +73,7 @@ const shiftColorOptions = [
     { label: 'Purple', value: '#9b59b6' },
 ];
 
-const shiftTemplates = [
+const initialShiftTemplates = [
     { name: 'Morning Shift', label: 'Morning Coverage', startTime: '08:00', endTime: '16:00' },
     { name: 'Evening Shift', label: 'Evening Coverage', startTime: '16:00', endTime: '00:00' },
     { name: 'Manager Open', label: 'Manager Opening', startTime: '07:00', endTime: '15:00' },
@@ -80,9 +82,12 @@ const shiftTemplates = [
 ];
 
 
-export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: ShiftEditorProps) {
-    const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : '';
+export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees }: ShiftEditorProps) {
+  const { toast } = useToast();
+  const [shiftTemplates, setShiftTemplates] = useState(initialShiftTemplates);
+
+  const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
+  const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : '';
 
   const form = useForm<z.infer<typeof shiftSchema>>({
     resolver: zodResolver(shiftSchema),
@@ -126,6 +131,12 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
     }
     onSave(finalValues);
   };
+
+  const handleDelete = () => {
+    if (shift?.id) {
+        onDelete(shift.id);
+    }
+  }
   
   const isDayOff = form.watch('isDayOff');
 
@@ -133,6 +144,34 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
     form.setValue('label', template.label);
     form.setValue('startTime', template.startTime);
     form.setValue('endTime', template.endTime);
+    toast({ title: 'Template Applied', description: `The "${template.name}" template has been applied.`});
+  }
+
+  const handleDuplicateTemplate = (templateToDuplicate: typeof shiftTemplates[0]) => {
+    const newTemplate = { ...templateToDuplicate, name: `${templateToDuplicate.name} (Copy)` };
+    setShiftTemplates(prev => [...prev, newTemplate]);
+    toast({ title: 'Template Duplicated' });
+  };
+
+  const handleDeleteTemplate = (templateNameToDelete: string) => {
+    setShiftTemplates(prev => prev.filter(t => t.name !== templateNameToDelete));
+    toast({ title: 'Template Deleted', variant: 'destructive' });
+  };
+
+  const handleSaveAsTemplate = () => {
+    const currentValues = form.getValues();
+    if (!currentValues.label || !currentValues.startTime || !currentValues.endTime) {
+        toast({ title: 'Cannot Save Template', description: 'Please provide a label, start time, and end time.', variant: 'destructive' });
+        return;
+    }
+    const newTemplate = {
+        name: `${currentValues.label} (${currentValues.startTime}-${currentValues.endTime})`,
+        label: currentValues.label,
+        startTime: currentValues.startTime,
+        endTime: currentValues.endTime,
+    };
+    setShiftTemplates(prev => [...prev, newTemplate]);
+    toast({ title: 'Template Saved', description: `New template "${newTemplate.name}" has been created.` });
   }
 
   return (
@@ -305,9 +344,17 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                             />
                         </>
                         )}
-                        <DialogFooter>
-                            <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                            <Button type="submit">Save Shift</Button>
+                        <DialogFooter className="sm:justify-between">
+                            {shift?.id ? (
+                                <Button type="button" variant="destructive" onClick={handleDelete} className="sm:mr-auto">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </Button>
+                            ) : <div></div>}
+                            <div className="flex gap-2">
+                               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                               <Button type="submit">Save Shift</Button>
+                            </div>
                         </DialogFooter>
                     </form>
                 </Form>
@@ -318,7 +365,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                         {shiftTemplates.map((template) => (
                            <Card key={template.name} className="p-3 hover:bg-muted group">
                                <div className="flex items-center justify-between">
-                                   <div className="flex items-start gap-3 cursor-pointer" onClick={() => handleTemplateClick(template)}>
+                                   <div className="flex items-start gap-3 cursor-pointer flex-1" onClick={() => handleTemplateClick(template)}>
                                        <FileText className="h-5 w-5 text-muted-foreground mt-1" />
                                        <div>
                                          <p className="font-semibold">{template.name}</p>
@@ -333,15 +380,15 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => console.log('Edit template')}>
+                                            <DropdownMenuItem disabled>
                                                 <Pencil className="mr-2 h-4 w-4" />
                                                 <span>Edit</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => console.log('Duplicate template')}>
+                                            <DropdownMenuItem onClick={() => handleDuplicateTemplate(template)}>
                                                 <Copy className="mr-2 h-4 w-4" />
                                                 <span>Duplicate</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-red-600 focus:text-red-600">
+                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteTemplate(template.name)}>
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 <span>Delete</span>
                                             </DropdownMenuItem>
@@ -353,7 +400,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                     </div>
                 </ScrollArea>
                  <DialogFooter className="pt-4">
-                    <Button type="button" variant="outline" onClick={() => { /* Logic to save current as template */ }}>Save as Template</Button>
+                    <Button type="button" variant="outline" onClick={handleSaveAsTemplate}>Save Current as Template</Button>
                 </DialogFooter>
             </TabsContent>
         </Tabs>
