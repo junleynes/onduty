@@ -9,7 +9,7 @@ import { shifts as initialShifts, employees, leave as initialLeave } from '@/lib
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, Wand2, CircleSlash, EyeOff, UserX, Share, Printer, Download, Upload, Link2, Settings } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,6 +18,7 @@ import { ShiftEditor } from './shift-editor';
 import { Progress } from './ui/progress';
 import { LaborSummary } from './labor-summary';
 import { ShiftBlock } from './shift-block';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 export default function ScheduleView() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
@@ -75,6 +76,7 @@ export default function ScheduleView() {
   const calculateDailyHours = (day: Date) => {
     const dailyShifts = shifts.filter(s => isSameDay(s.date, day));
     return dailyShifts.reduce((acc, shift) => {
+        if (!shift.startTime || !shift.endTime) return acc;
         const start = parseInt(shift.startTime.split(':')[0]);
         const end = parseInt(shift.endTime.split(':')[0]);
         return acc + (end - start);
@@ -145,11 +147,80 @@ export default function ScheduleView() {
               <SelectItem value="month">Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={handleAddShiftClick}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add Shift
-          </Button>
-          <Button variant="outline">Actions</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                New
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={handleAddShiftClick}>Add Shift</DropdownMenuItem>
+              <DropdownMenuItem>Add Time Off</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">Actions</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+                <DropdownMenuGroup>
+                    <DropdownMenuLabel>Week actions</DropdownMenuLabel>
+                    <DropdownMenuItem>
+                        <Copy className="mr-2 h-4 w-4" />
+                        <span>Copy previous week</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        <span>Auto assign week</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <CircleSlash className="mr-2 h-4 w-4" />
+                        <span>Clear week</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <EyeOff className="mr-2 h-4 w-4" />
+                        <span>Unpublish week</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <UserX className="mr-2 h-4 w-4" />
+                        <span>Unassign week</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <Share className="mr-2 h-4 w-4" />
+                        <span>Export week</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <Printer className="mr-2 h-4 w-4" />
+                        <span>Print week</span>
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                    <DropdownMenuLabel>Templates</DropdownMenuLabel>
+                    <DropdownMenuItem>
+                        <Download className="mr-2 h-4 w-4" />
+                        <span>Save week as template</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <Upload className="mr-2 h-4 w-4" />
+                        <span>Load week template</span>
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                    <DropdownMenuLabel>Shareable links</DropdownMenuLabel>
+                    <DropdownMenuItem>
+                        <Link2 className="mr-2 h-4 w-4" />
+                        <span>Share schedule</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem>
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Manage shared links</span>
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
     
