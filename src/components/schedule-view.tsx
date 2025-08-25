@@ -8,7 +8,7 @@ import { shifts as initialShifts, employees as initialEmployees, leave as initia
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, FileUp } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -20,6 +20,7 @@ import { ShiftBlock } from './shift-block';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { SidebarTrigger } from './ui/sidebar';
+import { ScheduleImporter } from './schedule-importer';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -35,6 +36,8 @@ export default function ScheduleView() {
 
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
+
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
   
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
   const { toast } = useToast();
@@ -205,6 +208,12 @@ export default function ScheduleView() {
     toast({ title: "Template Loaded", description: "The saved template has been applied to the current week." });
   };
 
+  const handleImportedData = (importedShifts: Shift[], importedLeave: Leave[]) => {
+      // A simple merge: replace everything. A more sophisticated merge could be implemented.
+      setShifts(importedShifts);
+      setLeave(importedLeave);
+  };
+
 
   const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', position: 'Special', avatar: '' }, ...employees];
 
@@ -315,6 +324,10 @@ export default function ScheduleView() {
               <SelectItem value="month">Month</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
+            <FileUp className="mr-2 h-4 w-4" />
+            Import
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button>
@@ -456,6 +469,11 @@ export default function ScheduleView() {
         onSave={handleSaveLeave}
         onDelete={handleDeleteLeave}
         employees={employees}
+      />
+      <ScheduleImporter
+        isOpen={isImporterOpen}
+        setIsOpen={setIsImporterOpen}
+        onImport={handleImportedData}
       />
     </div>
   );
