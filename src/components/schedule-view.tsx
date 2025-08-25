@@ -16,7 +16,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { ShiftEditor } from './shift-editor';
 import { Progress } from './ui/progress';
-import { LaborSummary } from './labor-summary';
 import { ShiftBlock } from './shift-block';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 
@@ -326,8 +325,6 @@ export default function ScheduleView() {
         </CardContent>
       </Card>
     </div>
-      
-      <LaborSummary shifts={shifts} employees={employees} />
 
       <ShiftEditor
         isOpen={isEditorOpen}

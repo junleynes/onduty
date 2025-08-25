@@ -220,10 +220,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <div className="flex items-center gap-2">
-                           {field.value && field.value !== 'default' && <div className="w-4 h-4 rounded-full" style={{backgroundColor: field.value}} />}
-                           <SelectValue placeholder="Select a color" />
-                        </div>
+                          <SelectValue placeholder="Select a color" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
