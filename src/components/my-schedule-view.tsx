@@ -1,10 +1,14 @@
 'use client';
-
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { shifts, getEmployeeById, weekDays } from '@/lib/data';
-import { Calendar, Clock, User } from 'lucide-react';
+import { shifts, getEmployeeById } from '@/lib/data';
+import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Shift } from '@/types';
-import { format } from 'date-fns';
+import { format, addDays, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from './ui/button';
+
+type ViewMode = 'day' | 'week';
 
 // Let's assume the logged-in employee is 'emp-003' (Charlie Brown) for demonstration
 const LOGGED_IN_EMPLOYEE_ID = 'emp-003';
@@ -17,11 +21,24 @@ const roleColors: { [key: string]: string } = {
 };
 
 export default function MyScheduleView() {
+  const [currentDate, setCurrentDate] = useState(new Date(2024, 6, 21)); // July 21, 2024
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
+
   const myShifts = shifts.filter(shift => shift.employeeId === LOGGED_IN_EMPLOYEE_ID);
   const employee = getEmployeeById(LOGGED_IN_EMPLOYEE_ID);
 
-  // Group shifts by date
-  const shiftsByDate = myShifts.reduce((acc, shift) => {
+  const dateRange = useMemo(() => {
+    if (viewMode === 'week') {
+      return { start: startOfWeek(currentDate, { weekStartsOn: 1 }), end: endOfWeek(currentDate, { weekStartsOn: 1 }) };
+    }
+    return { start: currentDate, end: currentDate };
+  }, [currentDate, viewMode]);
+
+  const shiftsToDisplay = myShifts.filter(shift => 
+    shift.date >= dateRange.start && shift.date <= dateRange.end
+  );
+
+  const shiftsByDate = shiftsToDisplay.reduce((acc, shift) => {
     const dateStr = format(shift.date, 'yyyy-MM-dd');
     if (!acc[dateStr]) {
       acc[dateStr] = [];
@@ -32,12 +49,40 @@ export default function MyScheduleView() {
 
   const sortedDates = Object.keys(shiftsByDate).sort();
 
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const daysToAdd = viewMode === 'week' ? 7 : 1;
+    setCurrentDate(prev => addDays(prev, direction === 'prev' ? -daysToAdd : daysToAdd));
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My Upcoming Shifts</CardTitle>
-        <CardDescription>Here is your schedule for the upcoming week, {employee?.name.split(' ')[0]}.</CardDescription>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <CardTitle>My Upcoming Shifts</CardTitle>
+            <CardDescription>Here is your schedule, {employee?.name.split(' ')[0]}.</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="View" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">Day</SelectItem>
+                <SelectItem value="week">Week</SelectItem>
+              </SelectContent>
+            </Select>
+             <div className="flex items-center gap-1 rounded-md border bg-card p-1">
+                <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
+                <Button variant="ghost" size="icon" onClick={() => navigateDate('next')}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -51,7 +96,7 @@ export default function MyScheduleView() {
                   const shiftEmployee = getEmployeeById(shift.employeeId);
                   if (!shiftEmployee) return null;
                   return (
-                    <Card key={shift.id} className={`${roleColors[shiftEmployee.role]} border-l-4`}>
+                    <Card key={shift.id} className={`${roleColors[shiftEmployee.role] || ''} border-l-4`}>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
                           <Clock className="h-6 w-6 text-foreground/80" />

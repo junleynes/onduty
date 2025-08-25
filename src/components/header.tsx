@@ -25,30 +25,32 @@ export default function Header({ currentRole, onRoleChange }: HeaderProps) {
         <div className="ml-auto flex-1 sm:flex-initial max-w-xs">
           <Select value={currentRole} onValueChange={(value: UserRole) => onRoleChange(value)}>
             <SelectTrigger className="w-full md:w-[180px]">
-              <div className="flex items-center gap-2">
-                {currentRole === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                <SelectValue placeholder="Select a view" />
-              </div>
+               <SelectValue>
+                <div className="flex items-center gap-2">
+                    {currentRole === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                    <span>{currentRole === 'admin' ? 'Admin View' : 'Employee View'}</span>
+                </div>
+               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="admin">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" /> Admin View
+                  <Shield className="h-4 w-4 text-primary" /> Admin View
                 </div>
               </SelectItem>
               <SelectItem value="employee">
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4" /> Employee View
+                  <User className="h-4 w-4 text-primary" /> Employee View
                 </div>
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <Button variant="ghost" size="icon" className="rounded-full">
+        <Button variant="ghost" size="icon" className="rounded-full text-primary">
           <Bell className="h-5 w-5" />
           <span className="sr-only">Toggle notifications</span>
         </Button>
-        <Button variant="ghost" size="icon" className="rounded-full">
+        <Button variant="ghost" size="icon" className="rounded-full text-primary">
           <CircleUser className="h-5 w-5" />
           <span className="sr-only">Toggle user menu</span>
         </Button>

@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import { shifts as initialShifts, employees, leave as initialLeave } from '@/lib/data';
+import { shifts as initialShifts, employees as initialEmployees, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -12,7 +12,7 @@ import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, getInitials, getBackgroundColor } from '@/lib/utils';
 import { ShiftEditor } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
@@ -26,6 +26,7 @@ type ViewMode = 'day' | 'week' | 'month';
 export default function ScheduleView() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   
   const [currentDate, setCurrentDate] = useState(new Date(2024, 6, 21)); // July 21, 2024
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -353,15 +354,15 @@ export default function ScheduleView() {
     <div className="flex-1 overflow-auto">
       <Card className="h-full">
         <CardContent className="p-0">
-          <div className="grid" style={{gridTemplateColumns: `250px repeat(${displayedDays.length}, 1fr)`}}>
+          <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
             {/* Header Row */}
-            <div className="sticky top-0 z-10 p-3 bg-card border-b border-r flex items-center">
+            <div className="sticky top-0 z-10 p-2 bg-card border-b border-r flex items-center">
                <SidebarTrigger className="hidden md:flex mr-2" />
-               <span className="font-semibold">Employees</span>
+               <span className="font-semibold text-sm">Employees</span>
             </div>
             {displayedDays.map((day) => (
-              <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-3 text-center font-semibold bg-card border-b border-l">
-                <div className="text-lg whitespace-nowrap">{format(day, 'E d')}</div>
+              <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
+                <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                     {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
                 </div>
@@ -374,16 +375,18 @@ export default function ScheduleView() {
             {allEmployees.map((employee) => (
               <React.Fragment key={employee.id}>
                 {/* Employee Cell */}
-                <div className="p-3 border-b border-r flex items-center gap-3 min-h-[80px] sticky left-0 bg-card z-10">
+                <div className="p-2 border-b border-r flex items-center gap-3 min-h-[70px] sticky left-0 bg-card z-10">
                   {employee.id !== 'unassigned' ? (
-                  <Avatar className="h-10 w-10">
+                  <Avatar className="h-9 w-9">
                     <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" />
-                    <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback style={{ backgroundColor: getBackgroundColor(employee.name) }}>
+                      {getInitials(employee.name)}
+                    </AvatarFallback>
                   </Avatar>
-                  ) : <div className="w-10 h-10"/>}
+                  ) : <div className="w-9 h-9"/>}
                   <div>
-                    <p className="font-semibold">{employee.name}</p>
-                    <p className="text-sm text-muted-foreground">{employee.role}</p>
+                    <p className="font-semibold text-sm">{employee.name}</p>
+                    <p className="text-xs text-muted-foreground">{employee.role}</p>
                   </div>
                 </div>
 
@@ -400,7 +403,7 @@ export default function ScheduleView() {
                   return (
                     <div
                       key={`${employee.id}-${day.toISOString()}`}
-                      className="group/cell col-start-auto p-2 border-b border-l min-h-[80px] space-y-1 bg-background/30 relative"
+                      className="group/cell col-start-auto p-1 border-b border-l min-h-[70px] space-y-1 bg-background/30 relative"
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                     >

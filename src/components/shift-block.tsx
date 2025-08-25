@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
 
 const blockVariants = cva(
-  'w-full p-2 rounded-md text-left text-white overflow-hidden cursor-pointer',
+  'w-full p-1.5 rounded-md text-left text-white overflow-hidden cursor-pointer',
   {
     variants: {
       type: {
@@ -49,7 +49,6 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
         className={cn(blockVariants({ type: 'leave' }), leaveColors[item.type])}
       >
         <p className="font-bold text-xs truncate">{item.type}</p>
-        <p className="text-xs truncate">{employee.name}</p>
         {!item.isAllDay && <p className="text-xs truncate">{item.startTime} - {item.endTime}</p>}
       </div>
     );
@@ -85,10 +84,10 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
       className={cn(blockVariants({ type: 'shift' }))}
       style={{ backgroundColor: shift.color }}
     >
-      <p className="font-bold text-xs truncate">
+      <p className="font-semibold text-xs truncate">
         {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
       </p>
-      <p className="text-sm truncate">{shift.label}</p>
+      <p className="text-xs truncate">{shift.label}</p>
     </div>
   );
 }

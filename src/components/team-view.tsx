@@ -1,12 +1,18 @@
 'use client';
 
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { employees } from '@/lib/data';
+import { employees as initialEmployees } from '@/lib/data';
+import type { Employee } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Mail, Phone, PlusCircle } from 'lucide-react';
+import { Mail, Phone, PlusCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { getInitials, getBackgroundColor } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { TeamEditor } from './team-editor';
+import { useToast } from '@/hooks/use-toast';
 
 const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
   Manager: 'default',
@@ -16,60 +22,125 @@ const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'ou
 };
 
 export default function TeamView() {
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
+  const { toast } = useToast();
+
+  const handleAddMember = () => {
+    setEditingEmployee({});
+    setIsEditorOpen(true);
+  };
+
+  const handleEditMember = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setIsEditorOpen(true);
+  };
+
+  const handleDeleteMember = (employeeId: string) => {
+    setEmployees(employees.filter(emp => emp.id !== employeeId));
+    toast({ title: 'Team Member Removed', variant: 'destructive' });
+  };
+
+  const handleSaveMember = (employeeData: Partial<Employee>) => {
+    if (employeeData.id) {
+      // Update existing employee
+      setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } : emp)));
+      toast({ title: 'Member Updated' });
+    } else {
+      // Add new employee
+      const newEmployee: Employee = {
+        ...employeeData,
+        id: `emp-${Date.now()}`,
+        avatar: employeeData.avatar || '',
+      } as Employee;
+      setEmployees([...employees, newEmployee]);
+      toast({ title: 'Member Added' });
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-            <CardTitle>Team Members</CardTitle>
-            <CardDescription>Manage your team members and their roles.</CardDescription>
-        </div>
-        <Button>
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Add Member
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {employees.map(employee => (
-              <TableRow key={employee.id}>
-                <TableCell>
-                  <div className="flex items-center gap-4">
-                    <Avatar>
-                      <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" />
-                      <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{employee.name}</p>
-                      <p className="text-sm text-muted-foreground">{employee.id}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={roleColors[employee.role]}>{employee.role}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon">
-                    <Mail className="h-4 w-4" />
-                    <span className="sr-only">Email</span>
-                  </Button>
-                  <Button variant="ghost" size="icon">
-                    <Phone className="h-4 w-4" />
-                    <span className="sr-only">Call</span>
-                  </Button>
-                </TableCell>
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+              <CardTitle>Team Members</CardTitle>
+              <CardDescription>Manage your team members and their roles.</CardDescription>
+          </div>
+          <Button onClick={handleAddMember}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Member
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {employees.map(employee => (
+                <TableRow key={employee.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-4">
+                      <Avatar>
+                        <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                        <AvatarFallback style={{ backgroundColor: getBackgroundColor(employee.name) }}>
+                          {getInitials(employee.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{employee.name}</p>
+                        <p className="text-sm text-muted-foreground">{employee.id}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={roleColors[employee.role] || 'default'}>{employee.role}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon">
+                      <Mail className="h-4 w-4" />
+                      <span className="sr-only">Email</span>
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                      <Phone className="h-4 w-4" />
+                      <span className="sr-only">Call</span>
+                    </Button>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">More Actions</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditMember(employee)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteMember(employee.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      <TeamEditor
+        isOpen={isEditorOpen}
+        setIsOpen={setIsEditorOpen}
+        employee={editingEmployee}
+        onSave={handleSaveMember}
+      />
+    </>
   );
 }

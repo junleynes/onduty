@@ -37,7 +37,7 @@ export default function SidebarNav({ role, activeView, onNavigate }: SidebarNavP
               className="justify-start"
               tooltip={label}
             >
-              <Icon className="size-4" />
+              <Icon className="size-4 text-primary" />
               <span className="group-data-[collapsible=icon]:hidden">{label}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

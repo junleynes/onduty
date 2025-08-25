@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { UserRole } from '@/types';
-import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 
@@ -18,7 +18,6 @@ export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 function AppContent() {
   const [role, setRole] = useState<UserRole>('admin');
   const [activeView, setActiveView] = useState<NavItem>(role === 'admin' ? 'schedule' : 'my-schedule');
-  const { open } = useSidebar();
 
   const handleNavigate = (view: NavItem) => {
     setActiveView(view);
