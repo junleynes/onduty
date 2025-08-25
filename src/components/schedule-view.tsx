@@ -279,7 +279,7 @@ export default function ScheduleView() {
                   dateRange.to ? (
                     formatRange(dateRange.from, dateRange.to)
                   ) : (
-                    format(dateRange.from, 'MMM d, yyyy')
+                    format(dateRange.from, 'MM/dd/yyyy')
                   )
                 ) : (
                   <span>Pick a date</span>
