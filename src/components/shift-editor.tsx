@@ -141,9 +141,14 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   const onSubmit = (values: z.infer<typeof shiftSchema>) => {
     if (editingTemplate) {
+        const formValues = form.getValues();
         const updatedTemplate = {
             ...editingTemplate,
-            ...form.getValues(),
+            name: `${formValues.label} (${formValues.startTime}-${formValues.endTime})`,
+            label: formValues.label || editingTemplate.label,
+            startTime: formValues.startTime || editingTemplate.startTime,
+            endTime: formValues.endTime || editingTemplate.endTime,
+            color: formValues.color || editingTemplate.color,
         };
         setShiftTemplates(prev => 
             prev.map(t => t.name === editingTemplate.name ? updatedTemplate : t)

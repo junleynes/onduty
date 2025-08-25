@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { shifts as initialShifts, employees, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
@@ -20,11 +20,14 @@ import { ShiftBlock } from './shift-block';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
+type ViewMode = 'day' | 'week' | 'month';
+
 export default function ScheduleView() {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
   
   const [currentDate, setCurrentDate] = useState(new Date(2024, 6, 21)); // July 21, 2024
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [isShiftEditorOpen, setIsShiftEditorOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | Partial<Shift> | null>(null);
 
@@ -34,10 +37,18 @@ export default function ScheduleView() {
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
   const { toast } = useToast();
 
-  const dateRange = useMemo(() => ({
-      from: startOfWeek(currentDate, { weekStartsOn: 1 }), // Monday
-      to: endOfWeek(currentDate, { weekStartsOn: 1 }),
-  }), [currentDate]);
+  const dateRange = useMemo(() => {
+    switch (viewMode) {
+        case 'day':
+            return { from: currentDate, to: currentDate };
+        case 'week':
+            return { from: startOfWeek(currentDate, { weekStartsOn: 1 }), to: endOfWeek(currentDate, { weekStartsOn: 1 }) };
+        case 'month':
+            return { from: startOfMonth(currentDate), to: endOfMonth(currentDate) };
+        default:
+            return { from: startOfWeek(currentDate, { weekStartsOn: 1 }), to: endOfWeek(currentDate, { weekStartsOn: 1 }) };
+    }
+  }, [currentDate, viewMode]);
   
   const displayedDays = useMemo(() => {
     if (dateRange?.from && dateRange?.to) {
@@ -114,7 +125,8 @@ export default function ScheduleView() {
 
 
   const navigateWeek = (direction: 'prev' | 'next') => {
-      const newDate = addDays(currentDate, direction === 'prev' ? -7 : 7);
+      const daysToAdd = viewMode === 'week' ? 7 : 1;
+      const newDate = addDays(currentDate, direction === 'prev' ? -daysToAdd : daysToAdd);
       setCurrentDate(newDate);
   }
   
@@ -271,7 +283,7 @@ export default function ScheduleView() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <Select defaultValue="week">
+           <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="View" />
             </SelectTrigger>
