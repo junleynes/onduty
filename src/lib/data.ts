@@ -29,6 +29,6 @@ export const shifts: Shift[] = [
   { id: 'sh-17', employeeId: 'emp-005', day: 'Sat', startTime: '12:00', endTime: '20:00' },
 ];
 
-export const weekDays: Shift['day'][] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const weekDays: Shift['day'][] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const getEmployeeById = (id: string) => employees.find(e => e.id === id);

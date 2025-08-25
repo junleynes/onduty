@@ -13,4 +13,5 @@ export type Shift = {
   startTime: string; // e.g., "09:00"
   endTime: string; // e.g., "17:00"
   day: 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
+  color?: string;
 };

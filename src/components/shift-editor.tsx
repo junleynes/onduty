@@ -23,6 +23,7 @@ const shiftSchema = z.object({
   day: z.string().min(1, { message: 'Day is required.' }),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format (HH:MM).' }),
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format (HH:MM).' }),
+  color: z.string().optional(),
   id: z.string().optional(),
 });
 
@@ -35,7 +36,26 @@ type ShiftEditorProps = {
   weekDays: Shift['day'][];
 };
 
+const roleColors: { [key: string]: string } = {
+  Manager: 'hsl(var(--accent))',
+  Chef: 'hsl(var(--chart-1))',
+  Barista: 'hsl(var(--chart-2))',
+  Cashier: 'hsl(var(--chart-3))',
+};
+
+const shiftColorOptions = [
+    { label: 'Default', value: '' },
+    { label: 'Blue', value: '#3498db' },
+    { label: 'Green', value: '#2ecc71' },
+    { label: 'Purple', value: '#9b59b6' },
+    { label: 'Orange', value: '#e67e22' },
+    { label: 'Red', value: '#e74c3c' },
+];
+
 export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees, weekDays }: ShiftEditorProps) {
+    const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
+    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : '';
+
   const form = useForm<z.infer<typeof shiftSchema>>({
     resolver: zodResolver(shiftSchema),
     defaultValues: {
@@ -44,21 +64,30 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees, weekD
       day: shift?.day || '',
       startTime: shift?.startTime || '',
       endTime: shift?.endTime || '',
+      color: shift?.color || defaultColor,
     },
   });
 
   useEffect(() => {
+    const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
+    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : '';
     form.reset({
       id: shift?.id || undefined,
       employeeId: shift?.employeeId || '',
       day: shift?.day || '',
       startTime: shift?.startTime || '',
       endTime: shift?.endTime || '',
+      color: shift?.color || defaultColor,
     });
-  }, [shift, form]);
+  }, [shift, form, employees]);
 
   const onSubmit = (values: z.infer<typeof shiftSchema>) => {
-    onSave(values as Shift);
+    const finalValues = { ...values };
+    if (!finalValues.color) {
+        const employee = employees.find(e => e.id === values.employeeId);
+        finalValues.color = employee ? roleColors[employee.role] : undefined;
+    }
+    onSave(finalValues as Shift);
   };
 
   return (
@@ -116,31 +145,63 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees, weekD
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="startTime"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Start Time</FormLabel>
+                            <FormControl>
+                                <Input type="time" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="endTime"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>End Time</FormLabel>
+                            <FormControl>
+                                <Input type="time" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
             <FormField
-                control={form.control}
-                name="startTime"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Start Time</FormLabel>
-                        <FormControl>
-                            <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="endTime"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>End Time</FormLabel>
-                        <FormControl>
-                            <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
+              control={form.control}
+              name="color"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shift Color</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <div className="flex items-center gap-2">
+                           {field.value && <div className="w-4 h-4 rounded-full" style={{backgroundColor: field.value}} />}
+                           <SelectValue placeholder="Select a color" />
+                        </div>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shiftColorOptions.map(option => (
+                        <SelectItem key={option.label} value={option.value || ''}>
+                           <div className="flex items-center gap-2">
+                                {option.value && <div className="w-4 h-4 rounded-full" style={{backgroundColor: option.value}} />}
+                                <span>{option.label}</span>
+                           </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>

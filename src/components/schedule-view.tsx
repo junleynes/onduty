@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { addDays, format } from 'date-fns';
+import React, { useState, useMemo } from 'react';
+import { addDays, format, eachDayOfInterval } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { Card, CardContent } from '@/components/ui/card';
 import { shifts as initialShifts, weekDays, employees } from '@/lib/data';
@@ -16,10 +16,10 @@ import { cn } from '@/lib/utils';
 import { ShiftEditor } from './shift-editor';
 
 const roleColors: { [key: string]: string } = {
-  Manager: 'bg-accent',
-  Chef: 'bg-red-200',
-  Barista: 'bg-blue-200',
-  Cashier: 'bg-green-200',
+  Manager: 'hsl(var(--accent))',
+  Chef: 'hsl(var(--chart-1))',
+  Barista: 'hsl(var(--chart-2))',
+  Cashier: 'hsl(var(--chart-3))',
 };
 
 export default function ScheduleView() {
@@ -53,6 +53,13 @@ export default function ScheduleView() {
     setIsEditorOpen(false);
     setEditingShift(null);
   };
+  
+  const displayedDays = useMemo(() => {
+    if (date?.from && date?.to) {
+      return eachDayOfInterval({ start: date.from, end: date.to });
+    }
+    return [];
+  }, [date]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -129,9 +136,10 @@ export default function ScheduleView() {
             <div className="sticky top-0 z-10 p-3 bg-card border-b border-r">
               <span className="font-semibold">Employees</span>
             </div>
-            {weekDays.map((day) => (
-              <div key={day} className="sticky top-0 z-10 col-start-auto p-3 text-center font-semibold bg-card border-b border-l">
-                {day}
+            {displayedDays.map((day) => (
+              <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-3 text-center font-semibold bg-card border-b border-l">
+                <div className="text-sm text-muted-foreground">{format(day, 'E')}</div>
+                <div className="text-xl">{format(day, 'd')}</div>
               </div>
             ))}
 
@@ -151,22 +159,22 @@ export default function ScheduleView() {
                 </div>
 
                 {/* Day Cells for Shifts */}
-                {weekDays.map((day) => {
+                {displayedDays.map((day) => {
+                  const dayOfWeek = weekDays[day.getDay()];
                   const employeeShifts = shifts.filter(
-                    (s) => s.employeeId === employee.id && s.day === day
+                    (s) => s.employeeId === employee.id && s.day === dayOfWeek
                   );
                   return (
                     <div
-                      key={`${employee.id}-${day}`}
+                      key={`${employee.id}-${day.toISOString()}`}
                       className="col-start-auto p-2 border-b border-l min-h-[80px] space-y-1"
                     >
                       {employeeShifts.map((shift) => (
                         <button
                           key={shift.id}
                           onClick={() => handleEditShiftClick(shift)}
-                          className={`w-full p-2 rounded-md text-left ${
-                            roleColors[employee.role] || 'bg-gray-200'
-                          }`}
+                          className="w-full p-2 rounded-md text-left"
+                          style={{ backgroundColor: shift.color || roleColors[employee.role] }}
                         >
                           <p className="font-bold text-xs text-card-foreground/80">
                             {shift.startTime} - {shift.endTime}
