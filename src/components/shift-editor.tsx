@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, FileText, MoreHorizontal, Pencil, Copy, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, getFullName } from '@/lib/utils';
 import type { Employee, Shift } from '@/types';
 import { Checkbox } from './ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -97,7 +97,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   const [activeTab, setActiveTab] = useState('details');
 
   const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-  const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : '';
+  const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : '';
 
   const form = useForm<z.infer<typeof shiftSchema>>({
     resolver: zodResolver(shiftSchema),
@@ -115,7 +115,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   useEffect(() => {
     const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.role] : shiftColorOptions[1].value;
+    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : shiftColorOptions[1].value;
     if (!editingTemplate) {
         form.reset({
         id: shift?.id || undefined,
@@ -166,7 +166,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         finalValues.color = 'transparent';
     } else if (finalValues.color === 'default' || !finalValues.color) {
         const employee = employees.find(e => e.id === values.employeeId);
-        finalValues.color = employee ? roleColors[employee.role] : shiftColorOptions[1].value;
+        finalValues.color = employee ? roleColors[employee.position] : shiftColorOptions[1].value;
     }
     onSave(finalValues);
   };
@@ -231,7 +231,10 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-        if(!open) setEditingTemplate(null); // Reset editing state on close
+        if(!open) {
+            setEditingTemplate(null);
+            cancelEditTemplate();
+        }
         setIsOpen(open);
     }}>
       <DialogContent className="sm:max-w-md">
@@ -244,7 +247,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="details">Details</TabsTrigger>
-                <TabsTrigger value="templates">Templates</TabsTrigger>
+                <TabsTrigger value="templates" disabled={!!editingTemplate}>Templates</TabsTrigger>
             </TabsList>
             <TabsContent value="details">
                  <Form {...form}>
@@ -266,7 +269,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                         <SelectContent>
                                         <SelectItem value={'unassigned'}>Unassigned</SelectItem>
                                         {employees.map(emp => (
-                                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                                            <SelectItem key={emp.id} value={emp.id}>{getFullName(emp)}</SelectItem>
                                         ))}
                                         </SelectContent>
                                     </Select>
@@ -479,5 +482,3 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
     </Dialog>
   );
 }
-
-    

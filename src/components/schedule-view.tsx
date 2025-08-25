@@ -12,7 +12,7 @@ import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn, getInitials, getBackgroundColor } from '@/lib/utils';
+import { cn, getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { ShiftEditor } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
@@ -28,7 +28,7 @@ export default function ScheduleView() {
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 6, 21)); // July 21, 2024
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [isShiftEditorOpen, setIsShiftEditorOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | Partial<Shift> | null>(null);
@@ -206,7 +206,7 @@ export default function ScheduleView() {
   };
 
 
-  const allEmployees = [{ id: 'unassigned', name: 'Unassigned Shifts', role: 'Special', avatar: '' }, ...employees];
+  const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', position: 'Special', avatar: '' }, ...employees];
 
   const calculateDailyHours = (day: Date) => {
     const dailyShifts = shifts.filter(s => isSameDay(s.date, day));
@@ -379,14 +379,14 @@ export default function ScheduleView() {
                   {employee.id !== 'unassigned' ? (
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={`https://placehold.co/40x40.png`} data-ai-hint="profile avatar" />
-                    <AvatarFallback style={{ backgroundColor: getBackgroundColor(employee.name) }}>
-                      {getInitials(employee.name)}
+                    <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
+                      {getInitials(getFullName(employee))}
                     </AvatarFallback>
                   </Avatar>
                   ) : <div className="w-9 h-9"/>}
                   <div>
-                    <p className="font-semibold text-sm">{employee.name}</p>
-                    <p className="text-xs text-muted-foreground">{employee.role}</p>
+                    <p className="font-semibold text-sm">{getFullName(employee)}</p>
+                    <p className="text-xs text-muted-foreground">{employee.position}</p>
                   </div>
                 </div>
 

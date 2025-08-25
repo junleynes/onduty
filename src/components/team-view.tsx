@@ -9,7 +9,7 @@ import type { Employee } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, PlusCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
-import { getInitials, getBackgroundColor } from '@/lib/utils';
+import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { TeamEditor } from './team-editor';
 import { useToast } from '@/hooks/use-toast';
@@ -45,7 +45,7 @@ export default function TeamView() {
   const handleSaveMember = (employeeData: Partial<Employee>) => {
     if (employeeData.id) {
       // Update existing employee
-      setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } : emp)));
+      setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
       toast({ title: 'Member Updated' });
     } else {
       // Add new employee
@@ -77,7 +77,8 @@ export default function TeamView() {
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Position</TableHead>
+                <TableHead>Contact</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -88,28 +89,26 @@ export default function TeamView() {
                     <div className="flex items-center gap-4">
                       <Avatar>
                         <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                        <AvatarFallback style={{ backgroundColor: getBackgroundColor(employee.name) }}>
-                          {getInitials(employee.name)}
+                        <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
+                          {getInitials(getFullName(employee))}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{employee.name}</p>
-                        <p className="text-sm text-muted-foreground">{employee.id}</p>
+                        <p className="font-medium">{getFullName(employee)}</p>
+                        <p className="text-sm text-muted-foreground">#{employee.employeeNumber}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={roleColors[employee.role] || 'default'}>{employee.role}</Badge>
+                    <Badge variant={roleColors[employee.position] || 'default'}>{employee.position}</Badge>
+                  </TableCell>
+                   <TableCell>
+                      <div className="flex flex-col">
+                        <a href={`mailto:${employee.email}`} className="text-sm text-primary hover:underline">{employee.email}</a>
+                        <a href={`tel:${employee.phone}`} className="text-sm text-muted-foreground hover:underline">{employee.phone}</a>
+                      </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon">
-                      <Mail className="h-4 w-4" />
-                      <span className="sr-only">Email</span>
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <Phone className="h-4 w-4" />
-                      <span className="sr-only">Call</span>
-                    </Button>
                      <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">

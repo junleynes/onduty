@@ -3,9 +3,18 @@ export type UserRole = 'admin' | 'employee';
 
 export type Employee = {
   id: string;
-  name: string;
+  employeeNumber: string;
+  firstName: string;
+  lastName: string;
+  middleInitial?: string;
+  email: string;
+  phone: string;
+  birthDate: Date;
+  startDate: Date;
+  position: 'Manager' | 'Chef' | 'Barista' | 'Cashier';
+  department: string;
+  section: string;
   avatar: string;
-  role: 'Manager' | 'Chef' | 'Barista' | 'Cashier';
 };
 
 export type Shift = {

@@ -21,7 +21,7 @@ const roleColors: { [key: string]: string } = {
 };
 
 export default function MyScheduleView() {
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 6, 21)); // July 21, 2024
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
 
   const myShifts = shifts.filter(shift => shift.employeeId === LOGGED_IN_EMPLOYEE_ID);
@@ -60,7 +60,7 @@ export default function MyScheduleView() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <CardTitle>My Upcoming Shifts</CardTitle>
-            <CardDescription>Here is your schedule, {employee?.name.split(' ')[0]}.</CardDescription>
+            <CardDescription>Here is your schedule, {employee?.firstName}.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
@@ -96,14 +96,14 @@ export default function MyScheduleView() {
                   const shiftEmployee = getEmployeeById(shift.employeeId);
                   if (!shiftEmployee) return null;
                   return (
-                    <Card key={shift.id} className={`${roleColors[shiftEmployee.role] || ''} border-l-4`}>
+                    <Card key={shift.id} className={`${roleColors[shiftEmployee.position] || ''} border-l-4`}>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
                           <Clock className="h-6 w-6 text-foreground/80" />
                           <div>
                             <p className="font-bold text-base">{shift.startTime} - {shift.endTime}</p>
                             <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <User className="h-4 w-4" /> Role: {shiftEmployee?.role}
+                              <User className="h-4 w-4" /> Role: {shiftEmployee?.position}
                             </p>
                           </div>
                         </div>

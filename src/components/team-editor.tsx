@@ -16,12 +16,26 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { Employee } from '@/types';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(1, { message: 'Name is required.' }),
-  role: z.enum(['Manager', 'Chef', 'Barista', 'Cashier']),
+  employeeNumber: z.string().min(1, 'Employee number is required'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  middleInitial: z.string().max(1).optional(),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().min(1, 'Phone number is required'),
+  birthDate: z.date({ required_error: 'Birth date is required' }),
+  startDate: z.date({ required_error: 'Start date is required' }),
+  position: z.enum(['Manager', 'Chef', 'Barista', 'Cashier']),
+  department: z.string().min(1, 'Department is required'),
+  section: z.string().min(1, 'Section is required'),
   avatar: z.string().optional(),
 });
 
@@ -32,15 +46,24 @@ type TeamEditorProps = {
   onSave: (employee: Partial<Employee>) => void;
 };
 
-const roles: Employee['role'][] = ['Manager', 'Chef', 'Barista', 'Cashier'];
+const positions: Employee['position'][] = ['Manager', 'Chef', 'Barista', 'Cashier'];
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorProps) {
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
       id: employee?.id || undefined,
-      name: employee?.name || '',
-      role: employee?.role || 'Barista',
+      employeeNumber: employee?.employeeNumber || '',
+      firstName: employee?.firstName || '',
+      lastName: employee?.lastName || '',
+      middleInitial: employee?.middleInitial || '',
+      email: employee?.email || '',
+      phone: employee?.phone || '',
+      birthDate: employee?.birthDate ? new Date(employee.birthDate) : undefined,
+      startDate: employee?.startDate ? new Date(employee.startDate) : undefined,
+      position: employee?.position || 'Barista',
+      department: employee?.department || '',
+      section: employee?.section || '',
       avatar: employee?.avatar || '',
     },
   });
@@ -48,8 +71,17 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
   useEffect(() => {
     form.reset({
       id: employee?.id || undefined,
-      name: employee?.name || '',
-      role: employee?.role || 'Barista',
+      employeeNumber: employee?.employeeNumber || '',
+      firstName: employee?.firstName || '',
+      lastName: employee?.lastName || '',
+      middleInitial: employee?.middleInitial || '',
+      email: employee?.email || '',
+      phone: employee?.phone || '',
+      birthDate: employee?.birthDate ? new Date(employee.birthDate) : undefined,
+      startDate: employee?.startDate ? new Date(employee.startDate) : undefined,
+      position: employee?.position || 'Barista',
+      department: employee?.department || '',
+      section: employee?.section || '',
       avatar: employee?.avatar || '',
     });
   }, [employee, form, isOpen]);
@@ -61,7 +93,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{employee?.id ? 'Edit Team Member' : 'Add Team Member'}</DialogTitle>
           <DialogDescription>
@@ -69,43 +101,207 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Jane Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="employeeNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Employee Number</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
+                      <Input placeholder="e.g., 12345" {...field} />
                     </FormControl>
-                    <SelectContent>
-                      {roles.map(role => (
-                        <SelectItem key={role} value={role}>{role}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="position"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Position</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a position" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {positions.map(pos => (
+                          <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Jane" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="middleInitial"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>M.I.</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., C" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., jane.doe@example.com" {...field} type="email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., (123) 456-7890" {...field} type="tel" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Operations" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="section"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Section</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Front of House" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <FormField
+                control={form.control}
+                name="birthDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Birth Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={'outline'}
+                            className={cn(
+                              'w-full pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={1950} toYear={new Date().getFullYear()} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Start Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={'outline'}
+                            className={cn(
+                              'w-full pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
                 <Button type="submit">Save</Button>
             </DialogFooter>
