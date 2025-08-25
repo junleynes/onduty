@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { addDays, format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { Card, CardContent } from '@/components/ui/card';
-import { shifts, weekDays, employees } from '@/lib/data';
+import { shifts as initialShifts, weekDays, employees } from '@/lib/data';
 import type { Employee, Shift } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { ShiftEditor } from './shift-editor';
 
 const roleColors: { [key: string]: string } = {
   Manager: 'bg-accent',
@@ -22,10 +23,36 @@ const roleColors: { [key: string]: string } = {
 };
 
 export default function ScheduleView() {
+  const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [date, setDate] = useState<DateRange | undefined>({
     from: new Date(2024, 6, 21), // July 21, 2024
     to: addDays(new Date(2024, 6, 21), 6),
   });
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<Shift | Partial<Shift> | null>(null);
+
+  const handleAddShiftClick = () => {
+    setEditingShift({});
+    setIsEditorOpen(true);
+  };
+
+  const handleEditShiftClick = (shift: Shift) => {
+    setEditingShift(shift);
+    setIsEditorOpen(true);
+  };
+
+  const handleSaveShift = (savedShift: Shift) => {
+    if (savedShift.id) {
+      // Update existing shift
+      setShifts(shifts.map(s => s.id === savedShift.id ? savedShift : s));
+    } else {
+      // Add new shift
+      const newShift = { ...savedShift, id: `sh-${Date.now()}` };
+      setShifts([...shifts, newShift]);
+    }
+    setIsEditorOpen(false);
+    setEditingShift(null);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -87,7 +114,7 @@ export default function ScheduleView() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <Button>
+          <Button onClick={handleAddShiftClick}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Shift
           </Button>
@@ -134,9 +161,10 @@ export default function ScheduleView() {
                       className="col-start-auto p-2 border-b border-l min-h-[80px] space-y-1"
                     >
                       {employeeShifts.map((shift) => (
-                        <div
+                        <button
                           key={shift.id}
-                          className={`p-2 rounded-md ${
+                          onClick={() => handleEditShiftClick(shift)}
+                          className={`w-full p-2 rounded-md text-left ${
                             roleColors[employee.role] || 'bg-gray-200'
                           }`}
                         >
@@ -146,7 +174,7 @@ export default function ScheduleView() {
                           <p className="text-xs text-card-foreground/60">
                             {employee.role} Shift
                           </p>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   );
@@ -156,6 +184,16 @@ export default function ScheduleView() {
           </div>
         </CardContent>
       </Card>
+      {editingShift && (
+        <ShiftEditor
+          isOpen={isEditorOpen}
+          setIsOpen={setIsEditorOpen}
+          shift={editingShift}
+          onSave={handleSaveShift}
+          employees={employees}
+          weekDays={weekDays}
+        />
+      )}
     </div>
   );
 }
