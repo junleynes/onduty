@@ -2,9 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import type { UserRole } from '@/types';
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
+import { useSidebar } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
 // Views
 import ScheduleView from '@/components/schedule-view';
@@ -18,6 +20,8 @@ export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 function AppContent() {
   const [role, setRole] = useState<UserRole>('admin');
   const [activeView, setActiveView] = useState<NavItem>(role === 'admin' ? 'schedule' : 'my-schedule');
+  const { isMobile } = useSidebar();
+
 
   const handleNavigate = (view: NavItem) => {
     setActiveView(view);

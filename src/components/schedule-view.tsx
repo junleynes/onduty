@@ -266,7 +266,6 @@ export default function ScheduleView() {
     <div className="flex flex-col gap-4 h-full">
       <header className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-4">
-          <SidebarTrigger className="md:hidden"/>
           <Popover>
             <PopoverTrigger asChild>
               <Button

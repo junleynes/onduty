@@ -17,7 +17,7 @@ export default function Header({ currentRole, onRoleChange }: HeaderProps) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 shrink-0">
       <div className="flex items-center gap-2">
-        <SidebarTrigger className={cn(isMobile ? "block" : "hidden")}/>
+        <SidebarTrigger className={cn(isMobile ? "block" : "hidden md:flex")}/>
         <LayoutGrid className="h-6 w-6 text-primary" />
         <h1 className="text-xl font-bold text-primary tracking-tight">ShiftMaster</h1>
       </div>
