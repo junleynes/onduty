@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { shifts, getEmployeeById, weekDays } from '@/lib/data';
 import { Calendar, Clock, User } from 'lucide-react';
 import type { Shift } from '@/types';
+import { format } from 'date-fns';
 
 // Let's assume the logged-in employee is 'emp-003' (Charlie Brown) for demonstration
 const LOGGED_IN_EMPLOYEE_ID = 'emp-003';
@@ -19,10 +20,18 @@ export default function MyScheduleView() {
   const myShifts = shifts.filter(shift => shift.employeeId === LOGGED_IN_EMPLOYEE_ID);
   const employee = getEmployeeById(LOGGED_IN_EMPLOYEE_ID);
 
-  const shiftsByDay = weekDays.map(day => ({
-    day,
-    shifts: myShifts.filter(shift => shift.day === day),
-  }));
+  // Group shifts by date
+  const shiftsByDate = myShifts.reduce((acc, shift) => {
+    const dateStr = format(shift.date, 'yyyy-MM-dd');
+    if (!acc[dateStr]) {
+      acc[dateStr] = [];
+    }
+    acc[dateStr].push(shift);
+    return acc;
+  }, {} as Record<string, Shift[]>);
+
+  const sortedDates = Object.keys(shiftsByDate).sort();
+
 
   return (
     <Card>
@@ -32,36 +41,36 @@ export default function MyScheduleView() {
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {shiftsByDay.map(({ day, shifts }) => (
-            <div key={day}>
-              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> {day}</h3>
-              {shifts.length > 0 ? (
-                <div className="space-y-4">
-                  {shifts.map(shift => {
-                    const shiftEmployee = getEmployeeById(shift.employeeId);
-                    if (!shiftEmployee) return null;
-                    return (
-                      <Card key={shift.id} className={`${roleColors[shiftEmployee.role]} border-l-4`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-3">
-                            <Clock className="h-6 w-6 text-foreground/80" />
-                            <div>
-                              <p className="font-bold text-base">{shift.startTime} - {shift.endTime}</p>
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <User className="h-4 w-4" /> Role: {shiftEmployee?.role}
-                              </p>
-                            </div>
+          {sortedDates.length > 0 ? sortedDates.map((dateStr) => (
+            <div key={dateStr}>
+              <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" /> {format(new Date(dateStr), 'E, LLL d')}
+              </h3>
+              <div className="space-y-4">
+                {shiftsByDate[dateStr].map(shift => {
+                  const shiftEmployee = getEmployeeById(shift.employeeId);
+                  if (!shiftEmployee) return null;
+                  return (
+                    <Card key={shift.id} className={`${roleColors[shiftEmployee.role]} border-l-4`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-6 w-6 text-foreground/80" />
+                          <div>
+                            <p className="font-bold text-base">{shift.startTime} - {shift.endTime}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <User className="h-4 w-4" /> Role: {shiftEmployee?.role}
+                            </p>
                           </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-muted-foreground italic text-sm">No shifts scheduled.</p>
-              )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
-          ))}
+          )) : (
+             <p className="text-muted-foreground italic text-sm col-span-full text-center mt-8">No shifts scheduled for the selected period.</p>
+          )}
         </div>
       </CardContent>
     </Card>

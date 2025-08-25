@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { addDays, format, eachDayOfInterval } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import { Card, CardContent } from '@/components/ui/card';
-import { shifts as initialShifts, weekDays, employees } from '@/lib/data';
+import { shifts as initialShifts, employees } from '@/lib/data';
 import type { Employee, Shift } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -42,13 +42,13 @@ export default function ScheduleView() {
   };
 
   const handleSaveShift = (savedShift: Shift) => {
-    if (savedShift.id) {
+    if ('id' in savedShift && savedShift.id) {
       // Update existing shift
       setShifts(shifts.map(s => s.id === savedShift.id ? savedShift : s));
     } else {
       // Add new shift
-      const newShift = { ...savedShift, id: `sh-${Date.now()}` };
-      setShifts([...shifts, newShift]);
+      const newShiftWithId = { ...savedShift, id: `sh-${Date.now()}` };
+      setShifts([...shifts, newShiftWithId as Shift]);
     }
     setIsEditorOpen(false);
     setEditingShift(null);
@@ -160,9 +160,8 @@ export default function ScheduleView() {
 
                 {/* Day Cells for Shifts */}
                 {displayedDays.map((day) => {
-                  const dayOfWeek = weekDays[day.getDay()];
                   const employeeShifts = shifts.filter(
-                    (s) => s.employeeId === employee.id && s.day === dayOfWeek
+                    (s) => s.employeeId === employee.id && isSameDay(s.date, day)
                   );
                   return (
                     <div
@@ -192,16 +191,15 @@ export default function ScheduleView() {
           </div>
         </CardContent>
       </Card>
-      {editingShift && (
-        <ShiftEditor
-          isOpen={isEditorOpen}
-          setIsOpen={setIsEditorOpen}
-          shift={editingShift}
-          onSave={handleSaveShift}
-          employees={employees}
-          weekDays={weekDays}
-        />
-      )}
+      
+      <ShiftEditor
+        isOpen={isEditorOpen}
+        setIsOpen={setIsEditorOpen}
+        shift={editingShift}
+        onSave={handleSaveShift}
+        employees={employees}
+      />
+      
     </div>
   );
 }
