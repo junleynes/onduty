@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Employee } from '@/types';
 import { employees as initialEmployees } from '@/lib/data';
 import { DatePicker } from './ui/date-picker';
@@ -31,7 +30,7 @@ const employeeSchema = z.object({
   phone: z.string().min(1, 'Phone number is required'),
   birthDate: z.date({ required_error: 'Birth date is required.' }),
   startDate: z.date({ required_error: 'Start date is required.' }),
-  position: z.enum(['Manager', 'Chef', 'Barista', 'Cashier']),
+  position: z.string().min(1, 'Position is required'),
   department: z.string().min(1, 'Department is required'),
   section: z.string().min(1, 'Section is required'),
   avatar: z.string().optional(),
@@ -44,50 +43,66 @@ type TeamEditorProps = {
   onSave: (employee: Partial<Employee>) => void;
 };
 
-const positions: Employee['position'][] = ['Manager', 'Chef', 'Barista', 'Cashier'];
-const departments = [...new Set(initialEmployees.map(e => e.department))];
-const sections = [...new Set(initialEmployees.map(e => e.section))];
-
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorProps) {
+    const [positions, setPositions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
+    const [departments, setDepartments] = useState(() => [...new Set(initialEmployees.map(e => e.department))]);
+    const [sections, setSections] = useState(() => [...new Set(initialEmployees.map(e => e.section))]);
+
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
-    defaultValues: {
-      id: employee?.id || undefined,
-      employeeNumber: employee?.employeeNumber || '',
-      firstName: employee?.firstName || '',
-      lastName: employee?.lastName || '',
-      middleInitial: employee?.middleInitial || '',
-      email: employee?.email || '',
-      phone: employee?.phone || '',
-      birthDate: employee?.birthDate ? new Date(employee.birthDate) : undefined,
-      startDate: employee?.startDate ? new Date(employee.startDate) : undefined,
-      position: employee?.position || 'Barista',
-      department: employee?.department || '',
-      section: employee?.section || '',
-      avatar: employee?.avatar || '',
-    },
+    defaultValues: employee?.id ? {
+      ...employee,
+      birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
+      startDate: employee.startDate ? new Date(employee.startDate) : undefined,
+    } : {
+      id: undefined,
+      employeeNumber: '',
+      firstName: '',
+      lastName: '',
+      middleInitial: '',
+      email: '',
+      phone: '',
+      birthDate: undefined,
+      startDate: undefined,
+      position: '',
+      department: '',
+      section: '',
+      avatar: '',
+    }
   });
 
   useEffect(() => {
-    form.reset({
-      id: employee?.id || undefined,
-      employeeNumber: employee?.employeeNumber || '',
-      firstName: employee?.firstName || '',
-      lastName: employee?.lastName || '',
-      middleInitial: employee?.middleInitial || '',
-      email: employee?.email || '',
-      phone: employee?.phone || '',
-      birthDate: employee?.birthDate ? new Date(employee.birthDate) : undefined,
-      startDate: employee?.startDate ? new Date(employee.startDate) : undefined,
-      position: employee?.position || 'Barista',
-      department: employee?.department || '',
-      section: employee?.section || '',
-      avatar: employee?.avatar || '',
-    });
+    if(isOpen) {
+        form.reset(employee?.id ? {
+            ...employee,
+            birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
+            startDate: employee.startDate ? new Date(employee.startDate) : undefined,
+        } : {
+            id: undefined,
+            employeeNumber: '',
+            firstName: '',
+            lastName: '',
+            middleInitial: '',
+            email: '',
+            phone: '',
+            birthDate: undefined,
+            startDate: undefined,
+            position: '',
+            department: '',
+            section: '',
+            avatar: '',
+        });
+    }
   }, [employee, form, isOpen]);
 
   const onSubmit = (values: z.infer<typeof employeeSchema>) => {
     onSave(values);
+    
+    // Add new values to lists if they don't exist
+    if (!positions.includes(values.position)) setPositions(prev => [...prev, values.position]);
+    if (!departments.includes(values.department)) setDepartments(prev => [...prev, values.department]);
+    if (!sections.includes(values.section)) setSections(prev => [...prev, values.section]);
+
     setIsOpen(false);
   };
 
@@ -122,18 +137,12 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Position</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a position" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {positions.map(pos => (
-                          <SelectItem key={pos} value={pos}>{pos}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                        <Input list="positions-list" placeholder="e.g., Barista" {...field} />
+                    </FormControl>
+                    <datalist id="positions-list">
+                        {positions.map(pos => <option key={pos} value={pos} />)}
+                    </datalist>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -218,18 +227,12 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Department</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a department" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {departments.map(dep => (
-                            <SelectItem key={dep} value={dep}>{dep}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input list="departments-list" placeholder="e.g., Front of House" {...field} />
+                      </FormControl>
+                      <datalist id="departments-list">
+                          {departments.map(dep => <option key={dep} value={dep} />)}
+                      </datalist>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -240,18 +243,12 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Section</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a section" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {sections.map(sec => (
-                            <SelectItem key={sec} value={sec}>{sec}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                       <FormControl>
+                        <Input list="sections-list" placeholder="e.g., Coffee Bar" {...field} />
+                       </FormControl>
+                       <datalist id="sections-list">
+                          {sections.map(sec => <option key={sec} value={sec} />)}
+                       </datalist>
                       <FormMessage />
                     </FormItem>
                   )}
