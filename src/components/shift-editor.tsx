@@ -48,7 +48,7 @@ const roleColors: { [key: string]: string } = {
 };
 
 const shiftColorOptions = [
-    { label: 'Default', value: '' },
+    { label: 'Default', value: 'default' },
     { label: 'Blue', value: '#3498db' },
     { label: 'Green', value: '#2ecc71' },
     { label: 'Purple', value: '#9b59b6' },
@@ -87,7 +87,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
 
   const onSubmit = (values: z.infer<typeof shiftSchema>) => {
     const finalValues = { ...values };
-    if (!finalValues.color) {
+    if (finalValues.color === 'default' || !finalValues.color) {
         const employee = employees.find(e => e.id === values.employeeId);
         finalValues.color = employee ? roleColors[employee.role] : undefined;
     }
@@ -203,16 +203,16 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, employees }: Shi
                     <FormControl>
                       <SelectTrigger>
                         <div className="flex items-center gap-2">
-                           {field.value && <div className="w-4 h-4 rounded-full" style={{backgroundColor: field.value}} />}
+                           {field.value && field.value !== 'default' && <div className="w-4 h-4 rounded-full" style={{backgroundColor: field.value}} />}
                            <SelectValue placeholder="Select a color" />
                         </div>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {shiftColorOptions.map(option => (
-                        <SelectItem key={option.label} value={option.value || ''}>
+                        <SelectItem key={option.label} value={option.value}>
                            <div className="flex items-center gap-2">
-                                {option.value && <div className="w-4 h-4 rounded-full" style={{backgroundColor: option.value}} />}
+                                {option.value && option.value !== 'default' && <div className="w-4 h-4 rounded-full" style={{backgroundColor: option.value}} />}
                                 <span>{option.label}</span>
                            </div>
                         </SelectItem>
