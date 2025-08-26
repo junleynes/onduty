@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn, getFullName } from '@/lib/utils';
+import type { LeaveTypeOption } from './leave-type-editor';
 
 const leaveSchema = z.object({
   employeeId: z.string().min(1, { message: 'Employee is required.' }),
@@ -47,33 +48,11 @@ type LeaveEditorProps = {
   onSave: (leave: Leave | Partial<Leave>) => void;
   onDelete: (leaveId: string) => void;
   employees: Employee[];
-  allLeave: Leave[];
+  leaveTypes: LeaveTypeOption[];
 };
 
-const defaultLeaveTypes: { type: LeaveType; color: string }[] = [
-    { type: 'VL', color: '#ec4899' }, // pink
-    { type: 'EL', color: '#ef4444' }, // red
-    { type: 'OFFSET', color: '#6b7280' }, // gray
-    { type: 'SL', color: '#f97316' }, // orange
-    { type: 'BL', color: '#3b82f6' }, // blue
-    { type: 'PL', color: '#8b5cf6' }, // purple
-    { type: 'ML', color: '#14b8a6' }, // teal
-];
 
-export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employees, allLeave }: LeaveEditorProps) {
-  const [comboboxOpen, setComboboxOpen] = useState(false);
-
-  const existingLeaveTypes = React.useMemo(() => {
-    const typesMap = new Map<string, { type: LeaveType; color: string }>();
-    defaultLeaveTypes.forEach(lt => typesMap.set(lt.type.toLowerCase(), lt));
-    allLeave.forEach(l => {
-        if (!typesMap.has(l.type.toLowerCase())) {
-            typesMap.set(l.type.toLowerCase(), { type: l.type, color: l.color || '#f97316' });
-        }
-    });
-    return Array.from(typesMap.values());
-  }, [allLeave]);
-
+export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employees, leaveTypes }: LeaveEditorProps) {
 
   const form = useForm<z.infer<typeof leaveSchema>>({
     resolver: zodResolver(leaveSchema),
@@ -90,18 +69,20 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
   });
 
   useEffect(() => {
-    const selectedType = existingLeaveTypes.find(lt => lt.type === leave?.type);
-    form.reset({
-      id: leave?.id || undefined,
-      employeeId: leave?.employeeId || '',
-      type: leave?.type || 'OFFSET',
-      color: leave?.color || selectedType?.color || '#6b7280',
-      date: leave?.date || new Date(),
-      isAllDay: leave?.isAllDay ?? true,
-      startTime: leave?.startTime || '',
-      endTime: leave?.endTime || '',
-    });
-  }, [leave, form, existingLeaveTypes]);
+    if (isOpen) {
+        const selectedType = leaveTypes.find(lt => lt.type === (leave?.type || 'OFFSET'));
+        form.reset({
+        id: leave?.id || undefined,
+        employeeId: leave?.employeeId || '',
+        type: leave?.type || 'OFFSET',
+        color: leave?.color || selectedType?.color || '#6b7280',
+        date: leave?.date || new Date(),
+        isAllDay: leave?.isAllDay ?? true,
+        startTime: leave?.startTime || '',
+        endTime: leave?.endTime || '',
+        });
+    }
+  }, [leave, form, isOpen, leaveTypes]);
 
   const onSubmit = (values: z.infer<typeof leaveSchema>) => {
     onSave(values);
@@ -148,87 +129,62 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
                 </FormItem>
               )}
             />
-            <div className="flex items-end gap-2">
-                 <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                     <FormItem className="flex-1">
-                        <FormLabel>Leave Type</FormLabel>
-                         <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                    <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
-                                    >
-                                    {field.value
-                                        ? existingLeaveTypes.find((lt) => lt.type.toLowerCase() === field.value.toLowerCase())?.type
-                                        : "Select leave type"}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[375px] p-0">
-                                <Command shouldFilter={false}>
-                                    <CommandInput 
-                                        placeholder="Search or create leave type..."
-                                        onInput={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.value)}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                             <Button className="w-full" variant="outline" onMouseDown={() => {
-                                                const newType = form.getValues('type');
-                                                if (newType && !existingLeaveTypes.some(lt => lt.type.toLowerCase() === newType.toLowerCase())) {
-                                                    field.onChange(newType);
-                                                }
-                                                setComboboxOpen(false);
-                                            }}>
-                                                Create "{form.getValues('type')}"
-                                            </Button>
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {existingLeaveTypes.map((lt) => (
-                                            <CommandItem
-                                                value={lt.type}
-                                                key={lt.type}
-                                                onSelect={() => {
-                                                    form.setValue("type", lt.type);
-                                                    form.setValue("color", lt.color);
-                                                    setComboboxOpen(false);
-                                                }}
-                                            >
-                                                <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    field.value === lt.type ? "opacity-100" : "opacity-0"
-                                                )}
-                                                />
-                                                {lt.type}
-                                            </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                     </FormItem>
-                  )}
-                />
-                <FormField
-                    control={form.control}
-                    name="color"
-                    render={({ field }) => (
-                        <FormItem>
+             <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                 <FormItem className="flex flex-col">
+                    <FormLabel>Leave Type</FormLabel>
+                     <Popover>
+                        <PopoverTrigger asChild>
                             <FormControl>
-                                <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn("w-full justify-between", !field.value && "text-muted-foreground")}
+                                >
+                                {field.value
+                                    ? leaveTypes.find((lt) => lt.type.toLowerCase() === field.value.toLowerCase())?.type
+                                    : "Select leave type"}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
                             </FormControl>
-                        </FormItem>
-                    )}
-                />
-            </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[375px] p-0">
+                            <Command>
+                                <CommandInput 
+                                    placeholder="Search leave type..."
+                                />
+                                <CommandList>
+                                    <CommandEmpty>No leave type found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {leaveTypes.map((lt) => (
+                                        <CommandItem
+                                            value={lt.type}
+                                            key={lt.type}
+                                            onSelect={() => {
+                                                form.setValue("type", lt.type);
+                                                form.setValue("color", lt.color);
+                                            }}
+                                        >
+                                            <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                field.value === lt.type ? "opacity-100" : "opacity-0"
+                                            )}
+                                            />
+                                            {lt.type}
+                                        </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                 </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}

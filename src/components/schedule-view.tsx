@@ -8,7 +8,7 @@ import { shifts as initialShifts, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, FileUp } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, FileUp, Settings } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -21,6 +21,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
+import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -42,6 +43,15 @@ const initialShiftTemplates: ShiftTemplate[] = [
     { name: 'Probationary Shift (09:00-18:00)', label: 'Probationary Shift', startTime: '09:00', endTime: '18:00', color: 'hsl(var(--chart-1))' },
 ];
 
+const initialLeaveTypes: LeaveTypeOption[] = [
+    { type: 'VL', color: '#3b82f6' }, // blue
+    { type: 'EL', color: '#ef4444' }, // red
+    { type: 'OFFSET', color: '#6b7280' }, // gray
+    { type: 'SL', color: '#f97316' }, // orange
+    { type: 'BL', color: '#14b8a6' }, // teal
+    { type: 'PL', color: '#8b5cf6' }, // purple
+    { type: 'ML', color: '#ec4899' }, // pink
+];
 
 export default function ScheduleView({ employees }: ScheduleViewProps) {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
@@ -54,6 +64,9 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
 
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
+  
+  const [isLeaveTypeEditorOpen, setIsLeaveTypeEditorOpen] = useState(false);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(initialLeaveTypes);
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
@@ -381,6 +394,11 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>Import schedule from Excel</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>Import shift template from CSV</DropdownMenuItem>
+               <DropdownMenuSeparator />
+               <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
+                <Settings className="mr-2 h-4 w-4" />
+                Manage Leave Types
+               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -532,7 +550,13 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         onSave={handleSaveLeave}
         onDelete={handleDeleteLeave}
         employees={employees}
-        allLeave={leave}
+        leaveTypes={leaveTypes}
+      />
+       <LeaveTypeEditor
+        isOpen={isLeaveTypeEditorOpen}
+        setIsOpen={setIsLeaveTypeEditorOpen}
+        leaveTypes={leaveTypes}
+        setLeaveTypes={setLeaveTypes}
       />
       <ScheduleImporter
         isOpen={isImporterOpen}
