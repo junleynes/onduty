@@ -30,8 +30,8 @@ type ScheduleImporterProps = {
 
 const normalizeName = (name: string) => {
   if (!name) return '';
-  // Keep periods for suffixes like Jr. but normalize whitespace
-  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+  // Keep periods for suffixes like Jr. but normalize whitespace and remove commas
+  return name.trim().toLowerCase().replace(/,/g, '').replace(/\s+/g, ' ');
 };
 
 
@@ -43,37 +43,34 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
     for (const emp of allEmployees) {
         const normalizedEmpFirstName = normalizeName(emp.firstName);
         const normalizedEmpLastName = normalizeName(emp.lastName);
+        // Full name with and without middle initial
         const normalizedEmpFullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
         const normalizedEmpFullNameWithMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''} ${emp.lastName}`);
-
+        
+        // Direct full name match
         if (normalizedEmpFullName === normalizedInput || normalizedEmpFullNameWithMI === normalizedInput) {
             return emp;
         }
 
+        // Handle "Lastname, Firstname M.I. Suffix" format
         if (name.includes(',')) {
             const parts = name.split(',').map(p => p.trim());
             const lastNamePart = normalizeName(parts[0]);
             const restOfNamePart = normalizeName(parts.slice(1).join(' '));
-
+            
             if (normalizedEmpLastName === lastNamePart) {
-                const empFirstNameAndMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).trim();
-                
-                // Direct match for the rest of the name
-                if (normalizeName(empFirstNameAndMI) === restOfNamePart) {
-                    return emp;
-                }
-                
-                // Handle cases like "VILLACERAN, ANTHONY PAUL V" -> match "anthony paul v"
-                const firstAndMiddle = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).replace(/\./g, '').trim();
+                const empFirstNameAndRest = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).trim();
+                const empFirstNameOnly = normalizeName(emp.firstName).trim();
 
-                if (firstAndMiddle === restOfNamePart.replace(/\./g, '')) {
+                // It should match the rest of the name
+                if (restOfNamePart.startsWith(empFirstNameOnly)) {
                      return emp;
                 }
             }
         }
     }
     
-    // Fallback for "Firstname Lastname" or "Firstname M Lastname"
+    // Fallback for "Firstname Lastname" or "Firstname M Lastname" if all else fails
     const parts = normalizedInput.split(' ');
     const firstNamePart = parts[0];
     const lastNamePart = parts[parts.length -1];
@@ -213,14 +210,27 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                             date,
                             startTime: '',
                             endTime: '',
-                            label: 'Day Off',
+                            label: 'OFF',
                             color: 'transparent',
                             isDayOff: true,
                         });
                         return;
                     }
+                     if (cellString.toUpperCase().trim() === 'HOL-OFF') {
+                        importedShifts.push({
+                            id: `imp-sh-${rowIndex}-${colIndex}`,
+                            employeeId: employee.id,
+                            date,
+                            startTime: '',
+                            endTime: '',
+                            label: 'HOL-OFF',
+                            color: 'transparent',
+                            isHolidayOff: true,
+                        });
+                        return;
+                    }
                     
-                    const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
+                    const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
                     
                     if (timeMatch) {
                         const convertTo24Hour = (time: string) => {
@@ -260,7 +270,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                             type: 'Vacation',
                             isAllDay: true,
                          })
-                    } else if (['HOL-OFF', 'OFFSET'].includes(cellString.toUpperCase().trim())) {
+                    } else if (['OFFSET'].includes(cellString.toUpperCase().trim())) {
                          importedLeave.push({
                             id: `imp-lv-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
@@ -276,7 +286,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
         const matchedEmployeeNames = new Set(importedShifts.map(s => getEmployeeById(s.employeeId)?.firstName).filter(Boolean));
         
         if (importedShifts.length === 0 && importedLeave.length === 0) {
-             const employeeNamesInFile = new Set(json.map(row => row[0]).filter(name => typeof name === 'string' && name.trim() !== ''));
+             const employeeNamesInFile = new Set(json.map(row => row[0]).filter(name => typeof name === 'string' && name.trim() !== '' && !isDateRow(row as any) && name.toLowerCase() !== 'employee'));
              const unmatchedNames = [...employeeNamesInFile].filter(name => !findEmployeeByName(name as string, employees));
 
              let errorDetail = 'Please check that the file format is correct.';

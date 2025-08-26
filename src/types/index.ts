@@ -27,6 +27,7 @@ export type Shift = {
   date: Date;
   color?: string;
   isDayOff?: boolean;
+  isHolidayOff?: boolean;
 };
 
 export type LeaveType = 'Vacation' | 'Emergency' | 'OFFSET' | 'Time Off Request';

@@ -58,13 +58,13 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
 
   if (!shift.label) return null;
 
-  if (shift.isDayOff) {
+  if (shift.isDayOff || shift.isHolidayOff) {
     return (
        <div
         onClick={onClick}
         className={cn(blockVariants({ type: 'dayOff' }))}
       >
-        <p className="font-bold text-xs truncate">DAY OFF</p>
+        <p className="font-bold text-xs truncate">{shift.label}</p>
       </div>
     )
   }
@@ -89,8 +89,11 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
       className={cn(blockVariants({ type: 'shift' }))}
       style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
-      <p className="font-semibold text-xs truncate">
-        {formatTime(shift.startTime)}-{formatTime(shift.endTime)} {shift.label}
+      <p className="font-semibold text-xs truncate whitespace-pre-wrap">
+        {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
+      </p>
+      <p className="font-semibold text-xs truncate whitespace-pre-wrap">
+        {shift.label}
       </p>
     </div>
   );

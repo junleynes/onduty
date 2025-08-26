@@ -38,8 +38,9 @@ const shiftSchema = z.object({
   color: z.string().optional(),
   id: z.string().optional(),
   isDayOff: z.boolean().default(false),
+  isHolidayOff: z.boolean().default(false),
 }).refine(data => {
-    if (data.isDayOff) return true;
+    if (data.isDayOff || data.isHolidayOff) return true;
     return !!data.label && !!data.startTime && !!data.endTime;
 }, {
     message: "Label, start time, and end time are required for shifts.",
@@ -105,6 +106,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
       endTime: shift?.endTime || '',
       color: shift?.color || defaultColor,
       isDayOff: shift?.isDayOff || false,
+      isHolidayOff: shift?.isHolidayOff || false,
     },
   });
 
@@ -121,6 +123,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         endTime: shift?.endTime || '',
         color: shift?.color || defaultColor,
         isDayOff: shift?.isDayOff || false,
+        isHolidayOff: shift?.isHolidayOff || false,
         });
     }
   }, [shift, form, employees, editingTemplate]);
@@ -155,7 +158,12 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
     const finalValues = { ...values };
     if (values.isDayOff) {
-        finalValues.label = 'Day Off';
+        finalValues.label = 'OFF';
+        finalValues.startTime = '';
+        finalValues.endTime = '';
+        finalValues.color = 'transparent';
+    } else if (values.isHolidayOff) {
+        finalValues.label = 'HOL-OFF';
         finalValues.startTime = '';
         finalValues.endTime = '';
         finalValues.color = 'transparent';
@@ -173,6 +181,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   }
   
   const isDayOff = form.watch('isDayOff');
+  const isHolidayOff = form.watch('isHolidayOff');
 
   const handleTemplateClick = (template: typeof shiftTemplates[0]) => {
     form.setValue('label', template.label);
@@ -195,7 +204,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   const handleSaveAsTemplate = () => {
     const currentValues = form.getValues();
-    if (currentValues.isDayOff || !currentValues.label || !currentValues.startTime || !currentValues.endTime) {
+    if (currentValues.isDayOff || currentValues.isHolidayOff || !currentValues.label || !currentValues.startTime || !currentValues.endTime) {
         toast({ title: 'Cannot Save Template', description: 'Please provide a label, start time, and end time for a working shift.', variant: 'destructive' });
         return;
     }
@@ -291,30 +300,51 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                 </FormItem>
                               )}
                             />
-                            <FormField
-                                control={form.control}
-                                name="isDayOff"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                        <FormControl>
-                                            <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>
-                                            Day Off
-                                            </FormLabel>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
+                             <div className="flex gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="isDayOff"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                            <FormControl>
+                                                <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                            <div className="space-y-1 leading-none">
+                                                <FormLabel>
+                                                OFF
+                                                </FormLabel>
+                                            </div>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="isHolidayOff"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                            <FormControl>
+                                                <Checkbox
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                            <div className="space-y-1 leading-none">
+                                                <FormLabel>
+                                                HOL-OFF
+                                                </FormLabel>
+                                            </div>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
                             </>
                         )}
                         
 
-                        {(!isDayOff || editingTemplate) && (
+                        {(!isDayOff && !isHolidayOff || editingTemplate) && (
                         <>
                             <FormField
                             control={form.control}
