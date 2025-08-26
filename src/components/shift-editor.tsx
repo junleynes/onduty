@@ -77,6 +77,8 @@ const shiftColorOptions = [
     { label: 'Blue', value: '#3498db' },
     { label: 'Green', value: 'hsl(var(--chart-2))' },
     { label: 'Purple', value: '#9b59b6' },
+    { label: 'Pink', value: '#e91e63' },
+    { label: 'White', value: '#ffffff' },
 ];
 
 const initialShiftTemplates: ShiftTemplate[] = [
@@ -371,7 +373,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                     {shiftColorOptions.map(option => (
                                         <SelectItem key={option.label} value={option.value}>
                                         <div className="flex items-center gap-2">
-                                                {option.value && option.value !== 'default' && <div className="w-4 h-4 rounded-full" style={{backgroundColor: option.value}} />}
+                                                {option.value && option.value !== 'default' && <div className="w-4 h-4 rounded-full border" style={{backgroundColor: option.value}} />}
                                                 <span>{option.label}</span>
                                         </div>
                                         </SelectItem>

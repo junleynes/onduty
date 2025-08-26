@@ -8,11 +8,11 @@ import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
 
 const blockVariants = cva(
-  'w-full p-1.5 rounded-md text-left text-white overflow-hidden cursor-pointer',
+  'w-full p-1.5 rounded-md text-left text-white overflow-hidden cursor-pointer border',
   {
     variants: {
       type: {
-        shift: '',
+        shift: 'text-black',
         leave: 'bg-destructive/80 border-destructive',
         dayOff: 'bg-gray-400/80 border-gray-500 text-center',
       },
@@ -81,12 +81,13 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
   };
 
   const backgroundColor = shift.color || 'hsl(var(--primary))';
+  const textColor = shift.color === '#ffffff' ? 'black' : 'white';
 
   return (
     <div
       onClick={onClick}
       className={cn(blockVariants({ type: 'shift' }))}
-      style={{ backgroundColor: backgroundColor }}
+      style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
       <p className="font-semibold text-xs truncate">
         {formatTime(shift.startTime)} - {formatTime(shift.endTime)}

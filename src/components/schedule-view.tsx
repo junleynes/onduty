@@ -363,17 +363,18 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                             <span>Copy previous week</span>
                         </DropdownMenuItem>
                     }
-                    {viewMode !== 'month' ? (
+                    {viewMode !== 'month' &&
                       <DropdownMenuItem onClick={handleClearWeek}>
                           <CircleSlash className="mr-2 h-4 w-4" />
                           <span>Clear week</span>
                       </DropdownMenuItem>
-                    ) : (
+                    }
+                     {viewMode === 'month' &&
                       <DropdownMenuItem onClick={handleClearMonth}>
                           <CircleSlash className="mr-2 h-4 w-4" />
                           <span>Clear month</span>
                       </DropdownMenuItem>
-                    )}
+                    }
                     <DropdownMenuItem onClick={handleUnassignWeek}>
                         <UserX className="mr-2 h-4 w-4" />
                         <span>Unassign week</span>
