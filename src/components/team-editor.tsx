@@ -22,19 +22,20 @@ import { DatePicker } from './ui/date-picker';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
-  employeeNumber: z.string().min(1, 'Employee number is required'),
+  employeeNumber: z.string().optional(),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   middleInitial: z.string().max(1).optional(),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
-  birthDate: z.date({ required_error: 'Birth date is required.' }),
-  startDate: z.date({ required_error: 'Start date is required.' }),
-  position: z.string().min(1, 'Position is required'),
-  department: z.string().min(1, 'Department is required'),
-  section: z.string().min(1, 'Section is required'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  birthDate: z.date().optional(),
+  startDate: z.date().optional(),
+  position: z.string().optional(),
+  department: z.string().optional(),
+  section: z.string().optional(),
   avatar: z.string().optional(),
 });
+
 
 type TeamEditorProps = {
   isOpen: boolean;
@@ -99,9 +100,9 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
     onSave(values);
     
     // Add new values to lists if they don't exist
-    if (!positions.includes(values.position)) setPositions(prev => [...prev, values.position]);
-    if (!departments.includes(values.department)) setDepartments(prev => [...prev, values.department]);
-    if (!sections.includes(values.section)) setSections(prev => [...prev, values.section]);
+    if (values.position && !positions.includes(values.position)) setPositions(prev => [...prev, values.position!]);
+    if (values.department && !departments.includes(values.department)) setDepartments(prev => [...prev, values.department!]);
+    if (values.section && !sections.includes(values.section)) setSections(prev => [...prev, values.section!]);
 
     setIsOpen(false);
   };

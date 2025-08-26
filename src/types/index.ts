@@ -1,20 +1,21 @@
 
+
 export type UserRole = 'admin' | 'employee';
 
 export type Employee = {
   id: string;
-  employeeNumber: string;
+  employeeNumber?: string;
   firstName: string;
   lastName: string;
   middleInitial?: string;
-  email: string;
-  phone: string;
-  birthDate: Date;
-  startDate: Date;
-  position: 'Manager' | 'Chef' | 'Barista' | 'Cashier';
-  department: string;
-  section: string;
-  avatar: string;
+  email?: string;
+  phone?: string;
+  birthDate?: Date;
+  startDate?: Date;
+  position: 'Manager' | 'Chef' | 'Barista' | 'Cashier' | string;
+  department?: string;
+  section?: string;
+  avatar?: string;
 };
 
 export type Shift = {
