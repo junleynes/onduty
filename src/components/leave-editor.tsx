@@ -76,7 +76,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
         employeeId: leave?.employeeId || '',
         type: leave?.type || 'OFFSET',
         color: leave?.color || selectedType?.color || '#6b7280',
-        date: leave?.date || new Date(),
+        date: leave?.date ? new Date(leave.date) : new Date(),
         isAllDay: leave?.isAllDay ?? true,
         startTime: leave?.startTime || '',
         endTime: leave?.endTime || '',

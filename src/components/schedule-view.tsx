@@ -142,13 +142,15 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
 
 
   const handleSaveLeave = (savedLeave: Leave | Partial<Leave>) => {
-    if ('id' in savedLeave && savedLeave.id) {
-      // Update existing leave
-      setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
+    if (savedLeave.id) {
+        // Update existing leave
+        setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
+        toast({ title: "Leave Updated" });
     } else {
-      // Add new leave
-      const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` };
-      setLeave([...leave, newLeaveWithId as Leave]);
+        // Add new leave
+        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
+        setLeave([...leave, newLeaveWithId]);
+        toast({ title: "Time Off Added" });
     }
     setIsLeaveEditorOpen(false);
     setEditingLeave(null);
