@@ -69,20 +69,20 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
   });
 
   useEffect(() => {
-    if (isOpen) {
+    if (leave) {
         const selectedType = leaveTypes.find(lt => lt.type === (leave?.type || 'OFFSET'));
         form.reset({
-        id: leave?.id || undefined,
-        employeeId: leave?.employeeId || '',
-        type: leave?.type || 'OFFSET',
-        color: leave?.color || selectedType?.color || '#6b7280',
-        date: leave?.date ? new Date(leave.date) : new Date(),
-        isAllDay: leave?.isAllDay ?? true,
-        startTime: leave?.startTime || '',
-        endTime: leave?.endTime || '',
+            id: leave.id || undefined,
+            employeeId: leave.employeeId || '',
+            type: leave.type || 'OFFSET',
+            color: leave.color || selectedType?.color || '#6b7280',
+            date: leave.date ? new Date(leave.date) : new Date(),
+            isAllDay: leave.isAllDay ?? true,
+            startTime: leave.startTime || '',
+            endTime: leave.endTime || '',
         });
     }
-  }, [leave, form, isOpen, leaveTypes]);
+  }, [leave, form, leaveTypes]);
 
   const onSubmit = (values: z.infer<typeof leaveSchema>) => {
     onSave(values);

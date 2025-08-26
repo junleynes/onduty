@@ -82,6 +82,7 @@ const shiftColorOptions = [
     { label: 'Green', value: 'hsl(var(--chart-2))' },
     { label: 'Purple', value: '#9b59b6' },
     { label: 'Pink', value: '#e91e63' },
+    { label: 'Yellow', value: '#f1c40f' },
     { label: 'White', value: '#ffffff' },
 ];
 

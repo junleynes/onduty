@@ -8,7 +8,7 @@ import { shifts as initialShifts, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, FileUp, Settings } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -36,8 +36,8 @@ const initialShiftTemplates: ShiftTemplate[] = [
     { name: 'Afternoon Shift (14:00-22:00)', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
     { name: 'Early-Afternoon Shift (12:00-20:00)', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
     { name: 'Night Shift (22:00-06:00)', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
-    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#ffffff' },
-    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
+    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#f1c40f' },
+    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#f1c40f' },
     { name: 'Manager Shift (10:00-19:00)', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
     { name: 'Late Manager Shift (11:00-20:00)', label: 'Late Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
     { name: 'Probationary Shift (09:00-18:00)', label: 'Probationary Shift', startTime: '09:00', endTime: '18:00', color: 'hsl(var(--chart-1))' },
@@ -269,7 +269,6 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   
   const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
       setShiftTemplates(prev => [...prev, ...importedTemplates]);
-      toast({ title: 'Import Successful', description: `${importedTemplates.length} templates imported.`})
   };
 
 
@@ -459,10 +458,10 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
     
       <div className="flex-1 overflow-auto">
         <Card className="h-full">
-          <CardContent className="p-0">
+          <CardContent className="p-0 grid">
             <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
               {/* Header Row */}
-              <div className="sticky top-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center">
+              <div className="sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center">
                 <span className="font-semibold text-sm">Employees</span>
               </div>
               {displayedDays.map((day) => (
