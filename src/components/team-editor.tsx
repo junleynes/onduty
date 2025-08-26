@@ -28,8 +28,8 @@ const employeeSchema = z.object({
   middleInitial: z.string().max(1).optional(),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
-  birthDate: z.date().optional(),
-  startDate: z.date().optional(),
+  birthDate: z.date().optional().nullable(),
+  startDate: z.date().optional().nullable(),
   position: z.string().optional(),
   department: z.string().optional(),
   section: z.string().optional(),
@@ -264,7 +264,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem className="flex flex-col">
                     <FormLabel>Birth Date</FormLabel>
                     <DatePicker 
-                        date={field.value} 
+                        date={field.value || undefined} 
                         onDateChange={field.onChange}
                         dateProps={{
                            captionLayout: "dropdown-buttons",
@@ -283,7 +283,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                   <FormItem className="flex flex-col">
                     <FormLabel>Start Date</FormLabel>
                     <DatePicker
-                        date={field.value}
+                        date={field.value || undefined}
                         onDateChange={field.onChange}
                         dateProps={{
                             captionLayout: "dropdown-buttons",

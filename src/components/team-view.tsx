@@ -8,11 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import type { Employee } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { TeamEditor } from './team-editor';
 import { useToast } from '@/hooks/use-toast';
+import { MemberImporter } from './member-importer';
 
 const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
   Manager: 'default',
@@ -28,6 +29,7 @@ type TeamViewProps = {
 
 export default function TeamView({ employees, setEmployees }: TeamViewProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const { toast } = useToast();
 
@@ -57,11 +59,24 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
         ...employeeData,
         id: `emp-${Date.now()}`,
         avatar: employeeData.avatar || '',
+        position: employeeData.position || '',
       } as Employee;
       setEmployees([...employees, newEmployee]);
       toast({ title: 'Member Added' });
     }
   };
+  
+  const handleImportMembers = (newMembers: Partial<Employee>[]) => {
+      const newEmployees: Employee[] = newMembers.map((member, index) => ({
+        ...member,
+        id: `emp-${Date.now()}-${index}`,
+        avatar: member.avatar || '',
+        position: member.position || '',
+      } as Employee));
+
+      setEmployees(prev => [...prev, ...newEmployees]);
+      toast({ title: 'Import Successful', description: `${newEmployees.length} new members added.`})
+  }
 
   return (
     <>
@@ -71,10 +86,16 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
               <CardTitle>Team Members</CardTitle>
               <CardDescription>Manage your team members and their roles.</CardDescription>
           </div>
-          <Button onClick={handleAddMember}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Member
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Import from CSV
+            </Button>
+            <Button onClick={handleAddMember}>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Member
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -143,6 +164,11 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
         setIsOpen={setIsEditorOpen}
         employee={editingEmployee}
         onSave={handleSaveMember}
+      />
+      <MemberImporter
+        isOpen={isImporterOpen}
+        setIsOpen={setIsImporterOpen}
+        onImport={handleImportMembers}
       />
     </>
   );

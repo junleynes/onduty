@@ -12,7 +12,7 @@ export type Employee = {
   phone?: string;
   birthDate?: Date;
   startDate?: Date;
-  position: 'Manager' | 'Chef' | 'Barista' | 'Cashier' | string;
+  position: string;
   department?: string;
   section?: string;
   avatar?: string;
