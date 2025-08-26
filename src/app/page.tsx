@@ -67,7 +67,7 @@ function AppContent() {
       <Sidebar collapsible="icon">
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
-      <div className="flex flex-col h-screen flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Header currentRole={role} onRoleChange={handleRoleChange} />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {currentView}

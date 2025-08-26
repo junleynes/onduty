@@ -20,6 +20,8 @@ import { ShiftBlock } from './shift-block';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
+import { TemplateImporter } from './template-importer';
+
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -28,16 +30,16 @@ type ScheduleViewProps = {
 }
 
 const initialShiftTemplates: ShiftTemplate[] = [
-    { name: 'Morning Shift', label: 'Morning Shift', startTime: '06:00', endTime: '14:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Late Morning Shift', label: 'Late Morning Shift', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Afternoon Shift', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
-    { name: 'Early-Afternoon Shift', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
-    { name: 'Night Shift', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
-    { name: 'Early Mid Shift', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#ffffff' },
-    { name: 'Mid Shift', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
-    { name: 'Manager Shift', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
-    { name: 'Late Manager Shift', label: 'Late Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
-    { name: 'Probationary Shift', label: 'Probationary Shift', startTime: '09:00', endTime: '18:00', color: 'hsl(var(--chart-1))' },
+    { name: 'Morning Shift (06:00-14:00)', label: 'Morning Shift', startTime: '06:00', endTime: '14:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Late Morning Shift (07:00-15:00)', label: 'Late Morning Shift', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Afternoon Shift (14:00-22:00)', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
+    { name: 'Early-Afternoon Shift (12:00-20:00)', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
+    { name: 'Night Shift (22:00-06:00)', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
+    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#ffffff' },
+    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
+    { name: 'Manager Shift (10:00-19:00)', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
+    { name: 'Late Manager Shift (11:00-20:00)', label: 'Late Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
+    { name: 'Probationary Shift (09:00-18:00)', label: 'Probationary Shift', startTime: '09:00', endTime: '18:00', color: 'hsl(var(--chart-1))' },
 ];
 
 
@@ -54,6 +56,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
+  const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
   
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(initialShiftTemplates);
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
@@ -249,6 +252,11 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
       setShifts(importedShifts);
       setLeave(importedLeave);
   };
+  
+  const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
+      setShiftTemplates(prev => [...prev, ...importedTemplates]);
+      toast({ title: 'Import Successful', description: `${importedTemplates.length} templates imported.`})
+  };
 
 
   const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', position: 'Special', avatar: '' }, ...employees];
@@ -360,10 +368,19 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
               <SelectItem value="month">Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
-            <FileUp className="mr-2 h-4 w-4" />
-            Import
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                    <FileUp className="mr-2 h-4 w-4" />
+                    Import
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>Import schedule from Excel</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>Import shift template from CSV</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button>
@@ -454,7 +471,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
             {allEmployees.map((employee) => (
               <React.Fragment key={employee.id}>
                 {/* Employee Cell */}
-                <div className="py-2 px-2 border-b border-r flex items-center gap-3 min-h-[60px] sticky left-0 bg-card z-20">
+                <div className="py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] sticky left-0 bg-card z-20">
                   {employee.id !== 'unassigned' ? (
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
@@ -481,7 +498,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                   return (
                     <div
                       key={`${employee.id}-${day.toISOString()}`}
-                      className="group/cell col-start-auto p-1 border-b border-l min-h-[60px] space-y-1 bg-background/30 relative"
+                      className="group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative"
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                     >
@@ -533,6 +550,11 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         onImport={handleImportedData}
         employees={employees}
         shiftTemplates={shiftTemplates}
+      />
+       <TemplateImporter 
+        isOpen={isTemplateImporterOpen}
+        setIsOpen={setIsTemplateImporterOpen}
+        onImport={handleImportTemplates}
       />
     </div>
   );

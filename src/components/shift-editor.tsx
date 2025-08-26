@@ -17,7 +17,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X, Upload } from 'lucide-react';
+import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X } from 'lucide-react';
 import { getFullName } from '@/lib/utils';
 import type { Employee, Shift } from '@/types';
 import { Checkbox } from './ui/checkbox';
@@ -27,7 +27,7 @@ import { Card } from './ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { DatePicker } from './ui/date-picker';
-import { TemplateImporter } from './template-importer';
+
 
 const shiftSchema = z.object({
   employeeId: z.string().nullable(),
@@ -90,7 +90,6 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   const { toast } = useToast();
   const [editingTemplate, setEditingTemplate] = useState<ShiftTemplate | null>(null);
   const [activeTab, setActiveTab] = useState('details');
-  const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
 
   const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
   const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : '';
@@ -218,10 +217,6 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
     setShiftTemplates(prev => [...prev, newTemplate]);
     toast({ title: 'Template Saved', description: `New template "${newTemplate.name}" has been created.` });
   }
-
-  const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
-      setShiftTemplates(prev => [...prev, ...importedTemplates]);
-  };
 
   const cancelEditTemplate = () => {
     setEditingTemplate(null);
@@ -423,8 +418,8 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                             />
                         </>
                         )}
-                        <DialogFooter className="flex w-full flex-row">
-                            <div className="flex-1 flex justify-start">
+                        <DialogFooter className="flex w-full flex-row sm:justify-between items-center">
+                            <div className="flex items-center">
                                 {shift?.id && !editingTemplate && (
                                     <Button type="button" variant="destructive" onClick={handleDelete} className="mr-auto">
                                         <Trash2 className="mr-2 h-4 w-4" />
@@ -438,7 +433,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                     </Button>
                                 )}
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
                                {!editingTemplate && (
                                 <Button type="button" variant="outline" onClick={handleSaveAsTemplate} disabled={isDayOff || isHolidayOff}>
                                     Save as Template
@@ -451,12 +446,6 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                 </Form>
             </TabsContent>
             <TabsContent value="templates">
-                <div className="flex justify-end p-1">
-                    <Button variant="outline" size="sm" onClick={() => setIsTemplateImporterOpen(true)}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Import from CSV
-                    </Button>
-                </div>
                 <ScrollArea className="h-96">
                     <div className="space-y-2 p-4">
                         {shiftTemplates.map((template) => (
@@ -503,11 +492,6 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         </Tabs>
       </DialogContent>
     </Dialog>
-     <TemplateImporter 
-        isOpen={isTemplateImporterOpen}
-        setIsOpen={setIsTemplateImporterOpen}
-        onImport={handleImportTemplates}
-    />
     </>
   );
 }
