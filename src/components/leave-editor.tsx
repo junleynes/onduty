@@ -24,7 +24,7 @@ import { DatePicker } from './ui/date-picker';
 
 const leaveSchema = z.object({
   employeeId: z.string().min(1, { message: 'Employee is required.' }),
-  type: z.enum(['Vacation', 'Emergency', 'Unavailable', 'Time Off Request']),
+  type: z.enum(['Vacation', 'Emergency', 'OFFSET', 'Time Off Request']),
   date: z.date({ required_error: 'A date is required.' }),
   isAllDay: z.boolean(),
   startTime: z.string().optional(),
@@ -44,7 +44,7 @@ type LeaveEditorProps = {
   employees: Employee[];
 };
 
-const leaveTypes: LeaveType[] = ['Time Off Request', 'Unavailable', 'Vacation', 'Emergency'];
+const leaveTypes: LeaveType[] = ['Time Off Request', 'OFFSET', 'Vacation', 'Emergency'];
 
 export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employees }: LeaveEditorProps) {
   const form = useForm<z.infer<typeof leaveSchema>>({

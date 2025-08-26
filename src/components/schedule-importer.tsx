@@ -242,12 +242,20 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees }: Sch
                             color: '#3498db' // Default color
                         });
 
-                    } else if (['VL', 'SL', 'AVL', 'HOL-OFF', 'OFFSET'].includes(cellString.toUpperCase().trim())) {
+                    } else if (['VL', 'SL', 'AVL'].includes(cellString.toUpperCase().trim())) {
                          importedLeave.push({
                             id: `imp-lv-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
                             date,
-                            type: ['HOL-OFF', 'OFFSET'].includes(cellString.toUpperCase().trim()) ? 'Unavailable' : 'Vacation',
+                            type: 'Vacation',
+                            isAllDay: true,
+                         })
+                    } else if (['HOL-OFF', 'OFFSET'].includes(cellString.toUpperCase().trim())) {
+                         importedLeave.push({
+                            id: `imp-lv-${rowIndex}-${colIndex}`,
+                            employeeId: employee.id,
+                            date,
+                            type: 'OFFSET',
                             isAllDay: true,
                          })
                     }

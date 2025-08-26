@@ -31,7 +31,7 @@ interface ShiftBlockProps extends VariantProps<typeof blockVariants> {
 const leaveColors: { [key: string]: string } = {
     'Vacation': 'bg-pink-500/80',
     'Emergency': 'bg-red-600/80',
-    'Unavailable': 'bg-gray-500/80',
+    'OFFSET': 'bg-gray-500/80',
     'Time Off Request': 'bg-orange-500/80',
 };
 

@@ -29,7 +29,7 @@ export type Shift = {
   isDayOff?: boolean;
 };
 
-export type LeaveType = 'Vacation' | 'Emergency' | 'Unavailable' | 'Time Off Request';
+export type LeaveType = 'Vacation' | 'Emergency' | 'OFFSET' | 'Time Off Request';
 
 export type Leave = {
   id: string;
