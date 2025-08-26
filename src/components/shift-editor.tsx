@@ -234,6 +234,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         endTime: shift?.endTime || '',
         color: shift?.color || defaultColor,
         isDayOff: shift?.isDayOff || false,
+        isHolidayOff: shift?.isHolidayOff || false,
     });
   }
 
@@ -309,7 +310,10 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                             <FormControl>
                                                 <Checkbox
                                                 checked={field.value}
-                                                onCheckedChange={field.onChange}
+                                                onCheckedChange={(checked) => {
+                                                    field.onChange(checked);
+                                                    if (checked) form.setValue('isHolidayOff', false);
+                                                }}
                                                 />
                                             </FormControl>
                                             <div className="space-y-1 leading-none">
@@ -328,7 +332,10 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                             <FormControl>
                                                 <Checkbox
                                                 checked={field.value}
-                                                onCheckedChange={field.onChange}
+                                                onCheckedChange={(checked) => {
+                                                    field.onChange(checked);
+                                                    if (checked) form.setValue('isDayOff', false);
+                                                }}
                                                 />
                                             </FormControl>
                                             <div className="space-y-1 leading-none">
@@ -416,12 +423,12 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                             />
                         </>
                         )}
-                        <DialogFooter className="sm:justify-between flex-wrap gap-2">
+                        <DialogFooter className="flex w-full flex-row">
                             <div className="flex-1 flex justify-start">
                                 {shift?.id && !editingTemplate && (
                                     <Button type="button" variant="destructive" onClick={handleDelete} className="mr-auto">
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete Shift
+                                        Delete
                                     </Button>
                                 )}
                                 {editingTemplate && (
@@ -431,12 +438,12 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                     </Button>
                                 )}
                             </div>
-                            <div className="flex gap-2 justify-end flex-shrink-0">
-                               {!editingTemplate && 
-                                <Button type="button" variant="outline" onClick={handleSaveAsTemplate}>
+                            <div className="flex gap-2">
+                               {!editingTemplate && (
+                                <Button type="button" variant="outline" onClick={handleSaveAsTemplate} disabled={isDayOff || isHolidayOff}>
                                     Save as Template
                                 </Button>
-                               }
+                               )}
                                <Button type="submit">{editingTemplate ? "Save Template" : "Save Shift"}</Button>
                             </div>
                         </DialogFooter>

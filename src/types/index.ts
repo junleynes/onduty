@@ -30,12 +30,13 @@ export type Shift = {
   isHolidayOff?: boolean;
 };
 
-export type LeaveType = 'Vacation' | 'Emergency' | 'OFFSET' | 'Time Off Request';
+export type LeaveType = string;
 
 export type Leave = {
   id: string;
   employeeId: string;
   type: LeaveType;
+  color?: string;
   date: Date;
   isAllDay: boolean;
   startTime?: string;

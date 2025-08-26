@@ -487,7 +487,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                       onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                     >
                       {itemsForDay.map((item) => (
-                        <div key={item.id} draggable onDragStart={(e) => 'label' in item && handleDragStart(e, item.id)}>
+                        <div key={item.id} draggable={'label' in item} onDragStart={(e) => 'label' in item && handleDragStart(e, item.id)}>
                           <ShiftBlock
                             item={item}
                             onClick={() => handleEditItemClick(item)}
@@ -526,6 +526,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         onSave={handleSaveLeave}
         onDelete={handleDeleteLeave}
         employees={employees}
+        allLeave={leave}
       />
       <ScheduleImporter
         isOpen={isImporterOpen}
@@ -537,4 +538,3 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
     </div>
   );
 }
-

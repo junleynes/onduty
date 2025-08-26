@@ -13,7 +13,7 @@ const blockVariants = cva(
     variants: {
       type: {
         shift: 'text-black',
-        leave: 'bg-destructive/80 border-destructive',
+        leave: 'border-transparent',
         dayOff: 'bg-gray-400/80 border-gray-500 text-center',
       },
     },
@@ -28,12 +28,6 @@ interface ShiftBlockProps extends VariantProps<typeof blockVariants> {
   onClick: () => void;
 }
 
-const leaveColors: { [key: string]: string } = {
-    'Vacation': 'bg-pink-500/80',
-    'Emergency': 'bg-red-600/80',
-    'OFFSET': 'bg-gray-500/80',
-    'Time Off Request': 'bg-orange-500/80',
-};
 
 function isLeave(item: Shift | Leave): item is Leave {
   return 'type' in item;
@@ -43,10 +37,14 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
   if (isLeave(item)) {
     const employee = getEmployeeById(item.employeeId);
     if (!employee) return null;
+
+    const backgroundColor = item.color || '#f97316'; // default to orange if no color
+
     return (
       <div
         onClick={onClick}
-        className={cn(blockVariants({ type: 'leave' }), leaveColors[item.type])}
+        className={cn(blockVariants({ type: 'leave' }))}
+        style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
         <p className="font-bold text-xs truncate">{item.type}</p>
         {!item.isAllDay && <p className="text-xs truncate">{item.startTime} - {item.endTime}</p>}
@@ -64,7 +62,8 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
         onClick={onClick}
         className={cn(blockVariants({ type: 'dayOff' }))}
       >
-        <p className="font-bold text-xs truncate">{shift.label}</p>
+        <p className="font-bold text-xs truncate whitespace-pre-wrap">{shift.label}</p>
+        <p className="text-xs truncate whitespace-pre-wrap">All day</p>
       </div>
     )
   }
