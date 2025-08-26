@@ -29,7 +29,7 @@ type ScheduleViewProps = {
 }
 
 const initialShiftTemplates: ShiftTemplate[] = [
-    { name: 'Morning Shift', label: 'Morning Shift', startTime: '06:00', endTime: '13:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Morning Shift', label: 'Morning Shift', startTime: '06:00', endTime: '14:00', color: 'hsl(var(--chart-2))' },
     { name: 'Late Morning Shift', label: 'Late Morning Shift', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
     { name: 'Afternoon Shift', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
     { name: 'Early-Afternoon Shift', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
@@ -37,6 +37,7 @@ const initialShiftTemplates: ShiftTemplate[] = [
     { name: 'Mid Shift', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
     { name: 'Manager Shift', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
     { name: 'Late Manager Shift', label: 'Late Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
+    { name: 'Probationary Shift', label: 'Probationary Shift', startTime: '09:00', endTime: '18:00', color: 'hsl(var(--chart-1))' },
 ];
 
 
@@ -537,3 +538,5 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
     </div>
   );
 }
+
+    
