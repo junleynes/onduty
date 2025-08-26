@@ -438,82 +438,82 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         </div>
       </header>
     
-    <div className="flex-1 overflow-auto">
-      <Card className="h-full">
-        <CardContent className="p-0">
-          <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
-            {/* Header Row */}
-            <div className="sticky top-0 z-30 p-2 bg-card border-b border-r flex items-center">
-               <span className="font-semibold text-sm">Employees</span>
-            </div>
-            {displayedDays.map((day) => (
-              <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
-                <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                    {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
-                </div>
-                <Progress value={(calculateDailyHours(day) / 40) * 100} className="h-1 mt-1"/>
-                <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
+      <div className="flex-1 overflow-auto">
+        <Card className="h-full">
+          <CardContent className="p-0">
+            <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
+              {/* Header Row */}
+              <div className="sticky top-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center">
+                <span className="font-semibold text-sm">Employees</span>
               </div>
-            ))}
-
-            {/* Employee Rows */}
-            {allEmployees.map((employee) => (
-              <React.Fragment key={employee.id}>
-                {/* Employee Cell */}
-                <div className="py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] sticky left-0 bg-card z-20">
-                  {employee.id !== 'unassigned' ? (
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                    <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
-                      {getInitials(getFullName(employee))}
-                    </AvatarFallback>
-                  </Avatar>
-                  ) : <div className="w-9 h-9"/>}
-                  <div>
-                    <p className="font-semibold text-sm">{getFullName(employee)}</p>
+              {displayedDays.map((day) => (
+                <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
+                  <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                      {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
                   </div>
+                  <Progress value={(calculateDailyHours(day) / 40) * 100} className="h-1 mt-1"/>
+                  <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
                 </div>
+              ))}
 
-                {/* Day Cells for Shifts */}
-                {displayedDays.map((day) => {
-                  const itemsForDay = [
-                      ...shifts.filter(
-                        (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
-                      ),
-                      ...leave.filter(
-                        (l) => l.employeeId === employee.id && isSameDay(l.date, day)
-                      )
-                  ];
-                  return (
-                    <div
-                      key={`${employee.id}-${day.toISOString()}`}
-                      className="group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative"
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
-                    >
-                      {itemsForDay.map((item) => (
-                        <div key={item.id} draggable={'label' in item} onDragStart={(e) => 'label' in item && handleDragStart(e, item.id)}>
-                          <ShiftBlock
-                            item={item}
-                            onClick={() => handleEditItemClick(item)}
-                          />
-                        </div>
-                      ))}
-                      {itemsForDay.length === 0 && (
-                        <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
-                           <PlusCircle className="h-5 w-5 text-muted-foreground" />
-                        </Button>
-                      )}
+              {/* Employee Rows */}
+              {allEmployees.map((employee) => (
+                <React.Fragment key={employee.id}>
+                  {/* Employee Cell */}
+                  <div className="py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] sticky left-0 bg-card z-20">
+                    {employee.id !== 'unassigned' ? (
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                      <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
+                        {getInitials(getFullName(employee))}
+                      </AvatarFallback>
+                    </Avatar>
+                    ) : <div className="w-9 h-9"/>}
+                    <div>
+                      <p className="font-semibold text-sm">{getFullName(employee)}</p>
                     </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                  </div>
+
+                  {/* Day Cells for Shifts */}
+                  {displayedDays.map((day) => {
+                    const itemsForDay = [
+                        ...shifts.filter(
+                          (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
+                        ),
+                        ...leave.filter(
+                          (l) => l.employeeId === employee.id && isSameDay(l.date, day)
+                        )
+                    ];
+                    return (
+                      <div
+                        key={`${employee.id}-${day.toISOString()}`}
+                        className="group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative"
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
+                      >
+                        {itemsForDay.map((item) => (
+                          <div key={item.id} draggable={'label' in item} onDragStart={(e) => 'label' in item && handleDragStart(e, item.id)}>
+                            <ShiftBlock
+                              item={item}
+                              onClick={() => handleEditItemClick(item)}
+                            />
+                          </div>
+                        ))}
+                        {itemsForDay.length === 0 && (
+                          <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
+                            <PlusCircle className="h-5 w-5 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <ShiftEditor
         isOpen={isShiftEditorOpen}
