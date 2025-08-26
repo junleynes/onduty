@@ -27,7 +27,6 @@ type ScheduleImporterProps = {
 
 const normalizeName = (name: string) => {
   if (!name) return '';
-  // Convert to lowercase and remove extra spaces, but keep commas and periods for parsing.
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
 };
 
@@ -41,27 +40,16 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
         if (fullName === normalizedInput) return true;
 
         // Handle "Lastname, Firstname" and "Lastname, Firstname M.I."
-        const excelParts = normalizedInput.split(',').map(p => p.trim());
+        const excelParts = name.trim().toLowerCase().split(',').map(p => p.trim());
         if (excelParts.length === 2) {
             const excelLastName = excelParts[0];
             const excelFirstNameAndRest = excelParts[1];
             
-            // Construct the full name from employee data for comparison
-            // e.g., 'Rodrigo' + ' ' + 'Leynes Jr' -> 'rodrigo leynes jr'
-            const empFirstName = normalizeName(emp.firstName);
             const empLastName = normalizeName(emp.lastName);
             
-            // e.g., 'leynez jr' -> ['leynes', 'jr'] -> 'leynes'
-            const empPrimaryLastName = empLastName.split(' ')[0];
-
-            // For "LEYNES, RODRIGO JR E"
-            // excelLastName = "leynes"
-            // excelFirstNameAndRest = "rodrigo jr e"
-            if (excelLastName === empPrimaryLastName) {
-                // Now check if "rodrigo jr e" matches "rodrigo leynes jr e"
-                // Construct the "rest" of the name from our employee data
-                const empFirstNameAndRest = normalizeName(`${emp.firstName} ${emp.lastName.substring(empPrimaryLastName.length).trim()} ${emp.middleInitial || ''}`.trim());
-                if (excelFirstNameAndRest === empFirstNameAndRest) {
+            if (empLastName.startsWith(excelLastName)) {
+                 const empFirstNameAndRest = normalizeName(`${emp.firstName} ${emp.lastName.substring(empLastName.indexOf(excelLastName) + excelLastName.length).trim()} ${emp.middleInitial || ''}`.trim());
+                 if (excelFirstNameAndRest === empFirstNameAndRest) {
                     return true;
                 }
             }
@@ -305,3 +293,5 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
     </Dialog>
   );
 }
+
+    
