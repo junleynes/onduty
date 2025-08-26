@@ -115,7 +115,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
             Object.entries(dateMap).forEach(([colIndexStr, day]) => {
                 const colIndex = parseInt(colIndexStr);
                 const cellValue = row[colIndex];
-                if (cellValue === null || cellValue === undefined || cellValue === 'OFF' || cellValue === '') return;
+                if (cellValue === null || cellValue === undefined || String(cellValue).toUpperCase() === 'OFF' || cellValue === '') return;
 
                 const date = new Date(year, month, day);
                 const cellString = String(cellValue);
@@ -124,7 +124,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 
                 if (timeMatch) {
                     const convertTo24Hour = (time: string) => {
-                        time = time.toLowerCase();
+                        time = time.toLowerCase().replace(/\s/g, '');
                         let [h, m] = time.replace('am', '').replace('pm', '').split(':');
                         let hour = parseInt(h);
                         
