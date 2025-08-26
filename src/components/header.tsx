@@ -22,7 +22,6 @@ type HeaderProps = {
 
 export default function Header({ currentUser, onLogout, onResetPassword }: HeaderProps) {
   const { isMobile } = useSidebar();
-  const role = currentUser?.position === 'Manager' ? 'admin' : 'employee';
   
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 shrink-0">

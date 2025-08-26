@@ -14,10 +14,11 @@ import ScheduleView from '@/components/schedule-view';
 import MyScheduleView from '@/components/my-schedule-view';
 import AvailabilityView from '@/components/availability-view';
 import TeamView from '@/components/team-view';
+import AdminPanel from '@/components/admin-panel';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { TeamEditor } from '@/components/team-editor';
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability' | 'admin';
 
 function AppContent() {
   const router = useRouter();
@@ -38,7 +39,13 @@ function AppContent() {
         const updatedUser = employees.find(emp => emp.id === user.id);
         if (updatedUser) {
             setCurrentUser(updatedUser);
-            setActiveView(updatedUser.position === 'Manager' ? 'schedule' : 'my-schedule');
+            if (updatedUser.role === 'admin') {
+                setActiveView('admin');
+            } else if (updatedUser.role === 'manager') {
+                setActiveView('schedule');
+            } else {
+                setActiveView('my-schedule');
+            }
         } else {
              // If user not found (e.g. deleted), log them out
             handleLogout();
@@ -48,7 +55,7 @@ function AppContent() {
     }
   }, [router, employees]);
   
-  const role: UserRole = currentUser?.position === 'Manager' ? 'admin' : 'employee';
+  const role: UserRole = currentUser?.role || 'member';
 
   const handleNavigate = (view: NavItem) => {
     setActiveView(view);
@@ -99,14 +106,17 @@ function AppContent() {
             setShifts={setShifts}
             leave={leave}
             setLeave={setLeave}
+            currentUser={currentUser}
           />
         );
       case 'team':
-        return role === 'admin' ? <TeamView employees={employees} setEmployees={setEmployees} /> : null;
+        return <TeamView employees={employees} setEmployees={setEmployees} currentUser={currentUser} />;
       case 'my-schedule':
         return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
       case 'availability':
         return <AvailabilityView />;
+      case 'admin':
+        return <AdminPanel users={employees} setUsers={setEmployees} />;
       default:
         return (
             <Card>
@@ -120,7 +130,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, role, employees, shifts, leave, currentUser]);
+  }, [activeView, employees, shifts, leave, currentUser]);
 
   if (!currentUser) {
       return null; // Or a loading spinner

@@ -1,5 +1,6 @@
+
 'use client';
-import { CalendarDays, Users, Calendar, Clock, ClipboardList, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Users, Calendar, Clock, Shield, type LucideIcon } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
 import type { NavItem } from '@/app/page';
@@ -10,18 +11,24 @@ interface SidebarNavProps {
   onNavigate: (view: NavItem) => void;
 }
 
-const adminNavItems: { view: NavItem; label: string; icon: LucideIcon }[] = [
-  { view: 'schedule', label: 'Schedule', icon: CalendarDays },
-  { view: 'team', label: 'Team', icon: Users },
-];
-
-const employeeNavItems: { view: NavItem; label: string; icon: LucideIcon }[] = [
-  { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
-  { view: 'availability', label: 'My Availability', icon: Clock },
-];
+const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: LucideIcon }[] } = {
+    admin: [
+        { view: 'admin', label: 'Admin Panel', icon: Shield },
+        { view: 'schedule', label: 'Schedule', icon: CalendarDays },
+    ],
+    manager: [
+        { view: 'schedule', label: 'Schedule', icon: CalendarDays },
+        { view: 'team', label: 'Team', icon: Users },
+    ],
+    member: [
+        { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
+        { view: 'availability', label: 'My Availability', icon: Clock },
+        { view: 'team', label: 'Team', icon: Users },
+    ],
+};
 
 export default function SidebarNav({ role, activeView, onNavigate }: SidebarNavProps) {
-  const navItems = role === 'admin' ? adminNavItems : employeeNavItems;
+  const navItems = navConfig[role] || navConfig.member;
 
   return (
     <div className="flex flex-col h-full text-sidebar-foreground">

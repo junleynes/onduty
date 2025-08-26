@@ -1,5 +1,5 @@
 
-export type UserRole = 'admin' | 'employee';
+export type UserRole = 'admin' | 'manager' | 'member';
 
 export type Employee = {
   id: string;
@@ -13,6 +13,7 @@ export type Employee = {
   birthDate?: Date;
   startDate?: Date;
   position: string;
+  role: UserRole;
   department?: string;
   section?: string;
   avatar?: string;

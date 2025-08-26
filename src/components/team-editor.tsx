@@ -16,9 +16,10 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import type { Employee } from '@/types';
+import type { Employee, UserRole } from '@/types';
 import { employees as initialEmployees } from '@/lib/data';
 import { DatePicker } from './ui/date-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
@@ -32,6 +33,7 @@ const employeeSchema = z.object({
   birthDate: z.date().optional().nullable(),
   startDate: z.date().optional().nullable(),
   position: z.string().optional(),
+  role: z.custom<UserRole>().optional(),
   department: z.string().optional(),
   section: z.string().optional(),
   avatar: z.string().optional(),
@@ -70,6 +72,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       birthDate: undefined,
       startDate: undefined,
       position: '',
+      role: 'member',
       department: '',
       section: '',
       avatar: '',
@@ -95,6 +98,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             birthDate: undefined,
             startDate: undefined,
             position: '',
+            role: 'member',
             department: '',
             section: '',
             avatar: '',

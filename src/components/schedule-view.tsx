@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -31,6 +32,7 @@ type ScheduleViewProps = {
   setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
   leave: Leave[];
   setLeave: React.Dispatch<React.SetStateAction<Leave[]>>;
+  currentUser: Employee | null;
 }
 
 const initialShiftTemplates: ShiftTemplate[] = [
@@ -57,8 +59,9 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'ML', color: '#ec4899' }, // pink
 ];
 
-export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave }: ScheduleViewProps) {
-  
+export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser }: ScheduleViewProps) {
+  const isReadOnly = currentUser?.role === 'member';
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [isShiftEditorOpen, setIsShiftEditorOpen] = useState(false);
@@ -98,21 +101,25 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   }, [dateRange]);
 
   const handleAddShiftClick = () => {
+    if (isReadOnly) return;
     setEditingShift({});
     setIsShiftEditorOpen(true);
   };
   
   const handleAddLeaveClick = () => {
+    if (isReadOnly) return;
     setEditingLeave({ type: 'VL', isAllDay: true, date: new Date() });
     setIsLeaveEditorOpen(true);
   };
 
   const handleEmptyCellClick = (employeeId: string | null, date: Date) => {
+    if (isReadOnly) return;
     setEditingShift({ employeeId, date });
     setIsShiftEditorOpen(true);
   };
 
   const handleEditItemClick = (item: Shift | Leave) => {
+    if (isReadOnly) return;
     if ('label' in item) { // It's a shift
         setEditingShift(item);
         setIsShiftEditorOpen(true);
@@ -123,6 +130,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
 
   const handleSaveShift = (savedShift: Shift | Partial<Shift>) => {
+    if (isReadOnly) return;
     if ('id' in savedShift && savedShift.id) {
       // Update existing shift
       setShifts(shifts.map(s => s.id === savedShift.id ? savedShift as Shift : s));
@@ -136,6 +144,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
   
   const handleDeleteShift = (shiftId: string) => {
+    if (isReadOnly) return;
     setShifts(shifts.filter(s => s.id !== shiftId));
     setIsShiftEditorOpen(false);
     setEditingShift(null);
@@ -144,12 +153,12 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
 
   const handleSaveLeave = (savedLeave: Leave | Partial<Leave>) => {
+    if (isReadOnly) return;
     if (savedLeave.id) {
         setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
         toast({ title: "Leave Updated" });
     } else {
-        const selectedType = leaveTypes.find(lt => lt.type === savedLeave.type);
-        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}`, color: selectedType?.color } as Leave;
+        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
         toast({ title: "Time Off Added" });
     }
@@ -158,6 +167,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
   
   const handleDeleteLeave = (leaveId: string) => {
+    if (isReadOnly) return;
     setLeave(leave.filter(l => l.id !== leaveId));
     setIsLeaveEditorOpen(false);
     setEditingLeave(null);
@@ -181,11 +191,13 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   
   // Action handlers
   const handleClearWeek = () => {
+    if (isReadOnly) return;
     setShifts(currentShifts => currentShifts.filter(shift => !displayedDays.some(day => isSameDay(shift.date, day))));
     toast({ title: "Week Cleared", description: "All shifts for the current week have been removed." });
   };
 
   const handleClearMonth = () => {
+    if (isReadOnly) return;
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     setShifts(currentShifts => currentShifts.filter(shift => shift.date < monthStart || shift.date > monthEnd));
@@ -194,6 +206,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
 
   const handleUnassignWeek = () => {
+    if (isReadOnly) return;
     setShifts(currentShifts => currentShifts.map(shift => 
       displayedDays.some(day => isSameDay(shift.date, day)) 
         ? { ...shift, employeeId: null } 
@@ -203,6 +216,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
 
   const handleUnassignMonth = () => {
+    if (isReadOnly) return;
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     setShifts(currentShifts => currentShifts.map(shift => 
@@ -214,6 +228,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
 
   const handleCopyPreviousWeek = () => {
+    if (isReadOnly) return;
     const prevWeekStart = subDays(dateRange.from, 7);
     const prevWeekEnd = subDays(dateRange.to, 7);
     const prevWeekShifts = shifts.filter(shift => shift.date >= prevWeekStart && shift.date <= prevWeekEnd);
@@ -229,6 +244,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
 
   const handleSaveTemplate = () => {
+    if (isReadOnly) return;
     const shiftsInView = shifts.filter(shift => displayedDays.some(day => isSameDay(shift.date, day)));
     const template = shiftsInView.map(({ id, date, ...rest }) => ({
       ...rest,
@@ -239,6 +255,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
 
   const handleLoadTemplate = () => {
+    if (isReadOnly) return;
     if (!weekTemplate) {
       toast({ variant: 'destructive', title: "No Template Saved", description: "Save a week as a template first." });
       return;
@@ -273,7 +290,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
 
 
-  const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', position: 'Special', avatar: '' }, ...employees];
+  const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', role: 'member', position: 'Special', avatar: '' }, ...employees];
 
   const calculateDailyHours = (day: Date) => {
     const dailyShifts = shifts.filter(s => isSameDay(s.date, day) && !s.isDayOff && !s.isHolidayOff);
@@ -303,16 +320,19 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: Shift | Leave) => {
+    if (isReadOnly) return;
     e.dataTransfer.setData("itemId", item.id);
     const itemType = 'label' in item ? 'shift' : 'leave';
     e.dataTransfer.setData("itemType", itemType);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (isReadOnly) return;
     e.preventDefault();
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetEmployeeId: string | null, targetDate: Date) => {
+    if (isReadOnly) return;
     e.preventDefault();
     const itemId = e.dataTransfer.getData("itemId");
     const itemType = e.dataTransfer.getData("itemType");
@@ -403,26 +423,30 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
               <SelectItem value="month">Month</SelectItem>
             </SelectContent>
           </Select>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={handleAddShiftClick}>Add Shift</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-           <Button variant="outline">
-                <Save className="mr-2 h-4 w-4" />
-                Save Draft
-            </Button>
-            <Button>
-                <Send className="mr-2 h-4 w-4" />
-                Publish
-            </Button>
+          {!isReadOnly && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={handleAddShiftClick}>Add Shift</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline">
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Draft
+                </Button>
+                <Button>
+                    <Send className="mr-2 h-4 w-4" />
+                    Publish
+                </Button>
+            </>
+          )}
         </div>
       </header>
     
@@ -501,14 +525,14 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                         onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                       >
                         {itemsForDay.map((item) => (
-                          <div key={item.id} draggable={true} onDragStart={(e) => handleDragStart(e, item)}>
+                          <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleDragStart(e, item)}>
                             <ShiftBlock
                               item={item}
                               onClick={() => handleEditItemClick(item)}
                             />
                           </div>
                         ))}
-                        {itemsForDay.length === 0 && (
+                        {itemsForDay.length === 0 && !isReadOnly && (
                           <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
                             <PlusCircle className="h-5 w-5 text-muted-foreground" />
                           </Button>

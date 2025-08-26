@@ -25,14 +25,17 @@ const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'ou
 type TeamViewProps = {
     employees: Employee[];
     setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
+    currentUser: Employee | null;
 };
 
-export default function TeamView({ employees, setEmployees }: TeamViewProps) {
+export default function TeamView({ employees, setEmployees, currentUser }: TeamViewProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const { toast } = useToast();
+  
+  const isReadOnly = currentUser?.role === 'member';
 
   const handleAddMember = () => {
     setEditingEmployee({});
@@ -69,6 +72,7 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
         id: `emp-${Date.now()}`,
         avatar: employeeData.avatar || '',
         position: employeeData.position || '',
+        role: employeeData.role || 'member',
       } as Employee;
       setEmployees([...employees, newEmployee]);
       toast({ title: 'Member Added' });
@@ -81,6 +85,7 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
         id: `emp-${Date.now()}-${index}`,
         avatar: member.avatar || '',
         position: member.position || '',
+        role: 'member',
       } as Employee));
 
       setEmployees(prev => [...prev, ...newEmployees]);
@@ -93,18 +98,22 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
               <CardTitle>Team Members</CardTitle>
-              <CardDescription>Manage your team members and their roles.</CardDescription>
+              <CardDescription>
+                {isReadOnly ? "View your team members and their roles." : "Manage your team members and their roles."}
+              </CardDescription>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import from CSV
-            </Button>
-            <Button onClick={handleAddMember}>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Member
-            </Button>
-          </div>
+          {!isReadOnly && (
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import from CSV
+                </Button>
+                <Button onClick={handleAddMember}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Member
+                </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <Table>
@@ -112,8 +121,9 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
               <TableRow>
                 <TableHead>Employee</TableHead>
                 <TableHead>Position</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {!isReadOnly && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -137,36 +147,41 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
                     <Badge variant={roleColors[employee.position] || 'default'}>{employee.position}</Badge>
                   </TableCell>
                    <TableCell>
+                    <span className="capitalize">{employee.role}</span>
+                  </TableCell>
+                   <TableCell>
                       <div className="flex flex-col">
                         <a href={`mailto:${employee.email}`} className="text-sm text-primary hover:underline">{employee.email}</a>
                         <a href={`tel:${employee.phone}`} className="text-sm text-muted-foreground hover:underline">{employee.phone}</a>
                       </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">More Actions</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditMember(employee)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                <span>Edit</span>
-                            </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => handleResetPassword(employee)}>
-                                <KeyRound className="mr-2 h-4 w-4" />
-                                <span>Reset Password</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteMember(employee.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  {!isReadOnly && (
+                    <TableCell className="text-right">
+                       <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">More Actions</span>
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditMember(employee)}>
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  <span>Edit</span>
+                              </DropdownMenuItem>
+                               <DropdownMenuItem onClick={() => handleResetPassword(employee)}>
+                                  <KeyRound className="mr-2 h-4 w-4" />
+                                  <span>Reset Password</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteMember(employee.id)}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Delete</span>
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
