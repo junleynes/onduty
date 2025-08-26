@@ -149,7 +149,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
     } else {
         // Add new leave
         const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
-        setLeave([...leave, newLeaveWithId]);
+        setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
         toast({ title: "Time Off Added" });
     }
     setIsLeaveEditorOpen(false);
