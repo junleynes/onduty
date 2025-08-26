@@ -24,7 +24,7 @@ import { DatePicker } from './ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
-import { cn } from '@/lib/utils';
+import { cn, getFullName } from '@/lib/utils';
 
 const leaveSchema = z.object({
   employeeId: z.string().min(1, { message: 'Employee is required.' }),
@@ -140,7 +140,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
                     </FormControl>
                     <SelectContent>
                       {employees.map(emp => (
-                        <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                        <SelectItem key={emp.id} value={emp.id}>{getFullName(emp)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
