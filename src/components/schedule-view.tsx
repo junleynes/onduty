@@ -102,7 +102,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   };
   
   const handleAddLeaveClick = () => {
-    setEditingLeave({ type: 'OFFSET', isAllDay: true, date: new Date() });
+    setEditingLeave({ type: 'VL', isAllDay: true, date: new Date() });
     setIsLeaveEditorOpen(true);
   };
 

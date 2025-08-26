@@ -70,12 +70,12 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
 
   useEffect(() => {
     if (isOpen) {
-        const selectedType = leaveTypes.find(lt => lt.type === (leave?.type || 'OFFSET'));
+        const selectedType = leaveTypes.find(lt => lt.type === (leave?.type || 'VL'));
         form.reset({
             id: leave?.id || undefined,
             employeeId: leave?.employeeId || '',
-            type: leave?.type || 'OFFSET',
-            color: leave?.color || selectedType?.color || '#6b7280',
+            type: leave?.type || 'VL',
+            color: leave?.color || selectedType?.color || '#3b82f6',
             date: leave?.date ? new Date(leave.date) : new Date(),
             isAllDay: leave?.isAllDay ?? true,
             startTime: leave?.startTime || '',
