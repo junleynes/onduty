@@ -34,6 +34,7 @@ const initialShiftTemplates: ShiftTemplate[] = [
     { name: 'Afternoon Shift', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
     { name: 'Early-Afternoon Shift', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
     { name: 'Night Shift', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
+    { name: 'Early Mid Shift', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#ffffff' },
     { name: 'Mid Shift', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
     { name: 'Manager Shift', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
     { name: 'Late Manager Shift', label: 'Late Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
