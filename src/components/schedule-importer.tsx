@@ -27,14 +27,15 @@ type ScheduleImporterProps = {
 
 const normalizeName = (name: string) => {
   if (!name) return '';
-  return name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  // Convert to lowercase, remove all non-alphanumeric chars except comma, then remove extra spaces
+  return name.trim().toLowerCase().replace(/[^a-z0-9,]/g, ' ').replace(/\s+/g, ' ');
 };
 
 const findEmployeeByName = (name: string) => {
     if (!name) return null;
     const normalizedInput = normalizeName(name);
     return employees.find(emp => {
-        // Match against "Last, First M" or "First Last"
+        // Match against "lastname, firstname m" or "firstname lastname"
         const lastNameFirst = normalizeName(`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`);
         const firstNameLast = normalizeName(`${emp.firstName} ${emp.lastName}`);
         return lastNameFirst.startsWith(normalizedInput) || firstNameLast.startsWith(normalizedInput);
@@ -96,24 +97,30 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
 
         let dateRowIndex = -1;
         const dateRow = json.find((row, index) => {
-            const numericCells = row.filter(cell => typeof cell === 'number' && cell >= 1 && cell <= 31);
-            // A row is considered a date row if it has at least 5 numbers between 1-31
-            const isDateRow = numericCells.length > 5;
-            if(isDateRow) {
+            const dateLikeCells = row.filter(cell => {
+                if (cell === null || cell === undefined) return false;
+                const num = Number(String(cell).trim());
+                return !isNaN(num) && num >= 1 && num <= 31;
+            });
+            const isDateRow = dateLikeCells.length > 5;
+            if (isDateRow) {
                 dateRowIndex = index;
                 return true;
             }
             return false;
         });
 
+
         if (!dateRow) {
-            throw new Error("Could not find the date row (e.g., 1-31) in the Excel sheet.");
+            throw new Error("Could not find the date row (e.g., 1-31) in the Excel sheet. Please ensure the dates are present and formatted as numbers or text.");
         }
         
         const dateMap: { [key: number]: number } = {};
         dateRow.forEach((cell, index) => {
-            if (typeof cell === 'number' && cell >= 1 && cell <= 31) {
-                dateMap[index] = cell;
+            if (cell === null || cell === undefined) return;
+            const day = Number(String(cell).trim());
+            if (!isNaN(day) && day >= 1 && day <= 31) {
+                dateMap[index] = day;
             }
         });
 
