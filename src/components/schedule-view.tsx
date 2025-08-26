@@ -71,7 +71,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   };
   
   const handleAddLeaveClick = () => {
-    setEditingLeave({ type: 'Time Off Request', isAllDay: true });
+    setEditingLeave({ type: 'OFFSET', isAllDay: true });
     setIsLeaveEditorOpen(true);
   };
 
@@ -151,6 +151,14 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
     setShifts(currentShifts => currentShifts.filter(shift => !displayedDays.some(day => isSameDay(shift.date, day))));
     toast({ title: "Week Cleared", description: "All shifts for the current week have been removed." });
   };
+
+  const handleClearMonth = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    setShifts(currentShifts => currentShifts.filter(shift => shift.date < monthStart || shift.date > monthEnd));
+    toast({ title: "Month Cleared", description: "All shifts for the current month have been removed." });
+  };
+
 
   const handleUnassignWeek = () => {
     setShifts(currentShifts => currentShifts.map(shift => 
@@ -349,30 +357,43 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
                 <DropdownMenuGroup>
-                    <DropdownMenuItem onClick={handleCopyPreviousWeek}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        <span>Copy previous week</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleClearWeek}>
-                        <CircleSlash className="mr-2 h-4 w-4" />
-                        <span>Clear week</span>
-                    </DropdownMenuItem>
+                    {viewMode === 'week' &&
+                        <DropdownMenuItem onClick={handleCopyPreviousWeek}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            <span>Copy previous week</span>
+                        </DropdownMenuItem>
+                    }
+                    {viewMode !== 'month' ? (
+                      <DropdownMenuItem onClick={handleClearWeek}>
+                          <CircleSlash className="mr-2 h-4 w-4" />
+                          <span>Clear week</span>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onClick={handleClearMonth}>
+                          <CircleSlash className="mr-2 h-4 w-4" />
+                          <span>Clear month</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={handleUnassignWeek}>
                         <UserX className="mr-2 h-4 w-4" />
                         <span>Unassign week</span>
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                    <DropdownMenuItem onClick={handleSaveTemplate}>
-                        <Download className="mr-2 h-4 w-4" />
-                        <span>Save week as template</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleLoadTemplate}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        <span>Load week template</span>
-                    </DropdownMenuItem>
-                </DropdownMenuGroup>
+                {viewMode === 'week' &&
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem onClick={handleSaveTemplate}>
+                                <Download className="mr-2 h-4 w-4" />
+                                <span>Save week as template</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleLoadTemplate}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                <span>Load week template</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </>
+                }
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
