@@ -1,18 +1,26 @@
 'use client';
-import { LayoutGrid, Bell, CircleUser, User, Shield } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LayoutGrid, Bell, CircleUser, User, Shield, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
-import type { UserRole } from '@/types';
+import type { Employee } from '@/types';
 import { cn } from '@/lib/utils';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 type HeaderProps = {
-  currentRole: UserRole;
-  onRoleChange: (role: UserRole) => void;
+  currentUser: Employee | null;
+  onLogout: () => void;
 };
 
-export default function Header({ currentRole, onRoleChange }: HeaderProps) {
+export default function Header({ currentUser, onLogout }: HeaderProps) {
   const { isMobile } = useSidebar();
+  const role = currentUser?.position === 'Manager' ? 'admin' : 'employee';
   
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 shrink-0">
@@ -22,38 +30,31 @@ export default function Header({ currentRole, onRoleChange }: HeaderProps) {
         <h1 className="text-xl font-bold text-primary tracking-tight">ShiftMaster</h1>
       </div>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        <div className="ml-auto flex-1 sm:flex-initial max-w-xs">
-          <Select value={currentRole} onValueChange={(value: UserRole) => onRoleChange(value)}>
-            <SelectTrigger className="w-full md:w-[180px]">
-               <SelectValue>
-                <div className="flex items-center gap-2">
-                    {currentRole === 'admin' ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                    <span>{currentRole === 'admin' ? 'Admin View' : 'Employee View'}</span>
-                </div>
-               </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-primary" /> Admin View
-                </div>
-              </SelectItem>
-              <SelectItem value="employee">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" /> Employee View
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="ml-auto flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="rounded-full text-primary">
+              <Bell className="h-5 w-5" />
+              <span className="sr-only">Toggle notifications</span>
+            </Button>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-full text-primary">
+                      <CircleUser className="h-5 w-5" />
+                      <span className="sr-only">Toggle user menu</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>Profile</DropdownMenuItem>
+                    <DropdownMenuItem>Settings</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
-        <Button variant="ghost" size="icon" className="rounded-full text-primary">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Toggle notifications</span>
-        </Button>
-        <Button variant="ghost" size="icon" className="rounded-full text-primary">
-          <CircleUser className="h-5 w-5" />
-          <span className="sr-only">Toggle user menu</span>
-        </Button>
       </div>
     </header>
   );

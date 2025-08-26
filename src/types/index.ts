@@ -1,5 +1,4 @@
 
-
 export type UserRole = 'admin' | 'employee';
 
 export type Employee = {
@@ -8,8 +7,9 @@ export type Employee = {
   firstName: string;
   lastName: string;
   middleInitial?: string;
-  email?: string;
-  phone?: string;
+  email: string;
+  phone: string;
+  password?: string;
   birthDate?: Date;
   startDate?: Date;
   position: string;

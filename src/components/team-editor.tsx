@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -26,8 +25,9 @@ const employeeSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   middleInitial: z.string().max(1).optional(),
-  email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  phone: z.string().optional(),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().min(1, 'Phone number is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters long').optional().or(z.literal('')),
   birthDate: z.date().optional().nullable(),
   startDate: z.date().optional().nullable(),
   position: z.string().optional(),
@@ -53,6 +53,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
     resolver: zodResolver(employeeSchema),
     defaultValues: employee?.id ? {
       ...employee,
+      password: '', // Don't pre-fill password for existing users
       birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
       startDate: employee.startDate ? new Date(employee.startDate) : undefined,
     } : {
@@ -63,6 +64,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
       middleInitial: '',
       email: '',
       phone: '',
+      password: '',
       birthDate: undefined,
       startDate: undefined,
       position: '',
@@ -76,6 +78,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
     if(isOpen) {
         form.reset(employee?.id ? {
             ...employee,
+            password: '',
             birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
             startDate: employee.startDate ? new Date(employee.startDate) : undefined,
         } : {
@@ -86,6 +89,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
             middleInitial: '',
             email: '',
             phone: '',
+            password: '',
             birthDate: undefined,
             startDate: undefined,
             position: '',
@@ -97,7 +101,17 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
   }, [employee, form, isOpen]);
 
   const onSubmit = (values: z.infer<typeof employeeSchema>) => {
-    onSave(values);
+    if (!values.id && !values.password) {
+        form.setError('password', { type: 'manual', message: 'Password is required for new members.' });
+        return;
+    }
+    
+    const dataToSave = {...values};
+    if (values.id && !values.password) {
+      delete (dataToSave as any).password;
+    }
+
+    onSave(dataToSave);
     
     // Add new values to lists if they don't exist
     if (values.position && !positions.includes(values.position)) setPositions(prev => [...prev, values.position!]);
@@ -220,6 +234,20 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave }: TeamEditorPr
                 )}
               />
             </div>
+
+             <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} placeholder={employee?.id ? 'Leave blank to keep current password' : ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField

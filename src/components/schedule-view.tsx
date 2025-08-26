@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -40,8 +39,8 @@ const initialShiftTemplates: ShiftTemplate[] = [
     { name: 'Afternoon Shift (14:00-22:00)', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
     { name: 'Early-Afternoon Shift (12:00-20:00)', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
     { name: 'Night Shift (22:00-06:00)', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
-    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#f1c40f' },
-    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#f1c40f' },
+    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#ffffff' },
+    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
     { name: 'Manager Shift (10:00-19:00)', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
     { name: 'Manager Shift (11:00-20:00)', label: 'Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
     { name: 'Manager Shift (12:00-21:00)', label: 'Manager Shift', startTime: '12:00', endTime: '21:00', color: 'hsl(var(--chart-4))' },
@@ -149,7 +148,8 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
         toast({ title: "Leave Updated" });
     } else {
-        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
+        const selectedType = leaveTypes.find(lt => lt.type === savedLeave.type);
+        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}`, color: selectedType?.color } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
         toast({ title: "Time Off Added" });
     }
@@ -415,71 +415,14 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
               <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="outline">Actions</Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56">
-                <DropdownMenuGroup>
-                    <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Import schedule
-                    </DropdownMenuItem>
-                     <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Import shift templates
-                    </DropdownMenuItem>
-                    {viewMode === 'week' &&
-                        <DropdownMenuItem onClick={handleCopyPreviousWeek}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            <span>Copy previous week</span>
-                        </DropdownMenuItem>
-                    }
-                    {viewMode !== 'month' ? (
-                      <DropdownMenuItem onClick={handleClearWeek}>
-                          <CircleSlash className="mr-2 h-4 w-4" />
-                          <span>Clear week</span>
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem onClick={handleClearMonth}>
-                          <CircleSlash className="mr-2 h-4 w-4" />
-                          <span>Clear month</span>
-                      </DropdownMenuItem>
-                    )}
-                    {viewMode !== 'month' ? (
-                        <DropdownMenuItem onClick={handleUnassignWeek}>
-                            <UserX className="mr-2 h-4 w-4" />
-                            <span>Unassign week</span>
-                        </DropdownMenuItem>
-                    ) : (
-                        <DropdownMenuItem onClick={handleUnassignMonth}>
-                            <UserX className="mr-2 h-4 w-4" />
-                            <span>Unassign month</span>
-                        </DropdownMenuItem>
-                    )}
-                </DropdownMenuGroup>
-                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Manage Leave Types
-                </DropdownMenuItem>
-                {viewMode === 'week' &&
-                    <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={handleSaveTemplate}>
-                                <Download className="mr-2 h-4 w-4" />
-                                <span>Save week as template</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleLoadTemplate} disabled={!weekTemplate}>
-                                <Upload className="mr-2 h-4 w-4" />
-                                <span>Load week template</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                    </>
-                }
-            </DropdownMenuContent>
-          </DropdownMenu>
+           <Button variant="outline">
+                <Save className="mr-2 h-4 w-4" />
+                Save Draft
+            </Button>
+            <Button>
+                <Send className="mr-2 h-4 w-4" />
+                Publish
+            </Button>
         </div>
       </header>
     

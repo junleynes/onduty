@@ -1,12 +1,12 @@
-
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { UserRole, Employee, Shift, Leave } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave } from '@/lib/data';
+import { useRouter } from 'next/navigation';
 
 // Views
 import ScheduleView from '@/components/schedule-view';
@@ -18,30 +18,52 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 
 function AppContent() {
-  const [role, setRole] = useState<UserRole>('admin');
-  const [activeView, setActiveView] = useState<NavItem>(role === 'admin' ? 'schedule' : 'my-schedule');
-  
-  // Lifted state for employees, shifts, and leave
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
+
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
+  
+  const [activeView, setActiveView] = useState<NavItem>('schedule');
 
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        const user: Employee = JSON.parse(storedUser);
+        setCurrentUser(user);
+        setActiveView(user.position === 'Manager' ? 'schedule' : 'my-schedule');
+    } else {
+      router.push('/login');
+    }
+  }, [router]);
+  
+  const role: UserRole = currentUser?.position === 'Manager' ? 'admin' : 'employee';
 
   const handleNavigate = (view: NavItem) => {
     setActiveView(view);
   };
-
-  const handleRoleChange = (newRole: UserRole) => {
-    setRole(newRole);
-    // Reset to default view for the new role
-    if (newRole === 'admin') {
-      setActiveView('schedule');
-    } else {
-      setActiveView('my-schedule');
-    }
-  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+    router.push('/login');
+  }
 
   const currentView = useMemo(() => {
+    if (!currentUser) {
+        return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Loading...</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>Please wait while we check your login status.</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
     switch (activeView) {
       case 'schedule':
         return (
@@ -56,7 +78,7 @@ function AppContent() {
       case 'team':
         return role === 'admin' ? <TeamView employees={employees} setEmployees={setEmployees} /> : null;
       case 'my-schedule':
-        return <MyScheduleView shifts={shifts} employeeId={employees.length > 2 ? employees[2].id : null} />;
+        return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
       case 'availability':
         return <AvailabilityView />;
       default:
@@ -67,12 +89,17 @@ function AppContent() {
                     <CardDescription>Select a view from the sidebar to get started.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p>You are currently in {role === 'admin' ? 'Admin' : 'Employee'} mode.</p>
+                    <p>You are currently logged in as {currentUser.firstName}.</p>
                 </CardContent>
             </Card>
         );
     }
-  }, [activeView, role, employees, shifts, leave]);
+  }, [activeView, role, employees, shifts, leave, currentUser]);
+
+  if (!currentUser) {
+      return null; // Or a loading spinner
+  }
+
 
   return (
     <div className='flex h-screen w-full'>
@@ -80,7 +107,7 @@ function AppContent() {
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header currentRole={role} onRoleChange={handleRoleChange} />
+        <Header currentUser={currentUser} onLogout={handleLogout} />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {currentView}
         </main>
