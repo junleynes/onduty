@@ -27,19 +27,23 @@ type ScheduleImporterProps = {
 
 const normalizeName = (name: string) => {
   if (!name) return '';
-  // Convert to lowercase, remove all non-alphanumeric chars except comma, then remove extra spaces
-  return name.trim().toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ');
+  // Convert to lowercase, remove punctuation except for commas and periods, then trim extra spaces.
+  return name.trim().toLowerCase().replace(/[^a-z0-9,. ]/g, ' ').replace(/\s+/g, ' ');
 };
-
 
 const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
     if (!name) return null;
     const normalizedInput = normalizeName(name);
+
     return allEmployees.find(emp => {
-        // Match against "lastname, firstname m" or "firstname lastname"
-        const lastNameFirst = normalizeName(`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`);
+        // Match against "lastname, firstname m" or "lastname, firstname m."
+        const lastNameFirstWithInitial = normalizeName(`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`);
+        // Match against "lastname, firstname"
+        const lastNameFirst = normalizeName(`${emp.lastName}, ${emp.firstName}`);
+        // Match against "firstname lastname"
         const firstNameLast = normalizeName(`${emp.firstName} ${emp.lastName}`);
-        return lastNameFirst.startsWith(normalizedInput) || firstNameLast.startsWith(normalizedInput);
+
+        return normalizedInput.startsWith(lastNameFirstWithInitial) || normalizedInput.startsWith(lastNameFirst) || normalizedInput.startsWith(firstNameLast);
   });
 };
 
@@ -82,18 +86,11 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
             if (monthCell) {
                  const monthString = String(monthCell);
                  const monthStr = monthString.toLowerCase();
-                 if (monthStr.includes('january')) month = 0;
-                 if (monthStr.includes('february')) month = 1;
-                 if (monthStr.includes('march')) month = 2;
-                 if (monthStr.includes('april')) month = 3;
-                 if (monthStr.includes('may')) month = 4;
-                 if (monthStr.includes('june')) month = 5;
-                 if (monthStr.includes('july')) month = 6;
-                 if (monthStr.includes('august')) month = 7;
-                 if (monthStr.includes('september')) month = 8;
-                 if (monthStr.includes('october')) month = 9;
-                 if (monthStr.includes('november')) month = 10;
-                 if (monthStr.includes('december')) month = 11;
+                 const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+                 const monthIndex = months.findIndex(m => monthStr.includes(m));
+                 if (monthIndex > -1) {
+                    month = monthIndex;
+                 }
                  
                  const yearMatch = monthString.match(/\b(20\d{2})\b/);
                  if (yearMatch) {
