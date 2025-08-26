@@ -143,14 +143,11 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
 
 
   const handleSaveLeave = (savedLeave: Leave | Partial<Leave>) => {
-    const leaveType = leaveTypes.find(lt => lt.type === savedLeave.type);
-    const leaveWithColor = { ...savedLeave, color: leaveType?.color };
-
-    if (leaveWithColor.id) {
-        setLeave(leave.map(l => l.id === leaveWithColor.id ? leaveWithColor as Leave : l));
+    if (savedLeave.id) {
+        setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
         toast({ title: "Leave Updated" });
     } else {
-        const newLeaveWithId = { ...leaveWithColor, id: `leave-${Date.now()}` } as Leave;
+        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
         toast({ title: "Time Off Added" });
     }
@@ -315,20 +312,25 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
     e.preventDefault();
     const itemId = e.dataTransfer.getData("itemId");
     
-    setShifts(prevShifts => 
-      prevShifts.map(shift =>
-        shift.id === itemId
-          ? { ...shift, employeeId: targetEmployeeId, date: targetDate }
-          : shift
-      )
-    );
-     setLeave(prevLeave => 
-      prevLeave.map(l =>
-        l.id === itemId
-          ? { ...l, employeeId: targetEmployeeId!, date: targetDate }
-          : l
-      )
-    );
+    const isShift = shifts.some(s => s.id === itemId);
+
+    if (isShift) {
+      setShifts(prevShifts => 
+        prevShifts.map(shift =>
+          shift.id === itemId
+            ? { ...shift, employeeId: targetEmployeeId, date: targetDate }
+            : shift
+        )
+      );
+    } else {
+       setLeave(prevLeave => 
+        prevLeave.map(l =>
+          l.id === itemId
+            ? { ...l, employeeId: targetEmployeeId!, date: targetDate }
+            : l
+        )
+      );
+    }
   };
   
   const formatRange = (start: Date, end: Date) => {

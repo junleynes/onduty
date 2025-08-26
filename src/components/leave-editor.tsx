@@ -85,7 +85,8 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
   }, [leave, form, leaveTypes, isOpen]);
 
   const onSubmit = (values: z.infer<typeof leaveSchema>) => {
-    onSave(values);
+    const selectedType = leaveTypes.find(lt => lt.type === values.type);
+    onSave({ ...values, color: selectedType?.color });
   };
   
   const handleDelete = () => {
