@@ -169,6 +169,17 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
     toast({ title: "Week Unassigned", description: "All shifts for the current week have been moved to unassigned." });
   };
 
+  const handleUnassignMonth = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    setShifts(currentShifts => currentShifts.map(shift => 
+      shift.date >= monthStart && shift.date <= monthEnd
+        ? { ...shift, employeeId: null } 
+        : shift
+    ));
+    toast({ title: "Month Unassigned", description: "All shifts for the current month have been moved to unassigned." });
+  };
+
   const handleCopyPreviousWeek = () => {
     const prevWeekStart = subDays(dateRange.from, 7);
     const prevWeekEnd = subDays(dateRange.to, 7);
@@ -363,22 +374,28 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                             <span>Copy previous week</span>
                         </DropdownMenuItem>
                     }
-                    {viewMode !== 'month' &&
+                    {viewMode !== 'month' ? (
                       <DropdownMenuItem onClick={handleClearWeek}>
                           <CircleSlash className="mr-2 h-4 w-4" />
                           <span>Clear week</span>
                       </DropdownMenuItem>
-                    }
-                     {viewMode === 'month' &&
+                    ) : (
                       <DropdownMenuItem onClick={handleClearMonth}>
                           <CircleSlash className="mr-2 h-4 w-4" />
                           <span>Clear month</span>
                       </DropdownMenuItem>
-                    }
-                    <DropdownMenuItem onClick={handleUnassignWeek}>
-                        <UserX className="mr-2 h-4 w-4" />
-                        <span>Unassign week</span>
-                    </DropdownMenuItem>
+                    )}
+                    {viewMode !== 'month' ? (
+                        <DropdownMenuItem onClick={handleUnassignWeek}>
+                            <UserX className="mr-2 h-4 w-4" />
+                            <span>Unassign week</span>
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem onClick={handleUnassignMonth}>
+                            <UserX className="mr-2 h-4 w-4" />
+                            <span>Unassign month</span>
+                        </DropdownMenuItem>
+                    )}
                 </DropdownMenuGroup>
                 {viewMode === 'week' &&
                     <>
