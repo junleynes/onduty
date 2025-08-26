@@ -27,7 +27,7 @@ type ScheduleImporterProps = {
 
 const normalizeName = (name: string) => {
   if (!name) return '';
-  // Convert to lowercase, remove punctuation except for commas and periods, then trim extra spaces.
+  // Convert to lowercase, remove extra spaces. Keep commas and periods.
   return name.trim().toLowerCase().replace(/[^a-z0-9,. ]/g, ' ').replace(/\s+/g, ' ');
 };
 
@@ -36,7 +36,7 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
     const normalizedInput = normalizeName(name);
 
     return allEmployees.find(emp => {
-        // Match against "lastname, firstname m" or "lastname, firstname m."
+        // Match against "lastname, firstname m." or "lastname, firstname, m."
         const lastNameFirstWithInitial = normalizeName(`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`);
         // Match against "lastname, firstname"
         const lastNameFirst = normalizeName(`${emp.lastName}, ${emp.firstName}`);
@@ -105,6 +105,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 if (cell === null || cell === undefined) return false;
                 const cellStr = String(cell).trim();
                 if (cellStr === '') return false;
+                // Check if it's a number between 1 and 31
+                if (!/^\d{1,2}$/.test(cellStr)) return false;
                 const num = Number(cellStr);
                 return !isNaN(num) && num >= 1 && num <= 31;
             });
@@ -130,9 +132,12 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
             const dateMap: { [key: number]: number } = {};
             dateRow.forEach((cell, index) => {
                 if (cell === null || cell === undefined) return;
-                const day = Number(String(cell).trim());
-                if (!isNaN(day) && day >= 1 && day <= 31) {
-                    dateMap[index] = day;
+                const dayStr = String(cell).trim();
+                if (/^\d{1,2}$/.test(dayStr)) {
+                    const day = Number(dayStr);
+                     if (!isNaN(day) && day >= 1 && day <= 31) {
+                        dateMap[index] = day;
+                    }
                 }
             });
 
@@ -152,10 +157,24 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 Object.entries(dateMap).forEach(([colIndexStr, day]) => {
                     const colIndex = parseInt(colIndexStr);
                     const cellValue = row[colIndex];
-                    if (cellValue === null || cellValue === undefined || String(cellValue).toUpperCase() === 'OFF' || String(cellValue).trim() === '') return;
+                    if (cellValue === null || cellValue === undefined || String(cellValue).trim() === '') return;
 
-                    const date = new Date(year, month, day);
+                    const date = new Date(Date.UTC(year, month, day));
                     const cellString = String(cellValue);
+                    
+                    if (cellString.toUpperCase().trim() === 'OFF') {
+                        importedShifts.push({
+                            id: `imp-sh-${rowIndex}-${colIndex}`,
+                            employeeId: employee.id,
+                            date,
+                            startTime: '',
+                            endTime: '',
+                            label: 'Day Off',
+                            color: 'transparent',
+                            isDayOff: true,
+                        });
+                        return;
+                    }
                     
                     const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
                     
