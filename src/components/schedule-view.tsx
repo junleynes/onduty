@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -275,21 +276,29 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', position: 'Special', avatar: '' }, ...employees];
 
   const calculateDailyHours = (day: Date) => {
-    const dailyShifts = shifts.filter(s => isSameDay(s.date, day));
+    const dailyShifts = shifts.filter(s => isSameDay(s.date, day) && !s.isDayOff && !s.isHolidayOff);
     return dailyShifts.reduce((acc, shift) => {
         if (!shift.startTime || !shift.endTime) return acc;
-        const start = parseInt(shift.startTime.split(':')[0]);
-        const end = parseInt(shift.endTime.split(':')[0]);
-        return acc + (end - start);
+        
+        const start = new Date(`1970-01-01T${shift.startTime}`);
+        const end = new Date(`1970-01-01T${shift.endTime}`);
+        
+        let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        if (diff < 0) { // Handles overnight shifts
+            diff += 24;
+        }
+        return acc + diff;
     }, 0);
   }
 
   const dailyShiftCount = (day: Date) => {
-    return shifts.filter(s => isSameDay(s.date, day)).length;
+    return shifts.filter(s => isSameDay(s.date, day) && !s.isDayOff && !s.isHolidayOff).length;
   }
 
   const dailyEmployeeCount = (day: Date) => {
-    return new Set(shifts.filter(s => isSameDay(s.date, day) && s.employeeId).map(s => s.employeeId)).size;
+    const assignedShifts = shifts.filter(s => isSameDay(s.date, day) && s.employeeId && !s.isDayOff && !s.isHolidayOff);
+    const assignedLeave = leave.filter(l => isSameDay(l.date, day) && l.employeeId);
+    return new Set([...assignedShifts.map(s => s.employeeId), ...assignedLeave.map(l => l.employeeId)]).size;
   }
 
   // Drag and Drop Handlers
@@ -467,11 +476,27 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
               {displayedDays.map((day) => (
                 <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
                   <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                      {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
-                  </div>
-                  <Progress value={(calculateDailyHours(day) / 40) * 100} className="h-1 mt-1"/>
-                  <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="text-xs text-muted-foreground mt-1 cursor-default">
+                          {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Total shifts and unique employees scheduled for the day.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                   <Tooltip>
+                    <TooltipTrigger asChild>
+                       <div>
+                         <Progress value={(calculateDailyHours(day) / (8 * 5)) * 100} className="h-1 mt-1"/>
+                         <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
+                       </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Total scheduled work hours for the day.</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               ))}
 
@@ -479,7 +504,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
               {allEmployees.map((employee) => (
                 <React.Fragment key={employee.id}>
                   {/* Employee Cell */}
-                  <div className="py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] sticky left-0 bg-card z-20">
+                  <div className="sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card">
                     {employee.id !== 'unassigned' ? (
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
