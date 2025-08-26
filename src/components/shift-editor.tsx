@@ -417,18 +417,21 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                         </>
                         )}
                         <DialogFooter className="sm:justify-between flex-wrap gap-2">
-                            {shift?.id && !editingTemplate ? (
-                                <Button type="button" variant="destructive" onClick={handleDelete} className="sm:mr-auto">
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Shift
-                                </Button>
-                            ) : editingTemplate ? (
-                                <Button type="button" variant="ghost" onClick={cancelEditTemplate} className="sm:mr-auto">
-                                    <X className="mr-2 h-4 w-4" />
-                                    Cancel Edit
-                                </Button>
-                            ): <div></div>}
-                            <div className="flex gap-2 justify-end flex-1">
+                            <div className="flex-1 flex justify-start">
+                                {shift?.id && !editingTemplate && (
+                                    <Button type="button" variant="destructive" onClick={handleDelete} className="mr-auto">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Shift
+                                    </Button>
+                                )}
+                                {editingTemplate && (
+                                    <Button type="button" variant="ghost" onClick={cancelEditTemplate} className="mr-auto">
+                                        <X className="mr-2 h-4 w-4" />
+                                        Cancel Edit
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="flex gap-2 justify-end flex-shrink-0">
                                {!editingTemplate && 
                                 <Button type="button" variant="outline" onClick={handleSaveAsTemplate}>
                                     Save as Template

@@ -74,10 +74,10 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
   const formatTime = (time: string) => {
     if (!time) return '';
     const [h, m] = time.split(':');
-    const hour = parseInt(h, 10);
+    let hour = parseInt(h, 10);
     const suffix = hour >= 12 ? 'p' : 'a';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}${m === '00' ? '' : `:${m}`}`;
+    hour = hour % 12 || 12; // convert to 12-hour format
+    return `${hour}:${m}${suffix}`;
   };
 
   const backgroundColor = shift.color || 'hsl(var(--primary))';
@@ -92,7 +92,7 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
       <p className="font-semibold text-xs truncate whitespace-pre-wrap">
         {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
       </p>
-      <p className="font-semibold text-xs truncate whitespace-pre-wrap">
+      <p className="text-xs truncate whitespace-pre-wrap">
         {shift.label}
       </p>
     </div>

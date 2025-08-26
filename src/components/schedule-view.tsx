@@ -466,7 +466,6 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                   ) : <div className="w-9 h-9"/>}
                   <div>
                     <p className="font-semibold text-sm">{getFullName(employee)}</p>
-                    <p className="text-xs text-muted-foreground">{employee.position}</p>
                   </div>
                 </div>
 
@@ -539,4 +538,3 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   );
 }
 
-    
