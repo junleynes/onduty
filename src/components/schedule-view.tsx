@@ -477,6 +477,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         isOpen={isImporterOpen}
         setIsOpen={setIsImporterOpen}
         onImport={handleImportedData}
+        employees={employees}
       />
     </div>
   );

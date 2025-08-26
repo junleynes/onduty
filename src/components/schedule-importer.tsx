@@ -17,12 +17,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
 import type { Shift, Leave, Employee } from '@/types';
-import { employees } from '@/lib/data';
 
 type ScheduleImporterProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onImport: (importedShifts: Shift[], importedLeave: Leave[]) => void;
+  employees: Employee[];
 };
 
 const normalizeName = (name: string) => {
@@ -34,7 +34,7 @@ const normalizeName = (name: string) => {
 const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
     if (!name || typeof name !== 'string') return null;
 
-    const normalizedInput = normalizeName(name.replace(/,/g, ''));
+    const normalizedInput = normalizeName(name);
 
     for (const emp of allEmployees) {
         const normalizedEmpFirstName = normalizeName(emp.firstName);
@@ -80,7 +80,7 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
 };
 
 
-export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImporterProps) {
+export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees }: ScheduleImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
@@ -89,6 +89,11 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
     if (event.target.files) {
       setFile(event.target.files[0]);
     }
+  };
+
+  const getEmployeeById = (id: string | null) => {
+    if (!id) return null;
+    return employees.find(e => e.id === id);
   };
 
   const handleImport = () => {
@@ -281,10 +286,6 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
     reader.readAsArrayBuffer(file);
   };
 
-  const getEmployeeById = (id: string | null) => {
-    if (!id) return null;
-    return employees.find(e => e.id === id);
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
