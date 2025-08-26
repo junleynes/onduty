@@ -27,25 +27,46 @@ type ScheduleImporterProps = {
 
 const normalizeName = (name: string) => {
   if (!name) return '';
-  // Convert to lowercase, remove extra spaces. Keep commas and periods.
-  return name.trim().toLowerCase().replace(/[^a-z0-9,. ]/g, ' ').replace(/\s+/g, ' ');
+  // Convert to lowercase and remove extra spaces.
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
 };
+
 
 const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
     if (!name) return null;
     const normalizedInput = normalizeName(name);
 
     return allEmployees.find(emp => {
-        // Match against "lastname, firstname m." or "lastname, firstname, m."
+        // Try various combinations to find a match
+        const fullName = normalizeName(emp.firstName + ' ' + emp.lastName);
+        const lastNameFirst = normalizeName(emp.lastName + ', ' + emp.firstName);
         const lastNameFirstWithInitial = normalizeName(`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`);
-        // Match against "lastname, firstname"
-        const lastNameFirst = normalizeName(`${emp.lastName}, ${emp.firstName}`);
-        // Match against "firstname lastname"
-        const firstNameLast = normalizeName(`${emp.firstName} ${emp.lastName}`);
+        const lastNameFirstWithInitialAndComma = normalizeName(`${emp.lastName}, ${emp.firstName}, ${emp.middleInitial || ''}`);
 
-        return normalizedInput.startsWith(lastNameFirstWithInitial) || normalizedInput.startsWith(lastNameFirst) || normalizedInput.startsWith(firstNameLast);
+        // Direct match with normalized name from file
+        if (normalizedInput.startsWith(lastNameFirst) || 
+            normalizedInput.startsWith(fullName) || 
+            normalizedInput.startsWith(lastNameFirstWithInitial) ||
+            normalizedInput.startsWith(lastNameFirstWithInitialAndComma)) {
+          return true;
+        }
+
+        // Handle cases like "Leynes Jr., Rodrigo E."
+        // Split by comma, then check parts.
+        const inputParts = normalizedInput.split(',').map(p => p.trim());
+        if (inputParts.length >= 2) {
+            const excelLastName = inputParts[0];
+            const excelFirstName = inputParts[1].split(' ')[0];
+
+            if (normalizeName(emp.lastName) === excelLastName && normalizeName(emp.firstName) === excelFirstName) {
+                return true;
+            }
+        }
+
+        return false;
   });
 };
+
 
 export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImporterProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -199,7 +220,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                             date,
                             startTime: convertTo24Hour(timeMatch[1]),
                             endTime: convertTo24Hour(timeMatch[2]),
-                            label: 'Imported Shift',
+                            label: employee.position || 'Imported Shift',
                             color: '#3498db' // Default color
                         });
 
