@@ -140,7 +140,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 const date = new Date(year, month, day);
                 const cellString = String(cellValue);
 
-                const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))-(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
+                const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
                 
                 if (timeMatch) {
                     const convertTo24Hour = (time: string) => {
