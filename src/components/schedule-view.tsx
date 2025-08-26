@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -339,7 +339,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
 
   return (
     <div className="flex flex-col gap-4 h-full">
-      <header className="flex items-center justify-between p-4 border-b">
+       <header className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-4">
           <Popover>
             <PopoverTrigger asChild>
@@ -403,11 +403,6 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>Import schedule from Excel</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>Import shift template from CSV</DropdownMenuItem>
-               <DropdownMenuSeparator />
-               <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
-                <Settings className="mr-2 h-4 w-4" />
-                Manage Leave Types
-               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -445,6 +440,11 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                         </DropdownMenuItem>
                     )}
                 </DropdownMenuGroup>
+                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Manage Leave Types
+                </DropdownMenuItem>
                 {viewMode === 'week' &&
                     <>
                         <DropdownMenuSeparator />
@@ -476,6 +476,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
               {displayedDays.map((day) => (
                 <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
                   <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
+                  <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="text-xs text-muted-foreground mt-1 cursor-default">
@@ -497,6 +498,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                       <p>Total scheduled work hours for the day.</p>
                     </TooltipContent>
                   </Tooltip>
+                  </TooltipProvider>
                 </div>
               ))}
 

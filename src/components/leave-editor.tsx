@@ -82,7 +82,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
             endTime: leave.endTime || '',
         });
     }
-  }, [leave, form, leaveTypes]);
+  }, [leave, form, leaveTypes, isOpen]);
 
   const onSubmit = (values: z.infer<typeof leaveSchema>) => {
     onSave(values);
