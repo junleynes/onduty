@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn, getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
-import { ShiftEditor } from './shift-editor';
+import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
@@ -27,6 +27,15 @@ type ViewMode = 'day' | 'week' | 'month';
 type ScheduleViewProps = {
   employees: Employee[];
 }
+
+const initialShiftTemplates: ShiftTemplate[] = [
+    { name: 'Morning Shift', label: 'Morning Coverage', startTime: '08:00', endTime: '16:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Evening Shift', label: 'Evening Coverage', startTime: '16:00', endTime: '00:00', color: 'hsl(var(--chart-1))' },
+    { name: 'Manager Open', label: 'Manager Opening', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Lunch Rush', label: 'Lunch Rush', startTime: '11:00', endTime: '15:00', color: 'hsl(var(--chart-4))' },
+    { name: 'Closing Shift', label: 'Closing Duties', startTime: '18:00', endTime: '02:00', color: 'hsl(var(--chart-5))' },
+];
+
 
 export default function ScheduleView({ employees }: ScheduleViewProps) {
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
@@ -42,6 +51,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   
+  const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(initialShiftTemplates);
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
   const { toast } = useToast();
 
@@ -503,6 +513,8 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         onSave={handleSaveShift}
         onDelete={handleDeleteShift}
         employees={employees}
+        shiftTemplates={shiftTemplates}
+        setShiftTemplates={setShiftTemplates}
       />
       <LeaveEditor
         isOpen={isLeaveEditorOpen}
@@ -517,6 +529,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         setIsOpen={setIsImporterOpen}
         onImport={handleImportedData}
         employees={employees}
+        shiftTemplates={shiftTemplates}
       />
     </div>
   );

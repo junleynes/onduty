@@ -77,7 +77,7 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
     const hour = parseInt(h, 10);
     const suffix = hour >= 12 ? 'p' : 'a';
     const hour12 = hour % 12 || 12;
-    return `${hour12}${m === '00' ? '' : `:${m}`}${suffix}`;
+    return `${hour12}${m === '00' ? '' : `:${m}`}`;
   };
 
   const backgroundColor = shift.color || 'hsl(var(--primary))';
@@ -90,9 +90,8 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
       style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
       <p className="font-semibold text-xs truncate">
-        {formatTime(shift.startTime)} - {formatTime(shift.endTime)}
+        {formatTime(shift.startTime)}-{formatTime(shift.endTime)} {shift.label}
       </p>
-      <p className="text-xs truncate">{shift.label}</p>
     </div>
   );
 }

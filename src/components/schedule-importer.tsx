@@ -17,16 +17,20 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
 import type { Shift, Leave, Employee } from '@/types';
+import type { ShiftTemplate } from './shift-editor';
+
 
 type ScheduleImporterProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onImport: (importedShifts: Shift[], importedLeave: Leave[]) => void;
   employees: Employee[];
+  shiftTemplates: ShiftTemplate[];
 };
 
 const normalizeName = (name: string) => {
   if (!name) return '';
+  // Keep periods for suffixes like Jr. but normalize whitespace
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
 };
 
@@ -42,36 +46,39 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
         const normalizedEmpFullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
         const normalizedEmpFullNameWithMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''} ${emp.lastName}`);
 
-        // Simple full name match
         if (normalizedEmpFullName === normalizedInput || normalizedEmpFullNameWithMI === normalizedInput) {
             return emp;
         }
 
-        // Handle "Lastname, Firstname" and "Lastname, Firstname M.I." formats
         if (name.includes(',')) {
             const parts = name.split(',').map(p => p.trim());
             const lastNamePart = normalizeName(parts[0]);
-            const firstNamePart = normalizeName(parts.slice(1).join(' '));
+            const restOfNamePart = normalizeName(parts.slice(1).join(' '));
 
             if (normalizedEmpLastName === lastNamePart) {
-                const empFirstNameCombined = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).trim();
-                const empFirstNameCombinedNoSpace = empFirstNameCombined.replace(/\s/g, '');
-                const inputFirstNameNoSpace = firstNamePart.replace(/\./g, '').replace(/\s/g, '');
-
-                if (empFirstNameCombinedNoSpace === inputFirstNameNoSpace) {
+                const empFirstNameAndMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).trim();
+                
+                // Direct match for the rest of the name
+                if (normalizeName(empFirstNameAndMI) === restOfNamePart) {
                     return emp;
+                }
+                
+                // Handle cases like "VILLACERAN, ANTHONY PAUL V" -> match "anthony paul v"
+                const firstAndMiddle = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).replace(/\./g, '').trim();
+
+                if (firstAndMiddle === restOfNamePart.replace(/\./g, '')) {
+                     return emp;
                 }
             }
         }
     }
     
-    // Fallback for just last name and first name parts if nothing else matches
+    // Fallback for "Firstname Lastname" or "Firstname M Lastname"
     const parts = normalizedInput.split(' ');
-    const lastNamePart = parts[0];
-    const firstNamePart = parts.slice(1).join(' ');
-
-    for (const emp of allEmployees) {
-         if (normalizeName(emp.lastName) === lastNamePart && normalizeName(emp.firstName) === firstNamePart) {
+    const firstNamePart = parts[0];
+    const lastNamePart = parts[parts.length -1];
+     for (const emp of allEmployees) {
+         if (normalizeName(emp.firstName) === firstNamePart && normalizeName(emp.lastName) === lastNamePart) {
             return emp;
         }
     }
@@ -80,7 +87,7 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
 };
 
 
-export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees }: ScheduleImporterProps) {
+export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shiftTemplates }: ScheduleImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
@@ -188,8 +195,6 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees }: Sch
                 
                 const employee = findEmployeeByName(row[0] as string, employees);
                 if (!employee) {
-                    // Skip rows that don't match an employee
-                    // This will also skip header-like rows such as "Employee" or "Media Server Support"
                     continue;
                 };
                 
@@ -231,15 +236,20 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees }: Sch
                             }
                             return `${String(hour).padStart(2, '0')}:${m || '00'}`;
                         }
+
+                        const startTime = convertTo24Hour(timeMatch[1]);
+                        const endTime = convertTo24Hour(timeMatch[2]);
                         
+                        const matchedTemplate = shiftTemplates.find(t => t.startTime === startTime && t.endTime === endTime);
+
                         importedShifts.push({
                             id: `imp-sh-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
                             date,
-                            startTime: convertTo24Hour(timeMatch[1]),
-                            endTime: convertTo24Hour(timeMatch[2]),
-                            label: employee.position || 'Imported Shift',
-                            color: '#3498db' // Default color
+                            startTime,
+                            endTime,
+                            label: matchedTemplate ? matchedTemplate.label : 'Unknown Shift',
+                            color: matchedTemplate ? matchedTemplate.color : '#9b59b6' // purple for unknown
                         });
 
                     } else if (['VL', 'SL', 'AVL'].includes(cellString.toUpperCase().trim())) {

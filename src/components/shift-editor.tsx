@@ -62,6 +62,8 @@ type ShiftEditorProps = {
   onSave: (shift: Shift | Partial<Shift>) => void;
   onDelete: (shiftId: string) => void;
   employees: Employee[];
+  shiftTemplates: ShiftTemplate[];
+  setShiftTemplates: React.Dispatch<React.SetStateAction<ShiftTemplate[]>>;
 };
 
 const roleColors: { [key: string]: string } = {
@@ -82,18 +84,9 @@ const shiftColorOptions = [
     { label: 'White', value: '#ffffff' },
 ];
 
-const initialShiftTemplates: ShiftTemplate[] = [
-    { name: 'Morning Shift', label: 'Morning Coverage', startTime: '08:00', endTime: '16:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Evening Shift', label: 'Evening Coverage', startTime: '16:00', endTime: '00:00', color: 'hsl(var(--chart-1))' },
-    { name: 'Manager Open', label: 'Manager Opening', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Lunch Rush', label: 'Lunch Rush', startTime: '11:00', endTime: '15:00', color: 'hsl(var(--chart-4))' },
-    { name: 'Closing Shift', label: 'Closing Duties', startTime: '18:00', endTime: '02:00', color: 'hsl(var(--chart-5))' },
-];
 
-
-export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees }: ShiftEditorProps) {
+export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees, shiftTemplates, setShiftTemplates }: ShiftEditorProps) {
   const { toast } = useToast();
-  const [shiftTemplates, setShiftTemplates] = useState(initialShiftTemplates);
   const [editingTemplate, setEditingTemplate] = useState<ShiftTemplate | null>(null);
   const [activeTab, setActiveTab] = useState('details');
   const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
