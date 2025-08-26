@@ -182,12 +182,12 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                             label: 'Imported Shift'
                         });
 
-                    } else if (['VL', 'SL', 'AVL', 'HOL-OFF'].includes(cellString.toUpperCase().trim())) {
+                    } else if (['VL', 'SL', 'AVL', 'HOL-OFF', 'OFFSET'].includes(cellString.toUpperCase().trim())) {
                          importedLeave.push({
                             id: `imp-lv-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
                             date,
-                            type: cellString.toUpperCase().trim() === 'HOL-OFF' ? 'Unavailable' : 'Vacation',
+                            type: ['HOL-OFF', 'OFFSET'].includes(cellString.toUpperCase().trim()) ? 'Unavailable' : 'Vacation',
                             isAllDay: true,
                          })
                     }
