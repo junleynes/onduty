@@ -143,11 +143,14 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
 
 
   const handleSaveLeave = (savedLeave: Leave | Partial<Leave>) => {
-    if (savedLeave.id) {
-        setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
+    const leaveType = leaveTypes.find(lt => lt.type === savedLeave.type);
+    const leaveWithColor = { ...savedLeave, color: leaveType?.color };
+
+    if (leaveWithColor.id) {
+        setLeave(leave.map(l => l.id === leaveWithColor.id ? leaveWithColor as Leave : l));
         toast({ title: "Leave Updated" });
     } else {
-        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
+        const newLeaveWithId = { ...leaveWithColor, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
         toast({ title: "Time Off Added" });
     }
@@ -398,9 +401,6 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
             <DropdownMenuContent>
               <DropdownMenuItem onClick={handleAddShiftClick}>Add Shift</DropdownMenuItem>
               <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>Import schedule from Excel</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>Import shift template from CSV</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -409,6 +409,14 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
                 <DropdownMenuGroup>
+                    <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import schedule
+                    </DropdownMenuItem>
+                     <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Import shift templates
+                    </DropdownMenuItem>
                     {viewMode === 'week' &&
                         <DropdownMenuItem onClick={handleCopyPreviousWeek}>
                             <Copy className="mr-2 h-4 w-4" />
@@ -451,7 +459,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                                 <Download className="mr-2 h-4 w-4" />
                                 <span>Save week as template</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleLoadTemplate}>
+                            <DropdownMenuItem onClick={handleLoadTemplate} disabled={!weekTemplate}>
                                 <Upload className="mr-2 h-4 w-4" />
                                 <span>Load week template</span>
                             </DropdownMenuItem>
