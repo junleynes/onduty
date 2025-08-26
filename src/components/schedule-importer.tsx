@@ -27,7 +27,7 @@ type ScheduleImporterProps = {
 
 const normalizeName = (name: string) => {
   if (!name) return '';
-  // Convert to lowercase and remove extra spaces.
+  // Convert to lowercase and remove extra spaces, but keep commas and periods for parsing.
   return name.trim().toLowerCase().replace(/\s+/g, ' ');
 };
 
@@ -37,32 +37,40 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
     const normalizedInput = normalizeName(name);
 
     return allEmployees.find(emp => {
-        // Try various combinations to find a match
-        const fullName = normalizeName(emp.firstName + ' ' + emp.lastName);
-        const lastNameFirst = normalizeName(emp.lastName + ', ' + emp.firstName);
-        const lastNameFirstWithInitial = normalizeName(`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`);
-        const lastNameFirstWithInitialAndComma = normalizeName(`${emp.lastName}, ${emp.firstName}, ${emp.middleInitial || ''}`);
+        const fullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
+        if (fullName === normalizedInput) return true;
 
-        // Direct match with normalized name from file
-        if (normalizedInput.startsWith(lastNameFirst) || 
-            normalizedInput.startsWith(fullName) || 
-            normalizedInput.startsWith(lastNameFirstWithInitial) ||
-            normalizedInput.startsWith(lastNameFirstWithInitialAndComma)) {
-          return true;
-        }
+        // Handle "Lastname, Firstname" and "Lastname, Firstname M.I."
+        const excelParts = normalizedInput.split(',').map(p => p.trim());
+        if (excelParts.length === 2) {
+            const excelLastName = excelParts[0];
+            const excelFirstNameAndRest = excelParts[1];
+            
+            // Construct the full name from employee data for comparison
+            // e.g., 'Rodrigo' + ' ' + 'Leynes Jr' -> 'rodrigo leynes jr'
+            const empFirstName = normalizeName(emp.firstName);
+            const empLastName = normalizeName(emp.lastName);
+            
+            // e.g., 'leynez jr' -> ['leynes', 'jr'] -> 'leynes'
+            const empPrimaryLastName = empLastName.split(' ')[0];
 
-        // Handle cases like "Leynes Jr., Rodrigo E."
-        // Split by comma, then check parts.
-        const inputParts = normalizedInput.split(',').map(p => p.trim());
-        if (inputParts.length >= 2) {
-            const excelLastName = inputParts[0];
-            const excelFirstName = inputParts[1].split(' ')[0];
-
-            if (normalizeName(emp.lastName) === excelLastName && normalizeName(emp.firstName) === excelFirstName) {
-                return true;
+            // For "LEYNES, RODRIGO JR E"
+            // excelLastName = "leynes"
+            // excelFirstNameAndRest = "rodrigo jr e"
+            if (excelLastName === empPrimaryLastName) {
+                // Now check if "rodrigo jr e" matches "rodrigo leynes jr e"
+                // Construct the "rest" of the name from our employee data
+                const empFirstNameAndRest = normalizeName(`${emp.firstName} ${emp.lastName.substring(empPrimaryLastName.length).trim()} ${emp.middleInitial || ''}`.trim());
+                if (excelFirstNameAndRest === empFirstNameAndRest) {
+                    return true;
+                }
             }
         }
-
+        
+        // Fallback for simple "Lastname, Firstname"
+        const lastNameFirst = normalizeName(`${emp.lastName}, ${emp.firstName}`);
+        if (normalizedInput.startsWith(lastNameFirst)) return true;
+        
         return false;
   });
 };
@@ -169,7 +177,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 const row = json[rowIndex];
                 if (!row || !row[0] || typeof row[0] !== 'string') continue;
                 
-                const employee = findEmployeeByName(row[0], employees);
+                const employee = findEmployeeByName(row[0] as string, employees);
                 if (!employee) {
                     console.warn(`Could not find employee for name: ${row[0]}`);
                     continue;
