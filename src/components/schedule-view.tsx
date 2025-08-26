@@ -29,11 +29,14 @@ type ScheduleViewProps = {
 }
 
 const initialShiftTemplates: ShiftTemplate[] = [
-    { name: 'Morning Shift', label: 'Morning Coverage', startTime: '08:00', endTime: '16:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Evening Shift', label: 'Evening Coverage', startTime: '16:00', endTime: '00:00', color: 'hsl(var(--chart-1))' },
-    { name: 'Manager Open', label: 'Manager Opening', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Lunch Rush', label: 'Lunch Rush', startTime: '11:00', endTime: '15:00', color: 'hsl(var(--chart-4))' },
-    { name: 'Closing Shift', label: 'Closing Duties', startTime: '18:00', endTime: '02:00', color: 'hsl(var(--chart-5))' },
+    { name: 'Morning Shift', label: 'Morning Shift', startTime: '06:00', endTime: '13:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Late Morning Shift', label: 'Late Morning Shift', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
+    { name: 'Afternoon Shift', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
+    { name: 'Early-Afternoon Shift', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
+    { name: 'Night Shift', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
+    { name: 'Mid Shift', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
+    { name: 'Manager Shift', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
+    { name: 'Late Manager Shift', label: 'Late Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
 ];
 
 
