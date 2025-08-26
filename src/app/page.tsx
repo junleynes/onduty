@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { UserRole, Employee } from '@/types';
+import type { UserRole, Employee, Shift, Leave } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { employees as initialEmployees } from '@/lib/data';
+import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave } from '@/lib/data';
 
 // Views
 import ScheduleView from '@/components/schedule-view';
@@ -20,7 +20,11 @@ export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 function AppContent() {
   const [role, setRole] = useState<UserRole>('admin');
   const [activeView, setActiveView] = useState<NavItem>(role === 'admin' ? 'schedule' : 'my-schedule');
+  
+  // Lifted state for employees, shifts, and leave
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [shifts, setShifts] = useState<Shift[]>(initialShifts);
+  const [leave, setLeave] = useState<Leave[]>(initialLeave);
 
 
   const handleNavigate = (view: NavItem) => {
@@ -40,11 +44,19 @@ function AppContent() {
   const currentView = useMemo(() => {
     switch (activeView) {
       case 'schedule':
-        return <ScheduleView employees={employees} />;
+        return (
+          <ScheduleView 
+            employees={employees} 
+            shifts={shifts}
+            setShifts={setShifts}
+            leave={leave}
+            setLeave={setLeave}
+          />
+        );
       case 'team':
         return role === 'admin' ? <TeamView employees={employees} setEmployees={setEmployees} /> : null;
       case 'my-schedule':
-        return <MyScheduleView />;
+        return <MyScheduleView shifts={shifts} employeeId={employees.length > 2 ? employees[2].id : null} />;
       case 'availability':
         return <AvailabilityView />;
       default:
@@ -60,7 +72,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, role, employees]);
+  }, [activeView, role, employees, shifts, leave]);
 
   return (
     <div className='flex h-screen w-full'>

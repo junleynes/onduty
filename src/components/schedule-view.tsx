@@ -4,7 +4,6 @@
 import React, { useState, useMemo } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import { shifts as initialShifts, leave as initialLeave } from '@/lib/data';
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -29,6 +28,10 @@ type ViewMode = 'day' | 'week' | 'month';
 
 type ScheduleViewProps = {
   employees: Employee[];
+  shifts: Shift[];
+  setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
+  leave: Leave[];
+  setLeave: React.Dispatch<React.SetStateAction<Leave[]>>;
 }
 
 const initialShiftTemplates: ShiftTemplate[] = [
@@ -37,8 +40,8 @@ const initialShiftTemplates: ShiftTemplate[] = [
     { name: 'Afternoon Shift (14:00-22:00)', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
     { name: 'Early-Afternoon Shift (12:00-20:00)', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
     { name: 'Night Shift (22:00-06:00)', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
-    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#ffffff' },
-    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
+    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#f1c40f' },
+    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#f1c40f' },
     { name: 'Manager Shift (10:00-19:00)', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-4))' },
     { name: 'Manager Shift (11:00-20:00)', label: 'Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-4))' },
     { name: 'Manager Shift (12:00-21:00)', label: 'Manager Shift', startTime: '12:00', endTime: '21:00', color: 'hsl(var(--chart-4))' },
@@ -55,9 +58,7 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'ML', color: '#ec4899' }, // pink
 ];
 
-export default function ScheduleView({ employees }: ScheduleViewProps) {
-  const [shifts, setShifts] = useState<Shift[]>(initialShifts);
-  const [leave, setLeave] = useState<Leave[]>(initialLeave);
+export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave }: ScheduleViewProps) {
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -301,8 +302,10 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   }
 
   // Drag and Drop Handlers
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, itemId: string) => {
-    e.dataTransfer.setData("itemId", itemId);
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: Shift | Leave) => {
+    e.dataTransfer.setData("itemId", item.id);
+    const itemType = 'label' in item ? 'shift' : 'leave';
+    e.dataTransfer.setData("itemType", itemType);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -312,10 +315,9 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetEmployeeId: string | null, targetDate: Date) => {
     e.preventDefault();
     const itemId = e.dataTransfer.getData("itemId");
+    const itemType = e.dataTransfer.getData("itemType");
     
-    const isShift = shifts.some(s => s.id === itemId);
-
-    if (isShift) {
+    if (itemType === 'shift') {
       setShifts(prevShifts => 
         prevShifts.map(shift =>
           shift.id === itemId
@@ -323,7 +325,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
             : shift
         )
       );
-    } else {
+    } else if (itemType === 'leave') {
        setLeave(prevLeave => 
         prevLeave.map(l =>
           l.id === itemId
@@ -344,7 +346,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
       if (start.getMonth() !== end.getMonth()) {
           return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
       }
-      return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
+      return `${format(start, 'd')} - ${format(end, 'd, yyyy')}`;
   }
 
 
@@ -556,7 +558,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                         onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                       >
                         {itemsForDay.map((item) => (
-                          <div key={item.id} draggable={true} onDragStart={(e) => handleDragStart(e, item.id)}>
+                          <div key={item.id} draggable={true} onDragStart={(e) => handleDragStart(e, item)}>
                             <ShiftBlock
                               item={item}
                               onClick={() => handleEditItemClick(item)}

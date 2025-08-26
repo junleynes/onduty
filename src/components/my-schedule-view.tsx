@@ -1,17 +1,20 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { shifts, getEmployeeById } from '@/lib/data';
+import { getEmployeeById, employees as allEmployees } from '@/lib/data';
 import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Shift } from '@/types';
+import type { Shift, Employee } from '@/types';
 import { format, addDays, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from './ui/button';
 
 type ViewMode = 'day' | 'week';
 
-// Let's assume the logged-in employee is 'emp-003' (Charlie Brown) for demonstration
-const LOGGED_IN_EMPLOYEE_ID = 'emp-003';
+type MyScheduleViewProps = {
+  shifts: Shift[];
+  employeeId: string | null;
+};
 
 const roleColors: { [key: string]: string } = {
   Manager: 'bg-accent/50 border-accent',
@@ -20,12 +23,15 @@ const roleColors: { [key: string]: string } = {
   Cashier: 'bg-green-100 border-green-200',
 };
 
-export default function MyScheduleView() {
+export default function MyScheduleView({ shifts, employeeId }: MyScheduleViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
 
-  const myShifts = shifts.filter(shift => shift.employeeId === LOGGED_IN_EMPLOYEE_ID);
-  const employee = getEmployeeById(LOGGED_IN_EMPLOYEE_ID);
+  const myShifts = shifts.filter(shift => shift.employeeId === employeeId);
+  
+  // A temporary measure to find the employee from a static list if available
+  // In a real app, you'd fetch the employee data based on the logged-in user
+  const employee = allEmployees.find(e => e.id === employeeId);
 
   const dateRange = useMemo(() => {
     if (viewMode === 'week') {
@@ -35,7 +41,7 @@ export default function MyScheduleView() {
   }, [currentDate, viewMode]);
 
   const shiftsToDisplay = myShifts.filter(shift => 
-    shift.date >= dateRange.start && shift.date <= dateRange.end
+    isSameDay(shift.date, dateRange.start) || (shift.date > dateRange.start && shift.date < dateRange.end) || isSameDay(shift.date, dateRange.end)
   );
 
   const shiftsByDate = shiftsToDisplay.reduce((acc, shift) => {
@@ -53,6 +59,19 @@ export default function MyScheduleView() {
     const daysToAdd = viewMode === 'week' ? 7 : 1;
     setCurrentDate(prev => addDays(prev, direction === 'prev' ? -daysToAdd : daysToAdd));
   };
+  
+  if (!employeeId || !employee) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>My Schedule</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>No employee is currently selected. Please switch to Admin View to manage schedules.</p>
+            </CardContent>
+        </Card>
+    )
+  }
 
   return (
     <Card>
@@ -93,8 +112,7 @@ export default function MyScheduleView() {
               </h3>
               <div className="space-y-4">
                 {shiftsByDate[dateStr].map(shift => {
-                  const shiftEmployee = getEmployeeById(shift.employeeId);
-                  if (!shiftEmployee) return null;
+                  const shiftEmployee = employee; // We already filtered shifts for this employee
                   return (
                     <Card key={shift.id} className={`${roleColors[shiftEmployee.position] || ''} border-l-4`}>
                       <CardContent className="p-4">
