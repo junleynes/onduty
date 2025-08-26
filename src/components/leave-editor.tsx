@@ -52,7 +52,7 @@ type LeaveEditorProps = {
 
 const defaultLeaveTypes: { type: LeaveType; color: string }[] = [
     { type: 'VL', color: '#ec4899' }, // pink
-    { type: 'EL', 'color': '#ef4444' }, // red
+    { type: 'EL', color: '#ef4444' }, // red
     { type: 'OFFSET', color: '#6b7280' }, // gray
 ];
 

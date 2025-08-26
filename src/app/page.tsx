@@ -70,14 +70,14 @@ function AppContent() {
       <Sidebar collapsible="icon">
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
-      <SidebarInset>
-        <div className="flex flex-col h-screen bg-background">
-          <Header currentRole={role} onRoleChange={handleRoleChange} />
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            {currentView}
-          </main>
-        </div>
-      </SidebarInset>
+      <div className="flex flex-col h-screen w-full">
+        <Header currentRole={role} onRoleChange={handleRoleChange} />
+        <SidebarInset>
+            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                {currentView}
+            </main>
+        </SidebarInset>
+      </div>
     </>
   );
 }
