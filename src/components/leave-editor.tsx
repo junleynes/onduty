@@ -69,7 +69,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
   });
 
   useEffect(() => {
-    if (leave) {
+    if (isOpen && leave) {
         const selectedType = leaveTypes.find(lt => lt.type === (leave?.type || 'OFFSET'));
         form.reset({
             id: leave.id || undefined,
