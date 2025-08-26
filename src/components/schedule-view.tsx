@@ -444,7 +444,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
           <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
             {/* Header Row */}
             <div className="sticky top-0 z-30 p-2 bg-card border-b border-r flex items-center">
-               <span className="font-semibold text-sm">Team Members</span>
+               <span className="font-semibold text-sm">Employees</span>
             </div>
             {displayedDays.map((day) => (
               <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">

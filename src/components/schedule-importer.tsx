@@ -201,9 +201,9 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                     if (cellValue === null || cellValue === undefined || String(cellValue).trim() === '') return;
 
                     const date = new Date(Date.UTC(year, month, day));
-                    const cellString = String(cellValue);
+                    const cellString = String(cellValue).toUpperCase().trim();
                     
-                    if (cellString.toUpperCase().trim() === 'OFF') {
+                    if (cellString === 'OFF') {
                         importedShifts.push({
                             id: `imp-sh-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
@@ -216,7 +216,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                         });
                         return;
                     }
-                     if (cellString.toUpperCase().trim() === 'HOL-OFF') {
+                     if (cellString === 'HOL-OFF') {
                         importedShifts.push({
                             id: `imp-sh-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
@@ -262,20 +262,12 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                             color: matchedTemplate ? matchedTemplate.color : '#9b59b6' // purple for unknown
                         });
 
-                    } else if (['VL', 'SL', 'AVL'].includes(cellString.toUpperCase().trim())) {
+                    } else if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL'].includes(cellString)) {
                          importedLeave.push({
                             id: `imp-lv-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
                             date,
-                            type: 'VL',
-                            isAllDay: true,
-                         })
-                    } else if (['OFFSET'].includes(cellString.toUpperCase().trim())) {
-                         importedLeave.push({
-                            id: `imp-lv-${rowIndex}-${colIndex}`,
-                            employeeId: employee.id,
-                            date,
-                            type: 'OFFSET',
+                            type: cellString === 'AVL' ? 'VL' : cellString,
                             isAllDay: true,
                          })
                     }
