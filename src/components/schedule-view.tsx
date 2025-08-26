@@ -303,8 +303,8 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   }
 
   // Drag and Drop Handlers
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, shiftId: string) => {
-    e.dataTransfer.setData("shiftId", shiftId);
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, itemId: string) => {
+    e.dataTransfer.setData("itemId", itemId);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -313,13 +313,20 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetEmployeeId: string | null, targetDate: Date) => {
     e.preventDefault();
-    const shiftId = e.dataTransfer.getData("shiftId");
+    const itemId = e.dataTransfer.getData("itemId");
     
     setShifts(prevShifts => 
       prevShifts.map(shift =>
-        shift.id === shiftId
+        shift.id === itemId
           ? { ...shift, employeeId: targetEmployeeId, date: targetDate }
           : shift
+      )
+    );
+     setLeave(prevLeave => 
+      prevLeave.map(l =>
+        l.id === itemId
+          ? { ...l, employeeId: targetEmployeeId!, date: targetDate }
+          : l
       )
     );
   };
@@ -546,7 +553,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                         onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                       >
                         {itemsForDay.map((item) => (
-                          <div key={item.id} draggable={'label' in item} onDragStart={(e) => 'label' in item && handleDragStart(e, item.id)}>
+                          <div key={item.id} draggable={true} onDragStart={(e) => handleDragStart(e, item.id)}>
                             <ShiftBlock
                               item={item}
                               onClick={() => handleEditItemClick(item)}
