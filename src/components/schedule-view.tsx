@@ -370,27 +370,17 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
           </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                    <FileUp className="mr-2 h-4 w-4" />
-                    Import
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>Import schedule from Excel</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>Import shift template from CSV</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
               <Button>
                 <PlusCircle className="mr-2 h-4 w-4" />
-                New
+                Add
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={handleAddShiftClick}>Add Shift</DropdownMenuItem>
               <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>Import schedule from Excel</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>Import shift template from CSV</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
