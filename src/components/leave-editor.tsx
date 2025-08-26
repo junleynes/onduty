@@ -194,7 +194,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
                   <FormLabel>Date</FormLabel>
                    <DatePicker
                         date={field.value}
-                        onDateChange={field.onChange}
+                        onDateChange={(date) => field.onChange(date)}
                     />
                   <FormMessage />
                 </FormItem>

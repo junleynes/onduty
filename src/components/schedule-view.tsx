@@ -101,7 +101,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   };
   
   const handleAddLeaveClick = () => {
-    setEditingLeave({ type: 'OFFSET', isAllDay: true });
+    setEditingLeave({ type: 'OFFSET', isAllDay: true, date: new Date() });
     setIsLeaveEditorOpen(true);
   };
 
@@ -263,9 +263,8 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
   };
 
   const handleImportedData = (importedShifts: Shift[], importedLeave: Leave[]) => {
-      // A simple merge: replace everything. A more sophisticated merge could be implemented.
-      setShifts(importedShifts);
-      setLeave(importedLeave);
+      setShifts(prev => [...prev, ...importedShifts]);
+      setLeave(prev => [...prev, ...importedLeave]);
   };
   
   const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
