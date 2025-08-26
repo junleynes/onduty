@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import type { Employee } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Pencil, Trash2, Upload, KeyRound } from 'lucide-react';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
 import { TeamEditor } from './team-editor';
 import { useToast } from '@/hooks/use-toast';
 import { MemberImporter } from './member-importer';
@@ -31,15 +31,24 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
+  const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const { toast } = useToast();
 
   const handleAddMember = () => {
     setEditingEmployee({});
+    setIsPasswordResetMode(false);
     setIsEditorOpen(true);
   };
 
   const handleEditMember = (employee: Employee) => {
     setEditingEmployee(employee);
+    setIsPasswordResetMode(false);
+    setIsEditorOpen(true);
+  };
+  
+  const handleResetPassword = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setIsPasswordResetMode(true);
     setIsEditorOpen(true);
   };
 
@@ -52,7 +61,7 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
     if (employeeData.id) {
       // Update existing employee
       setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
-      toast({ title: 'Member Updated' });
+      toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'Member Updated' });
     } else {
       // Add new employee
       const newEmployee: Employee = {
@@ -146,6 +155,11 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
                                 <Pencil className="mr-2 h-4 w-4" />
                                 <span>Edit</span>
                             </DropdownMenuItem>
+                             <DropdownMenuItem onClick={() => handleResetPassword(employee)}>
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                <span>Reset Password</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteMember(employee.id)}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Delete</span>
@@ -164,6 +178,7 @@ export default function TeamView({ employees, setEmployees }: TeamViewProps) {
         setIsOpen={setIsEditorOpen}
         employee={editingEmployee}
         onSave={handleSaveMember}
+        isPasswordResetMode={isPasswordResetMode}
       />
       <MemberImporter
         isOpen={isImporterOpen}

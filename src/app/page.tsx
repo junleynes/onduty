@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -14,6 +15,7 @@ import MyScheduleView from '@/components/my-schedule-view';
 import AvailabilityView from '@/components/availability-view';
 import TeamView from '@/components/team-view';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { TeamEditor } from '@/components/team-editor';
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 
@@ -26,17 +28,25 @@ function AppContent() {
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
   
   const [activeView, setActiveView] = useState<NavItem>('schedule');
+  const [isPasswordEditorOpen, setIsPasswordEditorOpen] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         const user: Employee = JSON.parse(storedUser);
-        setCurrentUser(user);
-        setActiveView(user.position === 'Manager' ? 'schedule' : 'my-schedule');
+        // Ensure the current user in state is up-to-date with the main employees list
+        const updatedUser = employees.find(emp => emp.id === user.id);
+        if (updatedUser) {
+            setCurrentUser(updatedUser);
+            setActiveView(updatedUser.position === 'Manager' ? 'schedule' : 'my-schedule');
+        } else {
+             // If user not found (e.g. deleted), log them out
+            handleLogout();
+        }
     } else {
       router.push('/login');
     }
-  }, [router]);
+  }, [router, employees]);
   
   const role: UserRole = currentUser?.position === 'Manager' ? 'admin' : 'employee';
 
@@ -48,6 +58,22 @@ function AppContent() {
     localStorage.removeItem('currentUser');
     setCurrentUser(null);
     router.push('/login');
+  }
+
+  const handleOpenPasswordEditor = () => {
+    setIsPasswordEditorOpen(true);
+  }
+
+  const handleSavePassword = (employeeData: Partial<Employee>) => {
+     if (employeeData.id) {
+      setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
+      // Also update the currentUser in localStorage if they are editing their own password
+      if (currentUser?.id === employeeData.id) {
+          const updatedUser = { ...currentUser, ...employeeData };
+          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      }
+    }
+    setIsPasswordEditorOpen(false);
   }
 
   const currentView = useMemo(() => {
@@ -102,17 +128,28 @@ function AppContent() {
 
 
   return (
+    <>
     <div className='flex h-screen w-full'>
       <Sidebar collapsible="icon">
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header currentUser={currentUser} onLogout={handleLogout} />
+        <Header currentUser={currentUser} onLogout={handleLogout} onResetPassword={handleOpenPasswordEditor} />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {currentView}
         </main>
       </div>
     </div>
+    {isPasswordEditorOpen && (
+        <TeamEditor
+            isOpen={isPasswordEditorOpen}
+            setIsOpen={setIsPasswordEditorOpen}
+            employee={currentUser}
+            onSave={handleSavePassword}
+            isPasswordResetMode={true}
+        />
+    )}
+    </>
   );
 }
 

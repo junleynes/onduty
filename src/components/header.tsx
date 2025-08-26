@@ -1,5 +1,6 @@
+
 'use client';
-import { LayoutGrid, Bell, CircleUser, User, Shield, LogOut } from 'lucide-react';
+import { LayoutGrid, Bell, CircleUser, User, Shield, LogOut, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import type { Employee } from '@/types';
@@ -16,9 +17,10 @@ import {
 type HeaderProps = {
   currentUser: Employee | null;
   onLogout: () => void;
+  onResetPassword: () => void;
 };
 
-export default function Header({ currentUser, onLogout }: HeaderProps) {
+export default function Header({ currentUser, onLogout, onResetPassword }: HeaderProps) {
   const { isMobile } = useSidebar();
   const role = currentUser?.position === 'Manager' ? 'admin' : 'employee';
   
@@ -46,7 +48,10 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem>Profile</DropdownMenuItem>
-                    <DropdownMenuItem>Settings</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onResetPassword}>
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      <span>Reset Password</span>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={onLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
