@@ -383,7 +383,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
         <CardContent className="p-0">
           <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
             {/* Header Row */}
-            <div className="sticky top-0 z-10 p-2 bg-card border-b border-r flex items-center">
+            <div className="sticky top-0 z-30 p-2 bg-card border-b border-r flex items-center">
                <SidebarTrigger className="hidden md:flex mr-2" />
                <span className="font-semibold text-sm">Employees</span>
             </div>
@@ -402,7 +402,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
             {allEmployees.map((employee) => (
               <React.Fragment key={employee.id}>
                 {/* Employee Cell */}
-                <div className="p-2 border-b border-r flex items-center gap-3 min-h-[70px] sticky left-0 bg-card z-10">
+                <div className="p-2 border-b border-r flex items-center gap-3 min-h-[70px] sticky left-0 bg-card z-20">
                   {employee.id !== 'unassigned' ? (
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
