@@ -56,6 +56,8 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
 
   const shift = item;
 
+  if (!shift.label) return null;
+
   if (shift.isDayOff) {
     return (
        <div
@@ -78,11 +80,13 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
     return `${hour12}${m === '00' ? '' : `:${m}`}${suffix}`;
   };
 
+  const backgroundColor = shift.color || 'hsl(var(--primary))';
+
   return (
     <div
       onClick={onClick}
       className={cn(blockVariants({ type: 'shift' }))}
-      style={{ backgroundColor: shift.color }}
+      style={{ backgroundColor: backgroundColor }}
     >
       <p className="font-semibold text-xs truncate">
         {formatTime(shift.startTime)} - {formatTime(shift.endTime)}

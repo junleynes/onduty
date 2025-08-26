@@ -28,8 +28,9 @@ type ScheduleImporterProps = {
 const normalizeName = (name: string) => {
   if (!name) return '';
   // Convert to lowercase, remove all non-alphanumeric chars except comma, then remove extra spaces
-  return name.trim().toLowerCase().replace(/[^a-z0-9, ]/g, '').replace(/\s+/g, ' ');
+  return name.trim().toLowerCase().replace(/[^a-z0-9, ]/g, ' ').replace(/\s+/g, ' ');
 };
+
 
 const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
     if (!name) return null;
@@ -102,6 +103,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
         }
 
         const isDateRow = (row: (string | number | null)[]): boolean => {
+            if (!row || row.length === 0) return false;
             const dateLikeCells = row.filter(cell => {
                 if (cell === null || cell === undefined) return false;
                 const cellStr = String(cell).trim();
@@ -109,8 +111,10 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 const num = Number(cellStr);
                 return !isNaN(num) && num >= 1 && num <= 31;
             });
+            // A row is considered a date row if it has more than 5 numbers between 1 and 31.
             return dateLikeCells.length > 5;
         };
+
 
         const dateRowIndices = json.reduce((acc, row, index) => {
             if (isDateRow(row)) {
@@ -167,7 +171,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                             if (tempTime.includes('pm') && hour < 12) {
                                 hour += 12;
                             }
-                            if (tempTime.includes('am') && hour === 12) { // Midnight case
+                            if (tempTime.includes('am') && hour === 12) { // Midnight case: 12am is 00:00
                                hour = 0;
                             }
                             return `${String(hour).padStart(2, '0')}:${m || '00'}`;
@@ -179,7 +183,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                             date,
                             startTime: convertTo24Hour(timeMatch[1]),
                             endTime: convertTo24Hour(timeMatch[2]),
-                            label: 'Imported Shift'
+                            label: 'Imported Shift',
+                            color: '#3498db' // Default color
                         });
 
                     } else if (['VL', 'SL', 'AVL', 'HOL-OFF', 'OFFSET'].includes(cellString.toUpperCase().trim())) {
@@ -195,9 +200,20 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
             }
         });
         
-
+        const matchedEmployeeNames = new Set(importedShifts.map(s => getEmployeeById(s.employeeId)?.firstName).filter(Boolean));
+        
         if (importedShifts.length === 0 && importedLeave.length === 0) {
-             toast({ title: 'Import Warning', description: `No shifts or leave were found in the file. Please check that the file format is correct and that employee names in the file match names in the Team Members list.`, variant: 'destructive', duration: 8000 });
+             const employeeNamesInFile = new Set(json.map(row => row[0]).filter(name => typeof name === 'string' && name.trim() !== ''));
+             const unmatchedNames = [...employeeNamesInFile].filter(name => !findEmployeeByName(name as string, employees));
+
+             let errorDetail = 'Please check that the file format is correct.';
+             if (unmatchedNames.length > 0) {
+                 errorDetail = `No employees from the Excel file could be matched to team members. Unmatched names include: ${unmatchedNames.slice(0, 3).join(', ')}...`
+             } else if(dateRowIndices.length === 0) {
+                 errorDetail = "Could not find the date row (1-31). Please ensure it exists and contains numbers."
+             }
+
+             toast({ title: 'Import Warning', description: `No shifts or leave were found. ${errorDetail}`, variant: 'destructive', duration: 8000 });
         } else {
             onImport(importedShifts, importedLeave);
             toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
@@ -213,6 +229,11 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
       }
     };
     reader.readAsArrayBuffer(file);
+  };
+
+  const getEmployeeById = (id: string | null) => {
+    if (!id) return null;
+    return employees.find(e => e.id === id);
   };
 
   return (
