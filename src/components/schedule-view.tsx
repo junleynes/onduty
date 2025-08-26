@@ -19,7 +19,6 @@ import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { SidebarTrigger } from './ui/sidebar';
 import { ScheduleImporter } from './schedule-importer';
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -438,8 +437,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
           <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
             {/* Header Row */}
             <div className="sticky top-0 z-30 p-2 bg-card border-b border-r flex items-center">
-               <SidebarTrigger className="hidden md:flex mr-2" />
-               <span className="font-semibold text-sm">Employees</span>
+               <span className="font-semibold text-sm">Team Members</span>
             </div>
             {displayedDays.map((day) => (
               <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
@@ -456,7 +454,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
             {allEmployees.map((employee) => (
               <React.Fragment key={employee.id}>
                 {/* Employee Cell */}
-                <div className="p-2 border-b border-r flex items-center gap-3 min-h-[70px] sticky left-0 bg-card z-20">
+                <div className="py-2 px-2 border-b border-r flex items-center gap-3 min-h-[60px] sticky left-0 bg-card z-20">
                   {employee.id !== 'unassigned' ? (
                   <Avatar className="h-9 w-9">
                     <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
@@ -483,7 +481,7 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                   return (
                     <div
                       key={`${employee.id}-${day.toISOString()}`}
-                      className="group/cell col-start-auto p-1 border-b border-l min-h-[70px] space-y-1 bg-background/30 relative"
+                      className="group/cell col-start-auto p-1 border-b border-l min-h-[60px] space-y-1 bg-background/30 relative"
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
                     >

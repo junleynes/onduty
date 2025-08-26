@@ -3,11 +3,9 @@
 
 import React, { useState, useMemo } from 'react';
 import type { UserRole, Employee } from '@/types';
-import { SidebarProvider, Sidebar, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { useSidebar } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
 import { employees as initialEmployees } from '@/lib/data';
 
 // Views
@@ -22,7 +20,6 @@ export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability';
 function AppContent() {
   const [role, setRole] = useState<UserRole>('admin');
   const [activeView, setActiveView] = useState<NavItem>(role === 'admin' ? 'schedule' : 'my-schedule');
-  const { isMobile } = useSidebar();
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
 
 
@@ -66,19 +63,17 @@ function AppContent() {
   }, [activeView, role, employees]);
 
   return (
-    <>
+    <div className='flex h-screen w-full'>
       <Sidebar collapsible="icon">
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
-      <div className="flex flex-col h-screen w-full">
+      <div className="flex flex-col h-screen flex-1">
         <Header currentRole={role} onRoleChange={handleRoleChange} />
-        <SidebarInset>
-            <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                {currentView}
-            </main>
-        </SidebarInset>
+        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+            {currentView}
+        </main>
       </div>
-    </>
+    </div>
   );
 }
 
