@@ -74,18 +74,31 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
         let month = new Date().getMonth();
         let year = new Date().getFullYear();
 
-        const monthRow = json.find(row => row.some(cell => typeof cell === 'string' && /august/i.test(cell)));
+        const monthRow = json.find(row => row.some(cell => typeof cell === 'string' && /(january|february|march|april|may|june|july|august|september|october|november|december)/i.test(cell)));
         if (monthRow) {
-            const monthCell = monthRow.find(cell => typeof cell === 'string' && /august/i.test(cell));
+            const monthCell = monthRow.find(cell => typeof cell === 'string' && /(january|february|march|april|may|june|july|august|september|october|november|december)/i.test(cell));
             if (monthCell) {
-                 // Simple month detection for now. Can be improved.
-                 if (/august/i.test(monthCell)) month = 7;
+                 const monthStr = monthCell.toLowerCase();
+                 if (monthStr.includes('january')) month = 0;
+                 if (monthStr.includes('february')) month = 1;
+                 if (monthStr.includes('march')) month = 2;
+                 if (monthStr.includes('april')) month = 3;
+                 if (monthStr.includes('may')) month = 4;
+                 if (monthStr.includes('june')) month = 5;
+                 if (monthStr.includes('july')) month = 6;
+                 if (monthStr.includes('august')) month = 7;
+                 if (monthStr.includes('september')) month = 8;
+                 if (monthStr.includes('october')) month = 9;
+                 if (monthStr.includes('november')) month = 10;
+                 if (monthStr.includes('december')) month = 11;
             }
         }
 
         let dateRowIndex = -1;
         const dateRow = json.find((row, index) => {
-            const isDateRow = row.some(cell => typeof cell === 'number' && cell >= 1 && cell <= 31);
+            const numericCells = row.filter(cell => typeof cell === 'number' && cell >= 1 && cell <= 31);
+            // A row is considered a date row if it has at least 5 numbers between 1-31
+            const isDateRow = numericCells.length > 5;
             if(isDateRow) {
                 dateRowIndex = index;
                 return true;
@@ -94,7 +107,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
         });
 
         if (!dateRow) {
-            throw new Error("Could not find the date row (1-31) in the Excel sheet.");
+            throw new Error("Could not find the date row (e.g., 1-31) in the Excel sheet.");
         }
         
         const dateMap: { [key: number]: number } = {};
@@ -120,7 +133,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 const date = new Date(year, month, day);
                 const cellString = String(cellValue);
 
-                const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?(?:am|pm))-(\d{1,2}(?::\d{2})?(?:am|pm))/i);
+                const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm))-(\d{1,2}(?::\d{2})?\s*(?:am|pm))/i);
                 
                 if (timeMatch) {
                     const convertTo24Hour = (time: string) => {
@@ -128,10 +141,10 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                         let [h, m] = time.replace('am', '').replace('pm', '').split(':');
                         let hour = parseInt(h);
                         
-                        if (time.includes('pm') && hour !== 12) {
+                        if (time.includes('pm') && hour < 12) {
                             hour += 12;
                         }
-                        if (time.includes('am') && hour === 12) {
+                        if (time.includes('am') && hour === 12) { // Midnight case
                            hour = 0;
                         }
                         return `${String(hour).padStart(2, '0')}:${m || '00'}`;
@@ -159,7 +172,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
         });
 
         if (importedShifts.length === 0 && importedLeave.length === 0) {
-             toast({ title: 'Import Warning', description: `No shifts or leave were found in the file. Please check the file format.`, variant: 'destructive' });
+             toast({ title: 'Import Warning', description: `No shifts or leave were found in the file. Please check the file format and ensure employee names match.`, variant: 'destructive' });
         } else {
             onImport(importedShifts, importedLeave);
             toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
