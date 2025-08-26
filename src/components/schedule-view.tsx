@@ -487,10 +487,12 @@ export default function ScheduleView({ employees }: ScheduleViewProps) {
                         {getInitials(getFullName(employee))}
                       </AvatarFallback>
                     </Avatar>
-                    ) : <div className="w-9 h-9"/>}
-                    <div>
+                    ) : <div className="w-full flex items-center justify-center">
+                          <p className="font-semibold text-sm text-center">{getFullName(employee)}</p>
+                        </div>}
+                    {employee.id !== 'unassigned' && <div>
                       <p className="font-semibold text-sm">{getFullName(employee)}</p>
-                    </div>
+                    </div>}
                   </div>
 
                   {/* Day Cells for Shifts */}
