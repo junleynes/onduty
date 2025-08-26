@@ -51,10 +51,9 @@ type LeaveEditorProps = {
 };
 
 const defaultLeaveTypes: { type: LeaveType; color: string }[] = [
-    { type: 'Time Off Request', color: '#f97316' }, // orange
+    { type: 'VL', color: '#ec4899' }, // pink
+    { type: 'EL', 'color': '#ef4444' }, // red
     { type: 'OFFSET', color: '#6b7280' }, // gray
-    { type: 'Vacation', color: '#ec4899' }, // pink
-    { type: 'Emergency', 'color': '#ef4444' } // red
 ];
 
 export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employees, allLeave }: LeaveEditorProps) {
@@ -77,8 +76,8 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
     defaultValues: {
       id: leave?.id || undefined,
       employeeId: leave?.employeeId || '',
-      type: leave?.type || 'Time Off Request',
-      color: leave?.color || '#f97316',
+      type: leave?.type || 'OFFSET',
+      color: leave?.color || '#6b7280',
       date: leave?.date || new Date(),
       isAllDay: leave?.isAllDay ?? true,
       startTime: leave?.startTime || '',
@@ -91,8 +90,8 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
     form.reset({
       id: leave?.id || undefined,
       employeeId: leave?.employeeId || '',
-      type: leave?.type || 'Time Off Request',
-      color: leave?.color || selectedType?.color || '#f97316',
+      type: leave?.type || 'OFFSET',
+      color: leave?.color || selectedType?.color || '#6b7280',
       date: leave?.date || new Date(),
       isAllDay: leave?.isAllDay ?? true,
       startTime: leave?.startTime || '',

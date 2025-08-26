@@ -267,7 +267,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                             id: `imp-lv-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
                             date,
-                            type: 'Vacation',
+                            type: 'VL',
                             isAllDay: true,
                          })
                     } else if (['OFFSET'].includes(cellString.toUpperCase().trim())) {
