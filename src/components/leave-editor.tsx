@@ -54,6 +54,10 @@ const defaultLeaveTypes: { type: LeaveType; color: string }[] = [
     { type: 'VL', color: '#ec4899' }, // pink
     { type: 'EL', color: '#ef4444' }, // red
     { type: 'OFFSET', color: '#6b7280' }, // gray
+    { type: 'SL', color: '#f97316' }, // orange
+    { type: 'BL', color: '#3b82f6' }, // blue
+    { type: 'PL', color: '#8b5cf6' }, // purple
+    { type: 'ML', color: '#14b8a6' }, // teal
 ];
 
 export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employees, allLeave }: LeaveEditorProps) {
