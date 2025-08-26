@@ -32,35 +32,51 @@ const normalizeName = (name: string) => {
 
 
 const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
-    if (!name) return null;
-    const normalizedInput = normalizeName(name);
+    if (!name || typeof name !== 'string') return null;
 
-    return allEmployees.find(emp => {
-        const fullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
-        if (fullName === normalizedInput) return true;
+    const normalizedInput = normalizeName(name.replace(/,/g, ''));
 
-        // Handle "Lastname, Firstname" and "Lastname, Firstname M.I."
-        const excelParts = name.trim().toLowerCase().split(',').map(p => p.trim());
-        if (excelParts.length === 2) {
-            const excelLastName = excelParts[0];
-            const excelFirstNameAndRest = excelParts[1];
-            
-            const empLastName = normalizeName(emp.lastName);
-            
-            if (empLastName.startsWith(excelLastName)) {
-                 const empFirstNameAndRest = normalizeName(`${emp.firstName} ${emp.lastName.substring(empLastName.indexOf(excelLastName) + excelLastName.length).trim()} ${emp.middleInitial || ''}`.trim());
-                 if (excelFirstNameAndRest === empFirstNameAndRest) {
-                    return true;
+    for (const emp of allEmployees) {
+        const normalizedEmpFirstName = normalizeName(emp.firstName);
+        const normalizedEmpLastName = normalizeName(emp.lastName);
+        const normalizedEmpFullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
+        const normalizedEmpFullNameWithMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''} ${emp.lastName}`);
+
+        // Simple full name match
+        if (normalizedEmpFullName === normalizedInput || normalizedEmpFullNameWithMI === normalizedInput) {
+            return emp;
+        }
+
+        // Handle "Lastname, Firstname" and "Lastname, Firstname M.I." formats
+        if (name.includes(',')) {
+            const parts = name.split(',').map(p => p.trim());
+            const lastNamePart = normalizeName(parts[0]);
+            const firstNamePart = normalizeName(parts.slice(1).join(' '));
+
+            if (normalizedEmpLastName === lastNamePart) {
+                const empFirstNameCombined = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).trim();
+                const empFirstNameCombinedNoSpace = empFirstNameCombined.replace(/\s/g, '');
+                const inputFirstNameNoSpace = firstNamePart.replace(/\./g, '').replace(/\s/g, '');
+
+                if (empFirstNameCombinedNoSpace === inputFirstNameNoSpace) {
+                    return emp;
                 }
             }
         }
-        
-        // Fallback for simple "Lastname, Firstname"
-        const lastNameFirst = normalizeName(`${emp.lastName}, ${emp.firstName}`);
-        if (normalizedInput.startsWith(lastNameFirst)) return true;
-        
-        return false;
-  });
+    }
+    
+    // Fallback for just last name and first name parts if nothing else matches
+    const parts = normalizedInput.split(' ');
+    const lastNamePart = parts[0];
+    const firstNamePart = parts.slice(1).join(' ');
+
+    for (const emp of allEmployees) {
+         if (normalizeName(emp.lastName) === lastNamePart && normalizeName(emp.firstName) === firstNamePart) {
+            return emp;
+        }
+    }
+
+    return null;
 };
 
 
@@ -167,7 +183,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
                 
                 const employee = findEmployeeByName(row[0] as string, employees);
                 if (!employee) {
-                    console.warn(`Could not find employee for name: ${row[0]}`);
+                    // Skip rows that don't match an employee
+                    // This will also skip header-like rows such as "Employee" or "Media Server Support"
                     continue;
                 };
                 
@@ -293,5 +310,3 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport }: ScheduleImport
     </Dialog>
   );
 }
-
-    
