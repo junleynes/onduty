@@ -33,6 +33,7 @@ type ScheduleViewProps = {
   leave: Leave[];
   setLeave: React.Dispatch<React.SetStateAction<Leave[]>>;
   currentUser: Employee | null;
+  onPublish: () => void;
 }
 
 const initialShiftTemplates: ShiftTemplate[] = [
@@ -59,7 +60,7 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'ML', color: '#ec4899' }, // pink
 ];
 
-export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser }: ScheduleViewProps) {
+export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser, onPublish }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -114,7 +115,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
   const handleEmptyCellClick = (employeeId: string | null, date: Date) => {
     if (isReadOnly) return;
-    setEditingShift({ employeeId, date });
+    setEditingShift({ employeeId, date, status: 'draft' });
     setIsShiftEditorOpen(true);
   };
 
@@ -133,10 +134,10 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     if (isReadOnly) return;
     if ('id' in savedShift && savedShift.id) {
       // Update existing shift
-      setShifts(shifts.map(s => s.id === savedShift.id ? savedShift as Shift : s));
+      setShifts(shifts.map(s => s.id === savedShift.id ? { ...s, ...savedShift, status: 'draft' } as Shift : s));
     } else {
       // Add new shift
-      const newShiftWithId = { ...savedShift, id: `sh-${Date.now()}` };
+      const newShiftWithId = { ...savedShift, id: `sh-${Date.now()}`, status: 'draft' };
       setShifts([...shifts, newShiftWithId as Shift]);
     }
     setIsShiftEditorOpen(false);
@@ -236,7 +237,8 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     const newShifts = prevWeekShifts.map(shift => ({
       ...shift,
       id: `sh-${Date.now()}-${Math.random()}`,
-      date: addDays(shift.date, 7)
+      date: addDays(shift.date, 7),
+      status: 'draft' as const,
     }));
 
     setShifts(currentShifts => [...currentShifts, ...newShifts]);
@@ -273,6 +275,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
             ...rest,
             id: `sh-${Date.now()}-${Math.random()}`,
             date: targetDay,
+            status: 'draft',
         };
     }).filter(Boolean);
 
@@ -281,7 +284,8 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
 
   const handleImportedData = (importedShifts: Shift[], importedLeave: Leave[]) => {
-      setShifts(prev => [...prev, ...importedShifts]);
+      const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
+      setShifts(prev => [...prev, ...shiftsWithStatus]);
       setLeave(prev => [...prev, ...importedLeave]);
   };
   
@@ -293,12 +297,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     toast({ title: "Draft Saved", description: "Your schedule changes have been saved." });
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
-
-  const handlePublish = () => {
-    toast({ title: "Schedule Published!", description: "Notifications would be sent to the team." });
-    // In a real app, this would trigger an API call to send emails or notifications.
-  };
-
 
   const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', role: 'member', position: 'Special', avatar: '' }, ...employees];
 
@@ -351,7 +349,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       setShifts(prevShifts => 
         prevShifts.map(shift =>
           shift.id === itemId
-            ? { ...shift, employeeId: targetEmployeeId, date: targetDate }
+            ? { ...shift, employeeId: targetEmployeeId, date: targetDate, status: 'draft' }
             : shift
         )
       );
@@ -451,7 +449,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                     <Save className="mr-2 h-4 w-4" />
                     Save Draft
                 </Button>
-                <Button onClick={handlePublish}>
+                <Button onClick={onPublish}>
                     <Send className="mr-2 h-4 w-4" />
                     Publish
                 </Button>
@@ -647,5 +645,3 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     </div>
   );
 }
-
-    

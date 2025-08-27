@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
 
 const blockVariants = cva(
-  'w-full p-1.5 rounded-md text-left text-white overflow-hidden border',
+  'w-full p-1.5 rounded-md text-left text-white overflow-hidden border relative',
   {
     variants: {
       type: {
@@ -86,6 +86,7 @@ export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
 
   const backgroundColor = shift.color || 'hsl(var(--primary))';
   const textColor = shift.color === '#ffffff' ? 'black' : 'white';
+  const isDraft = shift.status === 'draft';
 
   return (
     <div
@@ -93,12 +94,17 @@ export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
       className={cn(blockVariants({ type: 'shift', interactive }))}
       style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
-      <p className="font-semibold text-xs truncate whitespace-pre-wrap">
-        {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
-      </p>
-      <p className="text-xs truncate whitespace-pre-wrap">
-        {shift.label}
-      </p>
+      {isDraft && (
+        <div className="absolute inset-0 w-full h-full bg-striped-semitransparent z-10"></div>
+      )}
+      <div className="relative z-20">
+        <p className="font-semibold text-xs truncate whitespace-pre-wrap">
+          {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
+        </p>
+        <p className="text-xs truncate whitespace-pre-wrap">
+          {shift.label}
+        </p>
+      </div>
     </div>
   );
 }

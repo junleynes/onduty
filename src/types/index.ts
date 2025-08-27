@@ -28,6 +28,7 @@ export type Shift = {
   color?: string;
   isDayOff?: boolean;
   isHolidayOff?: boolean;
+  status?: 'draft' | 'published';
 };
 
 export type LeaveType = string;

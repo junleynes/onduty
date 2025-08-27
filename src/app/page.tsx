@@ -187,6 +187,13 @@ function AppContent() {
       toast({ title: 'Import Successful', description: `${newEmployees.length} new members added.`})
   }
 
+  const handlePublish = () => {
+    setShifts(currentShifts => 
+        currentShifts.map(shift => ({...shift, status: 'published' }))
+    );
+    toast({ title: "Schedule Published!", description: "All shifts are now marked as published." });
+  };
+
 
   const currentView = useMemo(() => {
     if (!currentUser) {
@@ -213,6 +220,7 @@ function AppContent() {
             leave={leave}
             setLeave={setLeave}
             currentUser={currentUser}
+            onPublish={handlePublish}
           />
         );
       }
