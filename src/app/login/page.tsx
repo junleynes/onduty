@@ -1,14 +1,31 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { employees } from '@/lib/data';
+import { employees as defaultEmployees } from '@/lib/data';
+import type { Employee } from '@/types';
 import { LayoutGrid } from 'lucide-react';
+
+// Helper function to get initial state from localStorage or defaults
+const getInitialEmployees = (): Employee[] => {
+    if (typeof window === 'undefined') {
+        return defaultEmployees;
+    }
+    try {
+        const item = window.localStorage.getItem('employees');
+        return item ? JSON.parse(item) : defaultEmployees;
+    } catch (error) {
+        console.error('Error reading employees from localStorage:', error);
+        return defaultEmployees;
+    }
+};
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +33,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  
+  useEffect(() => {
+    // Load employees from localStorage on component mount
+    setEmployees(getInitialEmployees());
+  }, []);
+
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
