@@ -578,7 +578,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                           <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleDragStart(e, item)}>
                             <ShiftBlock
                               item={item}
-                              onClick={() => handleEditItemClick(item)}
+                              onClick={() => !isReadOnly && handleEditItemClick(item)}
                             />
                           </div>
                         ))}

@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
 
 const blockVariants = cva(
-  'w-full p-1.5 rounded-md text-left text-white overflow-hidden cursor-pointer border',
+  'w-full p-1.5 rounded-md text-left text-white overflow-hidden border',
   {
     variants: {
       type: {
@@ -16,9 +16,14 @@ const blockVariants = cva(
         leave: 'border-transparent',
         dayOff: 'bg-gray-400/80 border-gray-500 text-center',
       },
+      interactive: {
+        true: 'cursor-pointer',
+        false: 'cursor-default',
+      }
     },
     defaultVariants: {
       type: 'shift',
+      interactive: true,
     },
   }
 );
@@ -33,7 +38,7 @@ function isLeave(item: Shift | Leave): item is Leave {
   return 'type' in item;
 }
 
-export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
+export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
   if (isLeave(item)) {
     const employee = getEmployeeById(item.employeeId);
     if (!employee) return null;
@@ -43,7 +48,7 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
     return (
       <div
         onClick={onClick}
-        className={cn(blockVariants({ type: 'leave' }))}
+        className={cn(blockVariants({ type: 'leave', interactive }))}
         style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
         <p className="font-bold text-xs truncate">{item.type}</p>
@@ -60,7 +65,7 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
     return (
        <div
         onClick={onClick}
-        className={cn(blockVariants({ type: 'dayOff' }))}
+        className={cn(blockVariants({ type: 'dayOff', interactive }))}
       >
         <p className="font-bold text-xs truncate whitespace-pre-wrap">{shift.label}</p>
         <p className="text-xs truncate whitespace-pre-wrap">All day</p>
@@ -85,7 +90,7 @@ export function ShiftBlock({ item, onClick }: ShiftBlockProps) {
   return (
     <div
       onClick={onClick}
-      className={cn(blockVariants({ type: 'shift' }))}
+      className={cn(blockVariants({ type: 'shift', interactive }))}
       style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
       <p className="font-semibold text-xs truncate whitespace-pre-wrap">

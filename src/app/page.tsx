@@ -179,7 +179,7 @@ function AppContent() {
         id: `emp-${Date.now()}-${index}`,
         avatar: member.avatar || '',
         position: member.position || '',
-        role: (member.role || 'member') as UserRole,
+        role: member.role || 'member',
         phone: member.phone || '',
       } as Employee));
 
@@ -204,7 +204,7 @@ function AppContent() {
 
     switch (activeView) {
       case 'schedule': {
-        const scheduleEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
+        const scheduleEmployees = employees.filter(emp => emp.role !== 'admin' && (currentUser.role !== 'member' || emp.group === currentUser.group));
         return (
           <ScheduleView 
             employees={scheduleEmployees} 
