@@ -16,6 +16,7 @@ const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: Luci
         { view: 'admin', label: 'Admin Panel', icon: Shield },
     ],
     manager: [
+        { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
         { view: 'schedule', label: 'Schedule', icon: CalendarDays },
         { view: 'team', label: 'Team', icon: Users },
     ],
