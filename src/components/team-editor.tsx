@@ -35,7 +35,6 @@ const employeeSchema = z.object({
   position: z.string().optional(),
   role: z.custom<UserRole>().optional(),
   group: z.string().optional(),
-  section: z.string().optional(),
   avatar: z.string().optional(),
 });
 
@@ -53,7 +52,6 @@ type TeamEditorProps = {
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups }: TeamEditorProps) {
     const [positions, setPositions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
-    const [sections, setSections] = useState(() => [...new Set(initialEmployees.map(e => e.section))]);
 
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
@@ -76,7 +74,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       position: '',
       role: 'member',
       group: '',
-      section: '',
       avatar: '',
     }
   });
@@ -102,7 +99,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             position: '',
             role: 'member',
             group: '',
-            section: '',
             avatar: '',
         });
     }
@@ -131,7 +127,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     
     // Add new values to lists if they don't exist
     if (values.position && !positions.includes(values.position)) setPositions(prev => [...prev, values.position!]);
-    if (values.section && !sections.includes(values.section)) setSections(prev => [...prev, values.section!]);
     if (values.group && !groups.includes(values.group)) setGroups(prev => [...prev, values.group!]);
 
     setIsOpen(false);
@@ -333,23 +328,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                 </FormItem>
                                 )}
                             />
-                            
-                             <FormField
-                                control={form.control}
-                                name="section"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Section</FormLabel>
-                                    <FormControl>
-                                        <Input list="sections-list" {...field} />
-                                    </FormControl>
-                                    <datalist id="sections-list">
-                                        {sections.map(sec => <option key={sec} value={sec} />)}
-                                    </datalist>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField

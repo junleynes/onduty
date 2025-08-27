@@ -15,7 +15,6 @@ export type Employee = {
   position: string;
   role: UserRole;
   group?: string;
-  section?: string;
   avatar?: string;
 };
 
