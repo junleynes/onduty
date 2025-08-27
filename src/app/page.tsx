@@ -17,11 +17,15 @@ import TeamView from '@/components/team-view';
 import AdminPanel from '@/components/admin-panel';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { TeamEditor } from '@/components/team-editor';
+import { MemberImporter } from '@/components/member-importer';
+import { useToast } from '@/hooks/use-toast';
+
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability' | 'admin';
 
 function AppContent() {
   const router = useRouter();
+  const { toast } = useToast();
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
 
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
@@ -29,7 +33,13 @@ function AppContent() {
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
   
   const [activeView, setActiveView] = useState<NavItem>('schedule');
-  const [isPasswordEditorOpen, setIsPasswordEditorOpen] = useState(false);
+  
+  // State for modals, lifted up from TeamView and AdminPanel
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
+  const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
@@ -67,21 +77,75 @@ function AppContent() {
     router.push('/login');
   }
 
+  // Password reset for the logged-in user
   const handleOpenPasswordEditor = () => {
-    setIsPasswordEditorOpen(true);
+    setEditingEmployee(currentUser);
+    setIsPasswordResetMode(true);
+    setIsEditorOpen(true);
   }
 
-  const handleSavePassword = (employeeData: Partial<Employee>) => {
-     if (employeeData.id) {
+  // CRUD handlers for employees, to be passed to AdminPanel and TeamView
+  const handleAddMember = () => {
+    setEditingEmployee({});
+    setIsPasswordResetMode(false);
+    setIsEditorOpen(true);
+  };
+
+  const handleEditMember = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setIsPasswordResetMode(false);
+    setIsEditorOpen(true);
+  };
+  
+  const handleResetPassword = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setIsPasswordResetMode(true);
+    setIsEditorOpen(true);
+  };
+
+  const handleDeleteMember = (employeeId: string) => {
+    setEmployees(employees.filter(emp => emp.id !== employeeId));
+    toast({ title: 'Team Member Removed', variant: 'destructive' });
+  };
+
+  const handleSaveMember = (employeeData: Partial<Employee>) => {
+    if (employeeData.id) {
+      // Update existing employee
       setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
-      // Also update the currentUser in localStorage if they are editing their own password
-      if (currentUser?.id === employeeData.id) {
-          const updatedUser = { ...currentUser, ...employeeData };
-          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-      }
+      toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'Member Updated' });
+    } else {
+      // Add new employee
+      const newEmployee: Employee = {
+        ...employeeData,
+        id: `emp-${Date.now()}`,
+        avatar: employeeData.avatar || '',
+        position: employeeData.position || '',
+        role: employeeData.role || 'member',
+      } as Employee;
+      setEmployees([...employees, newEmployee]);
+      toast({ title: 'Member Added' });
     }
-    setIsPasswordEditorOpen(false);
+     // Also update the currentUser in localStorage if they are editing their own data
+     if (currentUser?.id === employeeData.id) {
+        const updatedUser = { ...currentUser, ...employeeData };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    }
+  };
+  
+  const handleImportMembers = (newMembers: Partial<Employee>[]) => {
+      const newEmployees: Employee[] = newMembers.map((member, index) => ({
+        ...member,
+        id: `emp-${Date.now()}-${index}`,
+        avatar: member.avatar || '',
+        position: member.position || '',
+        role: 'member',
+      } as Employee));
+
+      setEmployees(prev => [...prev, ...newEmployees]);
+      toast({ title: 'Import Successful', description: `${newEmployees.length} new members added.`})
   }
+
 
   const currentView = useMemo(() => {
     if (!currentUser) {
@@ -110,13 +174,22 @@ function AppContent() {
           />
         );
       case 'team':
-        return <TeamView employees={employees} setEmployees={setEmployees} currentUser={currentUser} />;
+        return <TeamView employees={employees} currentUser={currentUser} onEditMember={handleEditMember} />;
       case 'my-schedule':
         return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
       case 'availability':
         return <AvailabilityView />;
       case 'admin':
-        return <AdminPanel users={employees} setUsers={setEmployees} />;
+        return (
+            <AdminPanel 
+                users={employees} 
+                setUsers={setEmployees} 
+                onAddMember={handleAddMember}
+                onEditMember={handleEditMember}
+                onDeleteMember={handleDeleteMember}
+                onImportMembers={() => setIsImporterOpen(true)}
+            />
+        );
       default:
         return (
             <Card>
@@ -150,15 +223,19 @@ function AppContent() {
         </main>
       </div>
     </div>
-    {isPasswordEditorOpen && (
-        <TeamEditor
-            isOpen={isPasswordEditorOpen}
-            setIsOpen={setIsPasswordEditorOpen}
-            employee={currentUser}
-            onSave={handleSavePassword}
-            isPasswordResetMode={true}
-        />
-    )}
+    
+    <TeamEditor
+        isOpen={isEditorOpen}
+        setIsOpen={setIsEditorOpen}
+        employee={editingEmployee}
+        onSave={handleSaveMember}
+        isPasswordResetMode={isPasswordResetMode}
+    />
+    <MemberImporter
+        isOpen={isImporterOpen}
+        setIsOpen={setIsImporterOpen}
+        onImport={handleImportMembers}
+    />
     </>
   );
 }

@@ -14,7 +14,6 @@ interface SidebarNavProps {
 const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: LucideIcon }[] } = {
     admin: [
         { view: 'admin', label: 'Admin Panel', icon: Shield },
-        { view: 'schedule', label: 'Schedule', icon: CalendarDays },
     ],
     manager: [
         { view: 'schedule', label: 'Schedule', icon: CalendarDays },
