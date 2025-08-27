@@ -16,7 +16,7 @@ import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
-import type { Employee } from '@/types';
+import type { Employee, UserRole } from '@/types';
 
 type MemberImporterProps = {
   isOpen: boolean;
@@ -52,7 +52,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
             throw new Error(`Error parsing CSV on row ${results.errors[0].row}: ${results.errors[0].message}`);
           }
           
-          const requiredHeaders = ['First Name', 'Last Name'];
+          const requiredHeaders = ['First Name', 'Last Name', 'Email'];
           const headers = results.meta.fields || [];
           const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
@@ -66,6 +66,11 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
                 const date = new Date(dateStr);
                 return isNaN(date.getTime()) ? undefined : date;
             }
+            
+            const role = (row['Role']?.toLowerCase() || 'member') as UserRole;
+            if (!['admin', 'manager', 'member'].includes(role)) {
+                console.warn(`Invalid role "${row['Role']}" for user ${row['First Name']}. Defaulting to 'member'.`);
+            }
 
             return {
               firstName: row['First Name'] || '',
@@ -74,8 +79,11 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
               position: row['Position'] || '',
               birthDate: parseDate(row['Birth Date']),
               startDate: parseDate(row['Start Date']),
-              group: row['Group'] || '',
+              group: row['Group'] || row['Department'] || '',
               email: row['Email'] || '',
+              employeeNumber: row['Employee Number'] || '',
+              password: row['Password'] || 'password', // Default password if not provided
+              role: ['admin', 'manager', 'member'].includes(role) ? role : 'member',
             };
           });
 
@@ -103,7 +111,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
         <DialogHeader>
           <DialogTitle>Import Members from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with member data. Ensure the column headers match: First Name, Last Name, M.I., Position, etc.
+            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Employee Number, Password, Role.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

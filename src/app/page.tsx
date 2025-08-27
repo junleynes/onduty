@@ -179,7 +179,7 @@ function AppContent() {
         id: `emp-${Date.now()}-${index}`,
         avatar: member.avatar || '',
         position: member.position || '',
-        role: 'member',
+        role: (member.role || 'member') as UserRole,
         phone: member.phone || '',
       } as Employee));
 
