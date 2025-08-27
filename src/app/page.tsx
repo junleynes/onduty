@@ -203,10 +203,11 @@ function AppContent() {
     }
 
     switch (activeView) {
-      case 'schedule':
+      case 'schedule': {
+        const scheduleEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
         return (
           <ScheduleView 
-            employees={employees} 
+            employees={scheduleEmployees} 
             shifts={shifts}
             setShifts={setShifts}
             leave={leave}
@@ -214,6 +215,7 @@ function AppContent() {
             currentUser={currentUser}
           />
         );
+      }
       case 'team': {
         const teamEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
         return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
