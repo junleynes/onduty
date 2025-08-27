@@ -2,7 +2,6 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getEmployeeById, employees as allEmployees } from '@/lib/data';
 import { Calendar, Clock, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Shift, Employee } from '@/types';
 import { format, addDays, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
@@ -14,6 +13,7 @@ type ViewMode = 'day' | 'week';
 type MyScheduleViewProps = {
   shifts: Shift[];
   employeeId: string | null;
+  employees: Employee[];
 };
 
 const roleColors: { [key: string]: string } = {
@@ -23,15 +23,13 @@ const roleColors: { [key: string]: string } = {
   Cashier: 'bg-green-100 border-green-200',
 };
 
-export default function MyScheduleView({ shifts, employeeId }: MyScheduleViewProps) {
+export default function MyScheduleView({ shifts, employeeId, employees }: MyScheduleViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
 
   const myShifts = shifts.filter(shift => shift.employeeId === employeeId);
   
-  // A temporary measure to find the employee from a static list if available
-  // In a real app, you'd fetch the employee data based on the logged-in user
-  const employee = allEmployees.find(e => e.id === employeeId);
+  const employee = employees.find(e => e.id === employeeId);
 
   const dateRange = useMemo(() => {
     if (viewMode === 'week') {
@@ -67,7 +65,7 @@ export default function MyScheduleView({ shifts, employeeId }: MyScheduleViewPro
                 <CardTitle>My Schedule</CardTitle>
             </CardHeader>
             <CardContent>
-                <p>No employee is currently selected. Please switch to Admin View to manage schedules.</p>
+                <p>No employee is currently selected. Please log in again.</p>
             </CardContent>
         </Card>
     )

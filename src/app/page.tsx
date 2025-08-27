@@ -221,7 +221,7 @@ function AppContent() {
         return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
       }
       case 'my-schedule':
-        return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
+        return <MyScheduleView shifts={shifts} employeeId={currentUser.id} employees={employees} />;
       case 'admin':
         return (
             <AdminPanel 
