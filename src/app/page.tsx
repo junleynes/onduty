@@ -24,19 +24,42 @@ import { GroupEditor } from '@/components/group-editor';
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability' | 'admin';
 
+// Helper function to get initial state from localStorage or defaults
+const getInitialState = <T>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') {
+        return defaultValue;
+    }
+    try {
+        const item = window.localStorage.getItem(key);
+        return item ? JSON.parse(item, (k, v) => {
+            // Revive dates from string format
+            if (k === 'date' || k === 'birthDate' || k === 'startDate') {
+                const date = new Date(v);
+                if (!isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+            return v;
+        }) : defaultValue;
+    } catch (error) {
+        console.error(`Error reading from localStorage for key "${key}":`, error);
+        return defaultValue;
+    }
+};
+
+
 function AppContent() {
   const router = useRouter();
   const { toast } = useToast();
-  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
-
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
-  const [shifts, setShifts] = useState<Shift[]>(initialShifts);
-  const [leave, setLeave] = useState<Leave[]>(initialLeave);
-  const [groups, setGroups] = useState<string[]>(['Administration', 'Cashiers', 'Chefs', 'Baristas']);
   
+  const [employees, setEmployees] = useState<Employee[]>(() => getInitialState('employees', initialEmployees));
+  const [shifts, setShifts] = useState<Shift[]>(() => getInitialState('shifts', initialShifts));
+  const [leave, setLeave] = useState<Leave[]>(() => getInitialState('leave', initialLeave));
+  const [groups, setGroups] = useState<string[]>(() => getInitialState('groups', ['Administration', 'Cashiers', 'Chefs', 'Baristas']));
+
+  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [activeView, setActiveView] = useState<NavItem>('schedule');
   
-  // State for modals, lifted up from TeamView and AdminPanel
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
@@ -44,16 +67,21 @@ function AppContent() {
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
 
+  // Persist state to localStorage on change
+  useEffect(() => { localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
+  useEffect(() => { localStorage.setItem('shifts', JSON.stringify(shifts)); }, [shifts]);
+  useEffect(() => { localStorage.setItem('leave', JSON.stringify(leave)); }, [leave]);
+  useEffect(() => { localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
         const user: Employee = JSON.parse(storedUser);
-        // Ensure the current user in state is up-to-date with the main employees list
         const updatedUser = employees.find(emp => emp.id === user.id);
         if (updatedUser) {
             setCurrentUser(updatedUser);
-            if (updatedUser.role === 'admin') {
+             if (updatedUser.role === 'admin') {
                 setActiveView('admin');
             } else if (updatedUser.role === 'manager') {
                 setActiveView('schedule');
@@ -61,7 +89,6 @@ function AppContent() {
                 setActiveView('my-schedule');
             }
         } else {
-             // If user not found (e.g. deleted), log them out
             handleLogout();
         }
     } else {
@@ -81,15 +108,13 @@ function AppContent() {
     router.push('/login');
   }
 
-  // Password reset for the logged-in user
   const handleOpenPasswordEditor = () => {
     setEditingEmployee(currentUser);
     setIsPasswordResetMode(true);
-    setEditorContext('manager'); // or determine based on currentUser role
+    setEditorContext('manager'); 
     setIsEditorOpen(true);
   }
 
-  // CRUD handlers for employees, to be passed to AdminPanel and TeamView
   const handleAddMember = (context: 'admin' | 'manager') => {
     setEditingEmployee({});
     setIsPasswordResetMode(false);
@@ -118,11 +143,9 @@ function AppContent() {
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
     if (employeeData.id) {
-      // Update existing employee
       setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
       toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
     } else {
-      // Add new employee
       const newEmployee: Employee = {
         ...employeeData,
         id: `emp-${Date.now()}`,
@@ -134,11 +157,12 @@ function AppContent() {
       setEmployees([...employees, newEmployee]);
       toast({ title: 'User Added' });
     }
-     // Also update the currentUser in localStorage if they are editing their own data
      if (currentUser?.id === employeeData.id) {
-        const updatedUser = { ...currentUser, ...employeeData };
-        setCurrentUser(updatedUser);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        const updatedUser = employees.find(e => e.id === employeeData.id);
+        if (updatedUser) {
+            setCurrentUser(updatedUser);
+            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        }
     }
   };
   
@@ -218,7 +242,7 @@ function AppContent() {
   }, [activeView, employees, shifts, leave, currentUser, groups]);
 
   if (!currentUser) {
-      return null; // Or a loading spinner
+      return null;
   }
 
 
