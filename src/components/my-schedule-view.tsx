@@ -17,10 +17,13 @@ type MyScheduleViewProps = {
 };
 
 const roleColors: { [key: string]: string } = {
-  Manager: 'bg-accent/50 border-accent',
-  Chef: 'bg-red-100 border-red-200',
-  Barista: 'bg-blue-100 border-blue-200',
-  Cashier: 'bg-green-100 border-green-200',
+  Manager: 'bg-blue-100 border-blue-300',
+  'Senior MAMS Support Engineer': 'bg-green-100 border-green-300',
+  'Junior MAMS Support Engineer': 'bg-yellow-100 border-yellow-300',
+  'MAMS Support': 'bg-purple-100 border-purple-300',
+  Chef: 'bg-red-100 border-red-300',
+  Barista: 'bg-orange-100 border-orange-300',
+  Cashier: 'bg-indigo-100 border-indigo-300',
 };
 
 export default function MyScheduleView({ shifts, employeeId, employees }: MyScheduleViewProps) {
@@ -39,7 +42,7 @@ export default function MyScheduleView({ shifts, employeeId, employees }: MySche
   }, [currentDate, viewMode]);
 
   const shiftsToDisplay = myShifts.filter(shift => 
-    isSameDay(shift.date, dateRange.start) || (shift.date > dateRange.start && shift.date < dateRange.end) || isSameDay(shift.date, dateRange.end)
+    !shift.isDayOff && !shift.isHolidayOff && (isSameDay(shift.date, dateRange.start) || (shift.date > dateRange.start && shift.date < dateRange.end) || isSameDay(shift.date, dateRange.end))
   );
 
   const shiftsByDate = shiftsToDisplay.reduce((acc, shift) => {
@@ -112,7 +115,7 @@ export default function MyScheduleView({ shifts, employeeId, employees }: MySche
                 {shiftsByDate[dateStr].map(shift => {
                   const shiftEmployee = employee; // We already filtered shifts for this employee
                   return (
-                    <Card key={shift.id} className={`${roleColors[shiftEmployee.position] || ''} border-l-4`}>
+                    <Card key={shift.id} className={`${roleColors[shiftEmployee.position] || 'bg-gray-100 border-gray-300'} border-l-4`}>
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
                           <Clock className="h-6 w-6 text-foreground/80" />
