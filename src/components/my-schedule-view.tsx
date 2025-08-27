@@ -7,6 +7,7 @@ import type { Shift, Employee } from '@/types';
 import { format, addDays, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
 
 type ViewMode = 'day' | 'week';
 
@@ -14,16 +15,6 @@ type MyScheduleViewProps = {
   shifts: Shift[];
   employeeId: string | null;
   employees: Employee[];
-};
-
-const roleColors: { [key: string]: string } = {
-  Manager: 'bg-blue-100 border-blue-300',
-  'Senior MAMS Support Engineer': 'bg-green-100 border-green-300',
-  'Junior MAMS Support Engineer': 'bg-yellow-100 border-yellow-300',
-  'MAMS Support': 'bg-purple-100 border-purple-300',
-  Chef: 'bg-red-100 border-red-300',
-  Barista: 'bg-orange-100 border-orange-300',
-  Cashier: 'bg-indigo-100 border-indigo-300',
 };
 
 export default function MyScheduleView({ shifts, employeeId, employees }: MyScheduleViewProps) {
@@ -114,15 +105,26 @@ export default function MyScheduleView({ shifts, employeeId, employees }: MySche
               <div className="space-y-4">
                 {shiftsByDate[dateStr].map(shift => {
                   const shiftEmployee = employee; // We already filtered shifts for this employee
+                  const backgroundColor = shift.color || 'hsl(var(--primary))';
+                  const textColor = shift.color === '#ffffff' ? 'black' : 'white';
+                  
                   return (
-                    <Card key={shift.id} className={`${roleColors[shiftEmployee.position] || 'bg-gray-100 border-gray-300'} border-l-4`}>
+                    <Card 
+                      key={shift.id} 
+                      className={cn("border-l-4")}
+                      style={{ 
+                        backgroundColor: backgroundColor, 
+                        color: textColor,
+                        borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : backgroundColor
+                      }}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-center gap-3">
-                          <Clock className="h-6 w-6 text-foreground/80" />
+                          <Clock className="h-6 w-6 opacity-80" />
                           <div>
                             <p className="font-bold text-base">{shift.startTime} - {shift.endTime}</p>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <User className="h-4 w-4" /> Role: {shiftEmployee?.position}
+                            <p className="text-sm opacity-90 flex items-center gap-1">
+                              <User className="h-4 w-4" /> {shift.label}
                             </p>
                           </div>
                         </div>
