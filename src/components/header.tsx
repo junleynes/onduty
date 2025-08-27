@@ -4,7 +4,7 @@ import { LayoutGrid, Bell, CircleUser, User, Shield, LogOut, KeyRound } from 'lu
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import type { Employee } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, getFullName, getInitials, getBackgroundColor } from '@/lib/utils';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 type HeaderProps = {
   currentUser: Employee | null;
@@ -40,7 +41,16 @@ export default function Header({ currentUser, onLogout, onEditProfile, onResetPa
              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="rounded-full text-primary">
-                      <CircleUser className="h-5 w-5" />
+                        {currentUser ? (
+                             <Avatar className="h-8 w-8">
+                                <AvatarImage src={currentUser.avatar} data-ai-hint="profile avatar" />
+                                <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(currentUser)) }}>
+                                    {getInitials(getFullName(currentUser))}
+                                </AvatarFallback>
+                            </Avatar>
+                        ) : (
+                             <CircleUser className="h-5 w-5" />
+                        )}
                       <span className="sr-only">Toggle user menu</span>
                     </Button>
                 </DropdownMenuTrigger>
