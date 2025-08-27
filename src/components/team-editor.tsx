@@ -28,7 +28,7 @@ const employeeSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   middleInitial: z.string().max(1).optional(),
   email: z.string().email('Invalid email address'),
-  phone: z.string().min(1, 'Phone number is required'),
+  phone: z.string().optional(),
   password: z.string().min(6, 'Password must be at least 6 characters long').optional().or(z.literal('')),
   birthDate: z.date().optional().nullable(),
   startDate: z.date().optional().nullable(),
@@ -46,9 +46,10 @@ type TeamEditorProps = {
   employee: Partial<Employee> | null;
   onSave: (employee: Partial<Employee>) => void;
   isPasswordResetMode?: boolean;
+  context?: 'admin' | 'manager';
 };
 
-export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false }: TeamEditorProps) {
+export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager' }: TeamEditorProps) {
     const [positions, setPositions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
     const [departments, setDepartments] = useState(() => [...new Set(initialEmployees.map(e => e.department))]);
     const [sections, setSections] = useState(() => [...new Set(initialEmployees.map(e => e.section))]);
@@ -135,8 +136,11 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     setIsOpen(false);
   };
 
-  const title = isPasswordResetMode ? 'Reset Your Password' : (employee?.id ? 'Edit Team Member' : 'Add Team Member');
-  const description = isPasswordResetMode ? 'Enter a new password for your account.' : (employee?.id ? "Update the details for this team member." : "Fill in the details for the new team member.");
+  const isSimplifiedView = context === 'admin' && !isPasswordResetMode;
+
+  const title = isPasswordResetMode ? 'Reset Your Password' : (isSimplifiedView ? 'Edit User' : (employee?.id ? 'Edit Team Member' : 'Add Team Member'));
+  const description = isPasswordResetMode ? 'Enter a new password for your account.' : (isSimplifiedView ? "Update the user's core credentials and role." : (employee?.id ? "Update the details for this team member." : "Fill in the details for the new team member."));
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -149,42 +153,24 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-            {!isPasswordResetMode && (
+            {isPasswordResetMode ? (
+                 <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>New Password</FormLabel>
+                        <FormControl>
+                        <Input type="password" {...field} placeholder='Enter new password' />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            ) : (
                 <>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="employeeNumber"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Employee Number</FormLabel>
-                            <FormControl>
-                            <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="position"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Position</FormLabel>
-                            <FormControl>
-                                <Input list="positions-list" {...field} />
-                            </FormControl>
-                            <datalist id="positions-list">
-                                {positions.map(pos => <option key={pos} value={pos} />)}
-                            </datalist>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <FormField
                         control={form.control}
                         name="firstName"
                         render={({ field }) => (
@@ -210,23 +196,8 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                         </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="middleInitial"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>M.I.</FormLabel>
-                            <FormControl>
-                            <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
+                     <FormField
                         control={form.control}
                         name="email"
                         render={({ field }) => (
@@ -239,41 +210,22 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                         </FormItem>
                         )}
                     />
-                    <FormField
+                     <FormField
                         control={form.control}
-                        name="phone"
+                        name="password"
                         render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Phone</FormLabel>
+                            <FormLabel>Password</FormLabel>
                             <FormControl>
-                            <Input {...field} type="tel" />
+                            <Input type="password" {...field} placeholder={employee?.id ? 'Leave blank to keep current password' : ''} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                         )}
                     />
-                    </div>
-                </>
-            )}
-           
-             <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" {...field} placeholder={employee?.id ? 'Leave blank to keep current password' : ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
-             {!isPasswordResetMode && (
-                <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
+                     <FormField
                         control={form.control}
                         name="department"
                         render={({ field }) => (
@@ -290,66 +242,152 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                         )}
                         />
                         <FormField
-                        control={form.control}
-                        name="section"
-                        render={({ field }) => (
+                            control={form.control}
+                            name="role"
+                            render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Section</FormLabel>
-                            <FormControl>
-                                <Input list="sections-list" {...field} />
-                            </FormControl>
-                            <datalist id="sections-list">
-                                {sections.map(sec => <option key={sec} value={sec} />)}
-                            </datalist>
-                            <FormMessage />
+                                <FormLabel>Role</FormLabel>
+                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a role" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="manager">Manager</SelectItem>
+                                    <SelectItem value="member">Member</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
                             </FormItem>
-                        )}
+                            )}
                         />
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="birthDate"
-                        render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Birth Date</FormLabel>
-                            <DatePicker 
-                                date={field.value || undefined} 
-                                onDateChange={field.onChange}
-                                dateProps={{
-                                captionLayout: "dropdown-buttons",
-                                fromYear: 1950,
-                                toYear: new Date().getFullYear()
-                                }}
-                            />
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="startDate"
-                        render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Start Date</FormLabel>
-                            <DatePicker
-                                date={field.value || undefined}
-                                onDateChange={field.onChange}
-                                dateProps={{
-                                    captionLayout: "dropdown-buttons",
-                                    fromYear: 1950,
-                                    toYear: new Date().getFullYear()
-                                }}
-                            />
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    </div>
-                </>
-             )}
 
+                    {!isSimplifiedView && (
+                        <>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="employeeNumber"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Employee Number</FormLabel>
+                                        <FormControl>
+                                        <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="position"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Position</FormLabel>
+                                        <FormControl>
+                                            <Input list="positions-list" {...field} />
+                                        </FormControl>
+                                        <datalist id="positions-list">
+                                            {positions.map(pos => <option key={pos} value={pos} />)}
+                                        </datalist>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+
+                             <FormField
+                                control={form.control}
+                                name="middleInitial"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>M.I.</FormLabel>
+                                    <FormControl>
+                                    <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+
+                             <FormField
+                                control={form.control}
+                                name="phone"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Phone</FormLabel>
+                                    <FormControl>
+                                    <Input {...field} type="tel" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            
+                             <FormField
+                                control={form.control}
+                                name="section"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Section</FormLabel>
+                                    <FormControl>
+                                        <Input list="sections-list" {...field} />
+                                    </FormControl>
+                                    <datalist id="sections-list">
+                                        {sections.map(sec => <option key={sec} value={sec} />)}
+                                    </datalist>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="birthDate"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Birth Date</FormLabel>
+                                    <DatePicker 
+                                        date={field.value || undefined} 
+                                        onDateChange={field.onChange}
+                                        dateProps={{
+                                        captionLayout: "dropdown-buttons",
+                                        fromYear: 1950,
+                                        toYear: new Date().getFullYear()
+                                        }}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="startDate"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel>Start Date</FormLabel>
+                                    <DatePicker
+                                        date={field.value || undefined}
+                                        onDateChange={field.onChange}
+                                        dateProps={{
+                                            captionLayout: "dropdown-buttons",
+                                            fromYear: 1950,
+                                            toYear: new Date().getFullYear()
+                                        }}
+                                    />
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            </div>
+                        </>
+                    )}
+                </>
+            )}
 
             <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>

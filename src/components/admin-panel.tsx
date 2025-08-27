@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 type AdminPanelProps = {
   users: Employee[];
@@ -22,10 +23,12 @@ type AdminPanelProps = {
 };
 
 export default function AdminPanel({ users, setUsers, onAddMember, onEditMember, onDeleteMember, onImportMembers }: AdminPanelProps) {
+  const { toast } = useToast();
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     setUsers(users.map(user => 
       user.id === userId ? { ...user, role: newRole } : user
     ));
+    toast({ title: 'User Role Updated' });
   };
 
   return (
@@ -38,11 +41,11 @@ export default function AdminPanel({ users, setUsers, onAddMember, onEditMember,
          <div className="flex gap-2">
             <Button variant="outline" onClick={onImportMembers}>
                 <Upload className="h-4 w-4 mr-2" />
-                Import from CSV
+                Import Users
             </Button>
             <Button onClick={onAddMember}>
                 <PlusCircle className="h-4 w-4 mr-2" />
-                Add Member
+                Add User
             </Button>
         </div>
       </CardHeader>
@@ -54,7 +57,6 @@ export default function AdminPanel({ users, setUsers, onAddMember, onEditMember,
               <TableHead>Email</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Current Role</TableHead>
-              <TableHead className="w-[180px]">Change Role</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -82,22 +84,19 @@ export default function AdminPanel({ users, setUsers, onAddMember, onEditMember,
                     <span className="font-medium">{user.department}</span>
                 </TableCell>
                 <TableCell>
-                  <span className="capitalize font-medium">{user.role}</span>
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={user.role}
-                    onValueChange={(newRole: UserRole) => handleRoleChange(user.id, newRole)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <Select
+                        value={user.role}
+                        onValueChange={(newRole: UserRole) => handleRoleChange(user.id, newRole)}
+                    >
+                        <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="member">Member</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </TableCell>
                  <TableCell className="text-right">
                     <DropdownMenu>

@@ -39,6 +39,7 @@ function AppContent() {
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
+  const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
 
 
   useEffect(() => {
@@ -81,38 +82,42 @@ function AppContent() {
   const handleOpenPasswordEditor = () => {
     setEditingEmployee(currentUser);
     setIsPasswordResetMode(true);
+    setEditorContext('manager'); // or determine based on currentUser role
     setIsEditorOpen(true);
   }
 
   // CRUD handlers for employees, to be passed to AdminPanel and TeamView
-  const handleAddMember = () => {
+  const handleAddMember = (context: 'admin' | 'manager') => {
     setEditingEmployee({});
     setIsPasswordResetMode(false);
+    setEditorContext(context);
     setIsEditorOpen(true);
   };
 
-  const handleEditMember = (employee: Employee) => {
+  const handleEditMember = (employee: Employee, context: 'admin' | 'manager') => {
     setEditingEmployee(employee);
     setIsPasswordResetMode(false);
+    setEditorContext(context);
     setIsEditorOpen(true);
   };
   
   const handleResetPassword = (employee: Employee) => {
     setEditingEmployee(employee);
     setIsPasswordResetMode(true);
+    setEditorContext('manager');
     setIsEditorOpen(true);
   };
 
   const handleDeleteMember = (employeeId: string) => {
     setEmployees(employees.filter(emp => emp.id !== employeeId));
-    toast({ title: 'Team Member Removed', variant: 'destructive' });
+    toast({ title: 'User Removed', variant: 'destructive' });
   };
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
     if (employeeData.id) {
       // Update existing employee
       setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
-      toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'Member Updated' });
+      toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
     } else {
       // Add new employee
       const newEmployee: Employee = {
@@ -121,9 +126,10 @@ function AppContent() {
         avatar: employeeData.avatar || '',
         position: employeeData.position || '',
         role: employeeData.role || 'member',
+        phone: employeeData.phone || '',
       } as Employee;
       setEmployees([...employees, newEmployee]);
-      toast({ title: 'Member Added' });
+      toast({ title: 'User Added' });
     }
      // Also update the currentUser in localStorage if they are editing their own data
      if (currentUser?.id === employeeData.id) {
@@ -140,6 +146,7 @@ function AppContent() {
         avatar: member.avatar || '',
         position: member.position || '',
         role: 'member',
+        phone: member.phone || '',
       } as Employee));
 
       setEmployees(prev => [...prev, ...newEmployees]);
@@ -174,7 +181,7 @@ function AppContent() {
           />
         );
       case 'team':
-        return <TeamView employees={employees} currentUser={currentUser} onEditMember={handleEditMember} />;
+        return <TeamView employees={employees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
       case 'my-schedule':
         return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
       case 'availability':
@@ -184,8 +191,8 @@ function AppContent() {
             <AdminPanel 
                 users={employees} 
                 setUsers={setEmployees} 
-                onAddMember={handleAddMember}
-                onEditMember={handleEditMember}
+                onAddMember={() => handleAddMember('admin')}
+                onEditMember={(emp) => handleEditMember(emp, 'admin')}
                 onDeleteMember={handleDeleteMember}
                 onImportMembers={() => setIsImporterOpen(true)}
             />
@@ -230,6 +237,7 @@ function AppContent() {
         employee={editingEmployee}
         onSave={handleSaveMember}
         isPasswordResetMode={isPasswordResetMode}
+        context={editorContext}
     />
     <MemberImporter
         isOpen={isImporterOpen}
