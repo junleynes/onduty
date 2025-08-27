@@ -48,9 +48,10 @@ type TeamEditorProps = {
   isPasswordResetMode?: boolean;
   context?: 'admin' | 'manager';
   groups: string[];
+  setGroups: React.Dispatch<React.SetStateAction<string[]>>;
 };
 
-export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups }: TeamEditorProps) {
+export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups }: TeamEditorProps) {
     const [positions, setPositions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
     const [sections, setSections] = useState(() => [...new Set(initialEmployees.map(e => e.section))]);
 
@@ -131,6 +132,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     // Add new values to lists if they don't exist
     if (values.position && !positions.includes(values.position)) setPositions(prev => [...prev, values.position!]);
     if (values.section && !sections.includes(values.section)) setSections(prev => [...prev, values.section!]);
+    if (values.group && !groups.includes(values.group)) setGroups(prev => [...prev, values.group!]);
 
     setIsOpen(false);
   };

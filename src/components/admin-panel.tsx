@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 type AdminPanelProps = {
   users: Employee[];
   setUsers: React.Dispatch<React.SetStateAction<Employee[]>>;
+  groups: string[];
   onAddMember: () => void;
   onEditMember: (employee: Employee) => void;
   onDeleteMember: (employeeId: string) => void;
@@ -23,7 +24,7 @@ type AdminPanelProps = {
   onManageGroups: () => void;
 };
 
-export default function AdminPanel({ users, setUsers, onAddMember, onEditMember, onDeleteMember, onImportMembers, onManageGroups }: AdminPanelProps) {
+export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onImportMembers, onManageGroups }: AdminPanelProps) {
   const { toast } = useToast();
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     setUsers(users.map(user => 

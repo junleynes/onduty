@@ -193,7 +193,8 @@ function AppContent() {
         return (
             <AdminPanel 
                 users={employees} 
-                setUsers={setEmployees} 
+                setUsers={setEmployees}
+                groups={groups}
                 onAddMember={() => handleAddMember('admin')}
                 onEditMember={(emp) => handleEditMember(emp, 'admin')}
                 onDeleteMember={handleDeleteMember}
@@ -214,7 +215,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, currentUser]);
+  }, [activeView, employees, shifts, leave, currentUser, groups]);
 
   if (!currentUser) {
       return null; // Or a loading spinner
@@ -243,6 +244,7 @@ function AppContent() {
         isPasswordResetMode={isPasswordResetMode}
         context={editorContext}
         groups={groups}
+        setGroups={setGroups}
     />
     <MemberImporter
         isOpen={isImporterOpen}
