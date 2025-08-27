@@ -33,7 +33,7 @@ const getInitialState = <T>(key: string, defaultValue: T): T => {
         const item = window.localStorage.getItem(key);
         return item ? JSON.parse(item, (k, v) => {
             // Revive dates from string format
-            if (k === 'date' || k === 'birthDate' || k === 'startDate') {
+            if (['date', 'birthDate', 'startDate'].includes(k) && v) {
                 const date = new Date(v);
                 if (!isNaN(date.getTime())) {
                     return date;
@@ -68,10 +68,10 @@ function AppContent() {
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
 
   // Persist state to localStorage on change
-  useEffect(() => { localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
-  useEffect(() => { localStorage.setItem('shifts', JSON.stringify(shifts)); }, [shifts]);
-  useEffect(() => { localStorage.setItem('leave', JSON.stringify(leave)); }, [leave]);
-  useEffect(() => { localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('shifts', JSON.stringify(shifts)); }, [shifts]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('leave', JSON.stringify(leave)); }, [leave]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
 
 
   useEffect(() => {
@@ -207,8 +207,10 @@ function AppContent() {
             currentUser={currentUser}
           />
         );
-      case 'team':
-        return <TeamView employees={employees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
+      case 'team': {
+        const teamEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
+        return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
+      }
       case 'my-schedule':
         return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
       case 'availability':
