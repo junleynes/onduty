@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { TeamEditor } from './team-editor';
 import { useToast } from '@/hooks/use-toast';
 import { MemberImporter } from './member-importer';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
   Manager: 'default',
@@ -92,6 +93,17 @@ export default function TeamView({ employees, setEmployees, currentUser }: TeamV
       toast({ title: 'Import Successful', description: `${newEmployees.length} new members added.`})
   }
 
+  const groupedEmployees = useMemo(() => {
+    return employees.reduce((acc, employee) => {
+      const group = employee.department || 'Unassigned';
+      if (!acc[group]) {
+        acc[group] = [];
+      }
+      acc[group].push(employee);
+      return acc;
+    }, {} as Record<string, Employee[]>);
+  }, [employees]);
+
   return (
     <>
       <Card>
@@ -116,76 +128,87 @@ export default function TeamView({ employees, setEmployees, currentUser }: TeamV
           )}
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Contact</TableHead>
-                {!isReadOnly && <TableHead className="text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map(employee => (
-                <TableRow key={employee.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                        <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
-                          {getInitials(getFullName(employee))}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{getFullName(employee)}</p>
-                        <p className="text-sm text-muted-foreground">#{employee.employeeNumber}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={roleColors[employee.position] || 'default'}>{employee.position}</Badge>
-                  </TableCell>
-                   <TableCell>
-                    <span className="capitalize">{employee.role}</span>
-                  </TableCell>
-                   <TableCell>
-                      <div className="flex flex-col">
-                        <a href={`mailto:${employee.email}`} className="text-sm text-primary hover:underline">{employee.email}</a>
-                        <a href={`tel:${employee.phone}`} className="text-sm text-muted-foreground hover:underline">{employee.phone}</a>
-                      </div>
-                  </TableCell>
-                  {!isReadOnly && (
-                    <TableCell className="text-right">
-                       <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">More Actions</span>
-                              </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditMember(employee)}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  <span>Edit</span>
-                              </DropdownMenuItem>
-                               <DropdownMenuItem onClick={() => handleResetPassword(employee)}>
-                                  <KeyRound className="mr-2 h-4 w-4" />
-                                  <span>Reset Password</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteMember(employee.id)}>
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Delete</span>
-                              </DropdownMenuItem>
-                          </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Accordion type="multiple" defaultValue={Object.keys(groupedEmployees)} className="w-full">
+            {Object.entries(groupedEmployees).map(([department, members]) => (
+                <AccordionItem key={department} value={department}>
+                    <AccordionTrigger className="text-lg font-semibold">
+                        {department} ({members.length})
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <Table>
+                            <TableHeader>
+                            <TableRow>
+                                <TableHead>Employee</TableHead>
+                                <TableHead>Position</TableHead>
+                                <TableHead>Role</TableHead>
+                                <TableHead>Contact</TableHead>
+                                {!isReadOnly && <TableHead className="text-right">Actions</TableHead>}
+                            </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {members.map(employee => (
+                                <TableRow key={employee.id}>
+                                <TableCell>
+                                    <div className="flex items-center gap-4">
+                                    <Avatar>
+                                        <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                                        <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
+                                        {getInitials(getFullName(employee))}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <p className="font-medium">{getFullName(employee)}</p>
+                                        <p className="text-sm text-muted-foreground">#{employee.employeeNumber}</p>
+                                    </div>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={roleColors[employee.position] || 'default'}>{employee.position}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <span className="capitalize">{employee.role}</span>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex flex-col">
+                                        <a href={`mailto:${employee.email}`} className="text-sm text-primary hover:underline">{employee.email}</a>
+                                        <a href={`tel:${employee.phone}`} className="text-sm text-muted-foreground hover:underline">{employee.phone}</a>
+                                    </div>
+                                </TableCell>
+                                {!isReadOnly && (
+                                    <TableCell className="text-right">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                                <span className="sr-only">More Actions</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => handleEditMember(employee)}>
+                                                <Pencil className="mr-2 h-4 w-4" />
+                                                <span>Edit</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleResetPassword(employee)}>
+                                                <KeyRound className="mr-2 h-4 w-4" />
+                                                <span>Reset Password</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteMember(employee.id)}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Delete</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                    </TableCell>
+                                )}
+                                </TableRow>
+                            ))}
+                            </TableBody>
+                        </Table>
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+          </Accordion>
         </CardContent>
       </Card>
       <TeamEditor
