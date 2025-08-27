@@ -31,7 +31,7 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
 
   const groupedEmployees = useMemo(() => {
     return employees.reduce((acc, employee) => {
-      const group = employee.department || 'Unassigned';
+      const group = employee.group || 'Unassigned';
       if (!acc[group]) {
         acc[group] = [];
       }
@@ -53,10 +53,10 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
         </CardHeader>
         <CardContent>
           <Accordion type="multiple" defaultValue={Object.keys(groupedEmployees)} className="w-full">
-            {Object.entries(groupedEmployees).map(([department, members]) => (
-                <AccordionItem key={department} value={department}>
+            {Object.entries(groupedEmployees).map(([group, members]) => (
+                <AccordionItem key={group} value={group}>
                     <AccordionTrigger className="text-lg font-semibold">
-                        {department} ({members.length})
+                        {group} ({members.length})
                     </AccordionTrigger>
                     <AccordionContent>
                         <Table>

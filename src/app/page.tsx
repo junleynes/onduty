@@ -19,6 +19,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { TeamEditor } from '@/components/team-editor';
 import { MemberImporter } from '@/components/member-importer';
 import { useToast } from '@/hooks/use-toast';
+import { GroupEditor } from '@/components/group-editor';
 
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability' | 'admin';
@@ -31,12 +32,14 @@ function AppContent() {
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [shifts, setShifts] = useState<Shift[]>(initialShifts);
   const [leave, setLeave] = useState<Leave[]>(initialLeave);
+  const [groups, setGroups] = useState<string[]>(['Administration', 'Cashiers', 'Chefs', 'Baristas']);
   
   const [activeView, setActiveView] = useState<NavItem>('schedule');
   
   // State for modals, lifted up from TeamView and AdminPanel
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
+  const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
@@ -195,6 +198,7 @@ function AppContent() {
                 onEditMember={(emp) => handleEditMember(emp, 'admin')}
                 onDeleteMember={handleDeleteMember}
                 onImportMembers={() => setIsImporterOpen(true)}
+                onManageGroups={() => setIsGroupEditorOpen(true)}
             />
         );
       default:
@@ -238,11 +242,18 @@ function AppContent() {
         onSave={handleSaveMember}
         isPasswordResetMode={isPasswordResetMode}
         context={editorContext}
+        groups={groups}
     />
     <MemberImporter
         isOpen={isImporterOpen}
         setIsOpen={setIsImporterOpen}
         onImport={handleImportMembers}
+    />
+    <GroupEditor
+        isOpen={isGroupEditorOpen}
+        setIsOpen={setIsGroupEditorOpen}
+        groups={groups}
+        setGroups={setGroups}
     />
     </>
   );

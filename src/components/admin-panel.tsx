@@ -10,7 +10,7 @@ import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload } from 'lucide-react';
+import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type AdminPanelProps = {
@@ -20,9 +20,10 @@ type AdminPanelProps = {
   onEditMember: (employee: Employee) => void;
   onDeleteMember: (employeeId: string) => void;
   onImportMembers: () => void;
+  onManageGroups: () => void;
 };
 
-export default function AdminPanel({ users, setUsers, onAddMember, onEditMember, onDeleteMember, onImportMembers }: AdminPanelProps) {
+export default function AdminPanel({ users, setUsers, onAddMember, onEditMember, onDeleteMember, onImportMembers, onManageGroups }: AdminPanelProps) {
   const { toast } = useToast();
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     setUsers(users.map(user => 
@@ -39,6 +40,10 @@ export default function AdminPanel({ users, setUsers, onAddMember, onEditMember,
             <CardDescription>Manage users, roles, and group assignments.</CardDescription>
         </div>
          <div className="flex gap-2">
+            <Button variant="outline" onClick={onManageGroups}>
+                <Users className="h-4 w-4 mr-2" />
+                Manage Groups
+            </Button>
             <Button variant="outline" onClick={onImportMembers}>
                 <Upload className="h-4 w-4 mr-2" />
                 Import Users
@@ -55,7 +60,7 @@ export default function AdminPanel({ users, setUsers, onAddMember, onEditMember,
             <TableRow>
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Department</TableHead>
+              <TableHead>Group</TableHead>
               <TableHead>Current Role</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -81,7 +86,7 @@ export default function AdminPanel({ users, setUsers, onAddMember, onEditMember,
                     <a href={`mailto:${user.email}`} className="text-sm text-primary hover:underline">{user.email}</a>
                 </TableCell>
                 <TableCell>
-                    <span className="font-medium">{user.department}</span>
+                    <span className="font-medium">{user.group}</span>
                 </TableCell>
                 <TableCell>
                     <Select

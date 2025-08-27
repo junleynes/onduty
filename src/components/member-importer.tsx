@@ -74,7 +74,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
               position: row['Position'] || '',
               birthDate: parseDate(row['Birth Date']),
               startDate: parseDate(row['Start Date']),
-              department: row['Department'] || '',
+              group: row['Group'] || '',
               section: row['Section'] || '',
               email: row['Email'] || '',
             };

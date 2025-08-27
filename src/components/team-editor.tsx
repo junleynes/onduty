@@ -34,7 +34,7 @@ const employeeSchema = z.object({
   startDate: z.date().optional().nullable(),
   position: z.string().optional(),
   role: z.custom<UserRole>().optional(),
-  department: z.string().optional(),
+  group: z.string().optional(),
   section: z.string().optional(),
   avatar: z.string().optional(),
 });
@@ -47,11 +47,11 @@ type TeamEditorProps = {
   onSave: (employee: Partial<Employee>) => void;
   isPasswordResetMode?: boolean;
   context?: 'admin' | 'manager';
+  groups: string[];
 };
 
-export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager' }: TeamEditorProps) {
+export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups }: TeamEditorProps) {
     const [positions, setPositions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
-    const [departments, setDepartments] = useState(() => [...new Set(initialEmployees.map(e => e.department))]);
     const [sections, setSections] = useState(() => [...new Set(initialEmployees.map(e => e.section))]);
 
   const form = useForm<z.infer<typeof employeeSchema>>({
@@ -74,7 +74,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       startDate: undefined,
       position: '',
       role: 'member',
-      department: '',
+      group: '',
       section: '',
       avatar: '',
     }
@@ -100,7 +100,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             startDate: undefined,
             position: '',
             role: 'member',
-            department: '',
+            group: '',
             section: '',
             avatar: '',
         });
@@ -130,7 +130,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     
     // Add new values to lists if they don't exist
     if (values.position && !positions.includes(values.position)) setPositions(prev => [...prev, values.position!]);
-    if (values.department && !departments.includes(values.department)) setDepartments(prev => [...prev, values.department!]);
     if (values.section && !sections.includes(values.section)) setSections(prev => [...prev, values.section!]);
 
     setIsOpen(false);
@@ -227,16 +226,22 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <FormField
                         control={form.control}
-                        name="department"
+                        name="group"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Department</FormLabel>
-                            <FormControl>
-                                <Input list="departments-list" {...field} />
-                            </FormControl>
-                            <datalist id="departments-list">
-                                {departments.map(dep => <option key={dep} value={dep} />)}
-                            </datalist>
+                            <FormLabel>Group</FormLabel>
+                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a group" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {groups.map(group => (
+                                        <SelectItem key={group} value={group}>{group}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <FormMessage />
                             </FormItem>
                         )}

@@ -12,7 +12,7 @@ export const employees: Employee[] = [
         password: 'password',
         position: 'System Administrator',
         role: 'admin',
-        department: 'IT',
+        group: 'Administration',
     }
 ];
 
