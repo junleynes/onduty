@@ -107,6 +107,13 @@ function AppContent() {
     router.push('/login');
   }
 
+  const handleOpenProfileEditor = () => {
+    setEditingEmployee(currentUser);
+    setIsPasswordResetMode(false);
+    setEditorContext(currentUser?.role === 'admin' ? 'admin' : 'manager'); 
+    setIsEditorOpen(true);
+  }
+
   const handleOpenPasswordEditor = () => {
     setEditingEmployee(currentUser);
     setIsPasswordResetMode(true);
@@ -159,8 +166,9 @@ function AppContent() {
      if (currentUser?.id === employeeData.id) {
         const updatedUser = employees.find(e => e.id === employeeData.id);
         if (updatedUser) {
-            setCurrentUser(updatedUser);
-            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            const finalUser = {...updatedUser, ...employeeData};
+            setCurrentUser(finalUser as Employee);
+            localStorage.setItem('currentUser', JSON.stringify(finalUser));
         }
     }
   };
@@ -252,7 +260,7 @@ function AppContent() {
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header currentUser={currentUser} onLogout={handleLogout} onResetPassword={handleOpenPasswordEditor} />
+        <Header currentUser={currentUser} onLogout={handleLogout} onEditProfile={handleOpenProfileEditor} onResetPassword={handleOpenPasswordEditor} />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {currentView}
         </main>

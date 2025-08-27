@@ -17,10 +17,11 @@ import {
 type HeaderProps = {
   currentUser: Employee | null;
   onLogout: () => void;
+  onEditProfile: () => void;
   onResetPassword: () => void;
 };
 
-export default function Header({ currentUser, onLogout, onResetPassword }: HeaderProps) {
+export default function Header({ currentUser, onLogout, onEditProfile, onResetPassword }: HeaderProps) {
   const { isMobile } = useSidebar();
   
   return (
@@ -46,7 +47,10 @@ export default function Header({ currentUser, onLogout, onResetPassword }: Heade
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>Profile</DropdownMenuItem>
+                    <DropdownMenuItem onClick={onEditProfile}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={onResetPassword}>
                       <KeyRound className="mr-2 h-4 w-4" />
                       <span>Reset Password</span>
