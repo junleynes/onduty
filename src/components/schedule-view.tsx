@@ -366,7 +366,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       if (start.getMonth() !== end.getMonth()) {
           return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
       }
-      return `${format(start, 'd')} - ${format(end, 'd, yyyy')}`;
+      return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
   }
 
 
