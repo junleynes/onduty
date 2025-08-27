@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Employee, Shift, Leave } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -445,6 +445,55 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                     <Send className="mr-2 h-4 w-4" />
                     Publish
                 </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                <span>Import Schedule</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setIsTemplateImporterOpen(true)}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                <span>Import Templates</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Manage Leave Types</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                           <DropdownMenuItem onClick={handleCopyPreviousWeek} disabled={viewMode !== 'week'}>
+                                <Copy className="mr-2 h-4 w-4" />
+                                <span>Copy Previous Week</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onClick={handleSaveTemplate} disabled={viewMode !== 'week'}>
+                                <Download className="mr-2 h-4 w-4" />
+                                <span>Save as Template</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleLoadTemplate} disabled={!weekTemplate || viewMode !== 'week'}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                <span>Load Template</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                         <DropdownMenuGroup>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={viewMode === 'month' ? handleClearMonth : handleClearWeek}>
+                                <CircleSlash className="mr-2 h-4 w-4" />
+                                <span>Clear {viewMode === 'month' ? 'Month' : 'Week'}</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={viewMode === 'month' ? handleUnassignMonth : handleUnassignWeek}>
+                                <UserX className="mr-2 h-4 w-4" />
+                                <span>Unassign {viewMode === 'month' ? 'Month' : 'Week'}</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </>
           )}
         </div>
