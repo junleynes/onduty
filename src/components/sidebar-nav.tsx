@@ -21,7 +21,6 @@ const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: Luci
     ],
     member: [
         { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
-        { view: 'availability', label: 'My Availability', icon: Clock },
         { view: 'team', label: 'Team', icon: Users },
     ],
 };

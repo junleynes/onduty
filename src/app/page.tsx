@@ -12,7 +12,6 @@ import { useRouter } from 'next/navigation';
 // Views
 import ScheduleView from '@/components/schedule-view';
 import MyScheduleView from '@/components/my-schedule-view';
-import AvailabilityView from '@/components/availability-view';
 import TeamView from '@/components/team-view';
 import AdminPanel from '@/components/admin-panel';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -22,7 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { GroupEditor } from '@/components/group-editor';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'availability' | 'admin';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin';
 
 // Helper function to get initial state from localStorage or defaults
 const getInitialState = <T>(key: string, defaultValue: T): T => {
@@ -213,8 +212,6 @@ function AppContent() {
       }
       case 'my-schedule':
         return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
-      case 'availability':
-        return <AvailabilityView />;
       case 'admin':
         return (
             <AdminPanel 

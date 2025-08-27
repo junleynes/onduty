@@ -1,122 +1,292 @@
 'use client';
 
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { UserRole, Employee, Shift, Leave } from '@/types';
+import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
+import Header from '@/components/header';
+import SidebarNav from '@/components/sidebar-nav';
+import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave } from '@/lib/data';
+import { useRouter } from 'next/navigation';
+
+// Views
+import ScheduleView from '@/components/schedule-view';
+import MyScheduleView from '@/components/my-schedule-view';
+import TeamView from '@/components/team-view';
+import AdminPanel from '@/components/admin-panel';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { TeamEditor } from '@/components/team-editor';
+import { MemberImporter } from '@/components/member-importer';
 import { useToast } from '@/hooks/use-toast';
-import { weekDays } from '@/lib/data';
-import { CheckCircle } from 'lucide-react';
+import { GroupEditor } from '@/components/group-editor';
 
-const timeOptions = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
 
-const availabilitySchema = z.object({
-  ...Object.fromEntries(
-    weekDays.map(day => [
-      day,
-      z.object({
-        available: z.boolean().default(false),
-        startTime: z.string().optional(),
-        endTime: z.string().optional(),
-      }),
-    ])
-  ),
-});
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin';
 
-export default function AvailabilityView() {
+// Helper function to get initial state from localStorage or defaults
+const getInitialState = <T>(key: string, defaultValue: T): T => {
+    if (typeof window === 'undefined') {
+        return defaultValue;
+    }
+    try {
+        const item = window.localStorage.getItem(key);
+        return item ? JSON.parse(item, (k, v) => {
+            // Revive dates from string format
+            if (['date', 'birthDate', 'startDate'].includes(k) && v) {
+                const date = new Date(v);
+                if (!isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+            return v;
+        }) : defaultValue;
+    } catch (error) {
+        console.error(`Error reading from localStorage for key "${key}":`, error);
+        return defaultValue;
+    }
+};
+
+
+function AppContent() {
+  const router = useRouter();
   const { toast } = useToast();
-  const form = useForm<z.infer<typeof availabilitySchema>>({
-    resolver: zodResolver(availabilitySchema),
-    defaultValues: Object.fromEntries(weekDays.map(day => [day, { available: false, startTime: '09:00', endTime: '17:00' }])),
-  });
+  
+  const [employees, setEmployees] = useState<Employee[]>(() => getInitialState('employees', initialEmployees));
+  const [shifts, setShifts] = useState<Shift[]>(() => getInitialState('shifts', initialShifts));
+  const [leave, setLeave] = useState<Leave[]>(() => getInitialState('leave', initialLeave));
+  const [groups, setGroups] = useState<string[]>(() => getInitialState('groups', ['Administration', 'Cashiers', 'Chefs', 'Baristas']));
 
-  function onSubmit(values: z.infer<typeof availabilitySchema>) {
-    console.log(values);
-    toast({
-      title: 'Availability Submitted',
-      description: 'Your manager has been notified of your updated availability.',
-      action: <CheckCircle className="text-green-500" />,
-    });
+  const [currentUser, setCurrentUser] = useState<Employee | null>(null);
+  const [activeView, setActiveView] = useState<NavItem>('schedule');
+  
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
+  const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
+  const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
+  const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
+
+  // Persist state to localStorage on change
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('shifts', JSON.stringify(shifts)); }, [shifts]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('leave', JSON.stringify(leave)); }, [leave]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
+
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        const user: Employee = JSON.parse(storedUser);
+        const updatedUser = employees.find(emp => emp.id === user.id);
+        if (updatedUser) {
+            setCurrentUser(updatedUser);
+             if (updatedUser.role === 'admin') {
+                setActiveView('admin');
+            } else if (updatedUser.role === 'manager') {
+                setActiveView('schedule');
+            } else {
+                setActiveView('my-schedule');
+            }
+        } else {
+            handleLogout();
+        }
+    } else {
+      router.push('/login');
+    }
+  }, [router, employees]);
+  
+  const role: UserRole = currentUser?.role || 'member';
+
+  const handleNavigate = (view: NavItem) => {
+    setActiveView(view);
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+    router.push('/login');
   }
 
+  const handleOpenPasswordEditor = () => {
+    setEditingEmployee(currentUser);
+    setIsPasswordResetMode(true);
+    setEditorContext('manager'); 
+    setIsEditorOpen(true);
+  }
+
+  const handleAddMember = (context: 'admin' | 'manager') => {
+    setEditingEmployee({});
+    setIsPasswordResetMode(false);
+    setEditorContext(context);
+    setIsEditorOpen(true);
+  };
+
+  const handleEditMember = (employee: Employee, context: 'admin' | 'manager') => {
+    setEditingEmployee(employee);
+    setIsPasswordResetMode(false);
+    setEditorContext(context);
+    setIsEditorOpen(true);
+  };
+  
+  const handleResetPassword = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setIsPasswordResetMode(true);
+    setEditorContext('manager');
+    setIsEditorOpen(true);
+  };
+
+  const handleDeleteMember = (employeeId: string) => {
+    setEmployees(employees.filter(emp => emp.id !== employeeId));
+    toast({ title: 'User Removed', variant: 'destructive' });
+  };
+
+  const handleSaveMember = (employeeData: Partial<Employee>) => {
+    if (employeeData.id) {
+      setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
+      toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
+    } else {
+      const newEmployee: Employee = {
+        ...employeeData,
+        id: `emp-${Date.now()}`,
+        avatar: employeeData.avatar || '',
+        position: employeeData.position || '',
+        role: employeeData.role || 'member',
+        phone: employeeData.phone || '',
+      } as Employee;
+      setEmployees([...employees, newEmployee]);
+      toast({ title: 'User Added' });
+    }
+     if (currentUser?.id === employeeData.id) {
+        const updatedUser = employees.find(e => e.id === employeeData.id);
+        if (updatedUser) {
+            setCurrentUser(updatedUser);
+            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        }
+    }
+  };
+  
+  const handleImportMembers = (newMembers: Partial<Employee>[]) => {
+      const newEmployees: Employee[] = newMembers.map((member, index) => ({
+        ...member,
+        id: `emp-${Date.now()}-${index}`,
+        avatar: member.avatar || '',
+        position: member.position || '',
+        role: 'member',
+        phone: member.phone || '',
+      } as Employee));
+
+      setEmployees(prev => [...prev, ...newEmployees]);
+      toast({ title: 'Import Successful', description: `${newEmployees.length} new members added.`})
+  }
+
+
+  const currentView = useMemo(() => {
+    if (!currentUser) {
+        return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Loading...</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>Please wait while we check your login status.</p>
+                </CardContent>
+            </Card>
+        )
+    }
+
+    switch (activeView) {
+      case 'schedule':
+        return (
+          <ScheduleView 
+            employees={employees} 
+            shifts={shifts}
+            setShifts={setShifts}
+            leave={leave}
+            setLeave={setLeave}
+            currentUser={currentUser}
+          />
+        );
+      case 'team': {
+        const teamEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
+        return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
+      }
+      case 'my-schedule':
+        return <MyScheduleView shifts={shifts} employeeId={currentUser.id} />;
+      case 'admin':
+        return (
+            <AdminPanel 
+                users={employees} 
+                setUsers={setEmployees}
+                groups={groups}
+                onAddMember={() => handleAddMember('admin')}
+                onEditMember={(emp) => handleEditMember(emp, 'admin')}
+                onDeleteMember={handleDeleteMember}
+                onImportMembers={() => setIsImporterOpen(true)}
+                onManageGroups={() => setIsGroupEditorOpen(true)}
+            />
+        );
+      default:
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Welcome to ShiftMaster</CardTitle>
+                    <CardDescription>Select a view from the sidebar to get started.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p>You are currently logged in as {currentUser.firstName}.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+  }, [activeView, employees, shifts, leave, currentUser, groups]);
+
+  if (!currentUser) {
+      return null;
+  }
+
+
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Submit Your Availability</CardTitle>
-        <CardDescription>Let your manager know when you're available to work next week.</CardDescription>
-      </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
-            {weekDays.map(day => (
-              <FormField
-                key={day}
-                control={form.control}
-                name={`${day}.available`}
-                render={({ field }) => (
-                  <FormItem className="rounded-lg border p-4 transition-colors data-[state=checked]:bg-primary/5">
-                    <div className="flex flex-col md:flex-row md:items-center md:gap-4">
-                      <div className="flex items-center space-x-3 mb-2 md:mb-0">
-                        <FormControl>
-                          <Checkbox checked={field.value} onCheckedChange={field.onChange} id={day}/>
-                        </FormControl>
-                        <FormLabel htmlFor={day} className="text-lg font-semibold w-20">{day}</FormLabel>
-                      </div>
-                      <div className={`grid grid-cols-2 gap-4 flex-1 transition-opacity ${field.value ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
-                        <FormField
-                          control={form.control}
-                          name={`${day}.startTime`}
-                          render={({ field: timeField }) => (
-                            <FormItem>
-                              <FormLabel>From</FormLabel>
-                              <Select onValueChange={timeField.onChange} defaultValue={timeField.value} disabled={!field.value}>
-                                <FormControl>
-                                  <SelectTrigger><SelectValue placeholder="Start time" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {timeOptions.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`${day}.endTime`}
-                          render={({ field: timeField }) => (
-                            <FormItem>
-                              <FormLabel>To</FormLabel>
-                              <Select onValueChange={timeField.onChange} defaultValue={timeField.value} disabled={!field.value}>
-                                <FormControl>
-                                  <SelectTrigger><SelectValue placeholder="End time" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {timeOptions.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            ))}
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Submitting...' : 'Submit Availability'}
-            </Button>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
+    <>
+    <div className='flex h-screen w-full'>
+      <Sidebar collapsible="icon">
+        <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
+      </Sidebar>
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Header currentUser={currentUser} onLogout={handleLogout} onResetPassword={handleOpenPasswordEditor} />
+        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
+            {currentView}
+        </main>
+      </div>
+    </div>
+    
+    <TeamEditor
+        isOpen={isEditorOpen}
+        setIsOpen={setIsEditorOpen}
+        employee={editingEmployee}
+        onSave={handleSaveMember}
+        isPasswordResetMode={isPasswordResetMode}
+        context={editorContext}
+        groups={groups}
+        setGroups={setGroups}
+    />
+    <MemberImporter
+        isOpen={isImporterOpen}
+        setIsOpen={setIsImporterOpen}
+        onImport={handleImportMembers}
+    />
+    <GroupEditor
+        isOpen={isGroupEditorOpen}
+        setIsOpen={setIsGroupEditorOpen}
+        groups={groups}
+        setGroups={setGroups}
+    />
+    </>
+  );
+}
+
+export default function Home() {
+  return (
+    <SidebarProvider>
+      <AppContent />
+    </SidebarProvider>
   );
 }
