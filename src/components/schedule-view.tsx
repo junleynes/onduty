@@ -289,6 +289,16 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       setShiftTemplates(prev => [...prev, ...importedTemplates]);
   };
 
+  const handleSaveDraft = () => {
+    toast({ title: "Draft Saved", description: "Your schedule changes have been saved." });
+    // Data is already saved to local storage via useEffect, so this is just for user feedback.
+  };
+
+  const handlePublish = () => {
+    toast({ title: "Schedule Published!", description: "Notifications would be sent to the team." });
+    // In a real app, this would trigger an API call to send emails or notifications.
+  };
+
 
   const allEmployees = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', role: 'member', position: 'Special', avatar: '' }, ...employees];
 
@@ -437,11 +447,11 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                   <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button>
+              <Button onClick={handleSaveDraft}>
                     <Save className="mr-2 h-4 w-4" />
                     Save Draft
                 </Button>
-                <Button>
+                <Button onClick={handlePublish}>
                     <Send className="mr-2 h-4 w-4" />
                     Publish
                 </Button>
@@ -637,3 +647,5 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     </div>
   );
 }
+
+    
