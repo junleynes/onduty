@@ -437,7 +437,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                   <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button variant="outline">
+              <Button>
                     <Save className="mr-2 h-4 w-4" />
                     Save Draft
                 </Button>
