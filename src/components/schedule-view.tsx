@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Employee, Shift, Leave, Notification } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -390,15 +390,69 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     return (
         <div className="grid" style={{ gridTemplateColumns }}>
             {/* Header Row */}
-            <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center", viewMode === 'month' && "border-t")}>
-              <span className="font-semibold text-sm">Employees</span>
+            <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center", viewMode === 'month' ? "border-t" : "")}>
+                <span className="font-semibold text-sm">
+                    {viewMode === 'month' ? 'Employees' : 'Employees'}
+                </span>
             </div>
-            {days.map((day) => (
-            <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l", viewMode === 'month' && "border-t")}>
-                <div className="text-sm whitespace-nowrap">{format(day, 'E')}</div>
-                <div className="text-lg whitespace-nowrap">{format(day, 'd')}</div>
-            </div>
-            ))}
+            {days.map((day) => {
+                const shiftsForDay = shifts.filter(shift => isSameDay(shift.date, day) && !shift.isDayOff && !shift.isHolidayOff);
+                const totalShifts = shiftsForDay.length;
+                const onDutyEmployees = new Set(shiftsForDay.map(shift => shift.employeeId)).size;
+                const totalHours = shiftsForDay.reduce((acc, shift) => {
+                    if (shift.startTime && shift.endTime) {
+                        const start = new Date(`1970-01-01T${shift.startTime}`);
+                        const end = new Date(`1970-01-01T${shift.endTime}`);
+                        let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                        if (diff < 0) diff += 24; // Account for overnight shifts
+                        return acc + diff;
+                    }
+                    return acc;
+                }, 0);
+
+                return (
+                    <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l", viewMode === 'month' && "border-t")}>
+                        <div className="text-lg whitespace-nowrap">{format(day, 'E d/M')}</div>
+                        <div className="text-xs text-muted-foreground font-normal flex justify-center gap-3 mt-1">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1">
+                                            <Briefcase className="h-3 w-3" />
+                                            <span>{totalShifts}</span>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{totalShifts} shifts</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1">
+                                            <Users className="h-3 w-3" />
+                                            <span>{onDutyEmployees}</span>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{onDutyEmployees} employees on duty</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-1">
+                                            <Clock className="h-3 w-3" />
+                                            <span>{totalHours.toFixed(1)}h</span>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{totalHours.toFixed(1)} scheduled hours</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    </div>
+                );
+            })}
 
             {/* Employee Rows */}
             {allEmployeesForGrid.map((employee) => (
