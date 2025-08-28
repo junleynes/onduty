@@ -13,6 +13,7 @@ export function getFullName(employee: Partial<Employee | null>): string {
 }
 
 export function getInitials(name: string) {
+  if (!name) return '';
   const names = name.split(' ');
   const first = names[0]?.[0] || '';
   const last = names.length > 1 ? names[names.length - 1]?.[0] : '';
