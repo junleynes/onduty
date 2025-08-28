@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Employee, Shift, Leave, Notification } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -61,6 +61,25 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'PL', color: '#8b5cf6' }, // purple
     { type: 'ML', color: '#ec4899' }, // pink
 ];
+
+// New component for rendering shifts inside a month cell
+const MonthShiftItem: React.FC<{item: Shift | Leave, employee?: Employee | null, onClick: () => void}> = ({ item, employee, onClick }) => {
+  return (
+    <div onClick={onClick} className="flex items-center gap-1.5 p-1 rounded-md hover:bg-accent cursor-pointer group">
+      {employee && (
+        <Avatar className="h-5 w-5">
+            <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xs">
+                {getInitials(getFullName(employee))}
+            </AvatarFallback>
+        </Avatar>
+      )}
+      <div className="flex-1 overflow-hidden">
+         <ShiftBlock item={item} onClick={() => {}} context="month" interactive={false} />
+      </div>
+    </div>
+  )
+}
 
 export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
@@ -398,7 +417,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
   }
   
-  const renderGrid = () => {
+  const renderHorizontalGrid = () => {
     const days = displayedDays;
     const gridTemplateColumns = `200px repeat(${days.length}, 1fr)`;
 
@@ -497,6 +516,91 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
             ))}
         </div>
     );
+  }
+
+  const renderMonthGrid = () => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+
+    const weeks = eachWeekOfInterval(
+        { start: monthStart, end: monthEnd },
+        { weekStartsOn: 1 }
+    ).map(weekStart => {
+        return eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) });
+    });
+    
+    const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+    const getEmployee = (id: string | null) => employees.find(e => e.id === id);
+
+    return (
+        <div className="grid grid-cols-7 h-full">
+             {/* Header Row */}
+            {weekDays.map(day => (
+                <div key={day} className="p-2 text-center font-semibold border-b border-l bg-card sticky top-0 z-10">
+                    {day}
+                </div>
+            ))}
+            
+            {/* Day Cells */}
+            {weeks.flat().map((day, index) => {
+                 const itemsForDay = [
+                    ...shifts.filter(s => isSameDay(s.date, day)),
+                    ...leave.filter(l => isSameDay(l.date, day))
+                ];
+
+                const itemsByEmployee = itemsForDay.reduce((acc, item) => {
+                    const empId = item.employeeId ?? 'unassigned';
+                    if (!acc[empId]) {
+                        acc[empId] = [];
+                    }
+                    acc[empId].push(item);
+                    return acc;
+                }, {} as Record<string, (Shift | Leave)[]>);
+
+
+                return (
+                    <div
+                        key={day.toISOString()}
+                        className={cn(
+                            "group/cell col-start-auto p-1 border-b border-l min-h-[120px] bg-background/30 relative flex flex-col",
+                             day.getMonth() !== currentDate.getMonth() && 'bg-muted/50',
+                        )}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, null, day)} // Simplified drop, maybe improve later
+                    >
+                        <div className={cn('font-semibold text-sm', isToday(day) && 'text-primary')}>
+                            {format(day, 'd')}
+                        </div>
+                        <div className="flex-1 space-y-1 overflow-y-auto mt-1">
+                          {Object.entries(itemsByEmployee).map(([empId, items]) => {
+                             const employee = empId !== 'unassigned' ? getEmployee(empId) : null;
+                             return (
+                                <div key={empId}>
+                                  {items.map(item => (
+                                     <MonthShiftItem 
+                                        key={item.id}
+                                        item={item} 
+                                        employee={employee} 
+                                        onClick={() => !isReadOnly && handleEditItemClick(item)} 
+                                     />
+                                  ))}
+                                </div>
+                             )
+                          })}
+                        </div>
+                        {!isReadOnly && (
+                            <Button variant="ghost" size="icon" className="absolute top-0 right-0 h-7 w-7 opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(null, day)}>
+                                <PlusCircle className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                        )}
+                    </div>
+                )
+            })}
+        </div>
+    )
   }
 
   return (
@@ -628,7 +732,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       <div className="flex-1 overflow-auto">
         <Card className="h-full">
           <CardContent className="p-0 h-full">
-            {renderGrid()}
+            {viewMode === 'month' ? renderMonthGrid() : renderHorizontalGrid()}
           </CardContent>
         </Card>
       </div>

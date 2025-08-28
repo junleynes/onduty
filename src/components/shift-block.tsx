@@ -6,9 +6,11 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type { Shift, Leave } from '@/types';
 import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
+import { getFullName } from '@/lib/utils';
+
 
 const blockVariants = cva(
-  'w-full p-1.5 rounded-md text-left text-white overflow-hidden border relative',
+  'w-full p-1 rounded-md text-left text-white overflow-hidden border relative',
   {
     variants: {
       type: {
@@ -22,7 +24,7 @@ const blockVariants = cva(
       },
       context: {
         week: '',
-        month: 'p-1',
+        month: 'p-0.5',
       }
     },
     defaultVariants: {
@@ -36,6 +38,7 @@ const blockVariants = cva(
 interface ShiftBlockProps extends VariantProps<typeof blockVariants> {
   item: Shift | Leave;
   onClick: () => void;
+  employee?: { firstName: string, lastName: string, middleInitial?: string } | null;
 }
 
 
@@ -43,9 +46,9 @@ function isLeave(item: Shift | Leave): item is Leave {
   return 'type' in item;
 }
 
-export function ShiftBlock({ item, onClick, interactive, context }: ShiftBlockProps) {
+export function ShiftBlock({ item, onClick, interactive, context, employee: employeeProp }: ShiftBlockProps) {
   if (isLeave(item)) {
-    const employee = getEmployeeById(item.employeeId);
+    const employee = employeeProp ?? getEmployeeById(item.employeeId);
     if (!employee) return null;
 
     const backgroundColor = item.color || '#f97316'; // default to orange if no color
@@ -56,7 +59,10 @@ export function ShiftBlock({ item, onClick, interactive, context }: ShiftBlockPr
         className={cn(blockVariants({ type: 'leave', interactive, context }))}
         style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
-        <p className="font-bold text-xs truncate">{item.type}</p>
+        <p className={cn("font-bold text-xs truncate", context === 'month' && 'pl-1')}>
+          {context === 'month' ? item.type : getFullName(employee)}
+        </p>
+         {context === 'week' && <p className="text-xs truncate">{item.type}</p>}
         {!item.isAllDay && <p className="text-xs truncate">{item.startTime} - {item.endTime}</p>}
       </div>
     );
@@ -78,7 +84,7 @@ export function ShiftBlock({ item, onClick, interactive, context }: ShiftBlockPr
     )
   }
 
-  const employee = shift.employeeId ? getEmployeeById(shift.employeeId) : null;
+  const employee = employeeProp ?? (shift.employeeId ? getEmployeeById(shift.employeeId) : null);
   
   const formatTime = (time: string) => {
     if (!time) return '';
@@ -102,19 +108,27 @@ export function ShiftBlock({ item, onClick, interactive, context }: ShiftBlockPr
   return (
     <div
       onClick={onClick}
-      className={cn(blockVariants({ type: 'shift', interactive, context }))}
+      className={cn(blockVariants({ type: 'shift', interactive, context }), 'p-1.5')}
       style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
-      {isDraft && (
+      {isDraft && context !== 'month' && (
         <div className="absolute inset-0 w-full h-full bg-striped-semitransparent z-10"></div>
       )}
       <div className="relative z-20">
-        <p className="font-semibold text-xs truncate whitespace-pre-wrap">
-          {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
-        </p>
-         {context === 'week' && <p className="text-xs truncate whitespace-pre-wrap">
-          {shift.label}
-        </p>}
+        {context === 'month' ? (
+           <p className="font-semibold text-xs truncate whitespace-pre-wrap">
+              {shift.label}
+           </p>
+        ) : (
+          <>
+            <p className="font-semibold text-xs truncate whitespace-pre-wrap">
+              {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
+            </p>
+            <p className="text-xs truncate whitespace-pre-wrap">
+              {shift.label}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
