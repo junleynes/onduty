@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -59,6 +60,7 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'BL', color: '#14b8a6' }, // teal
     { type: 'PL', color: '#8b5cf6' }, // purple
     { type: 'ML', color: '#ec4899' }, // pink
+    { type: 'AVL', color: '#eab308' }, // yellow
 ];
 
 
@@ -780,3 +782,5 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       />
     </div>
   );
+
+    

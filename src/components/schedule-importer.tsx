@@ -272,7 +272,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                             id: `imp-lv-${rowIndex}-${colIndex}`,
                             employeeId: employee.id,
                             date,
-                            type: cellString === 'AVL' ? 'VL' : cellString,
+                            type: cellString,
                             isAllDay: true,
                          })
                     }
@@ -336,3 +336,5 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
     </Dialog>
   );
 }
+
+    
