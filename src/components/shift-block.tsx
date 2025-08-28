@@ -59,9 +59,6 @@ const formatLeaveTime = (time: string) => {
 
 export function ShiftBlock({ item, onClick, interactive, context, employee: employeeProp }: ShiftBlockProps) {
   if (isLeave(item)) {
-    const employee = employeeProp ?? getEmployeeById(item.employeeId);
-    if (!employee) return null;
-
     const backgroundColor = item.color || '#f97316';
 
     // For month view, just show the leave type for compactness

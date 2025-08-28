@@ -558,7 +558,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             ),
             ...leave.filter(
                 (l) => l.employeeId === employee.id && isSameDay(l.date, day)
-            )
+            ).map(l => {
+                const leaveType = leaveTypes.find(lt => lt.type === l.type);
+                return { ...l, color: leaveType?.color || l.color };
+            })
         ];
         return (
             <div
@@ -569,21 +572,15 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => handleShiftDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
             >
-            {itemsForDay.map((item) => {
-                const employeeForItem = 'label' in item 
-                    ? null // For shifts, ShiftBlock looks it up
-                    : employees.find(e => e.id === item.employeeId);
-                return (
-                    <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleShiftDragStart(e, item)} className="h-full">
-                        <ShiftBlock
-                        item={item}
-                        onClick={() => !isReadOnly && handleEditItemClick(item)}
-                        context="week"
-                        employee={employeeForItem}
-                        />
-                    </div>
-                );
-            })}
+            {itemsForDay.map((item) => (
+                <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleShiftDragStart(e, item)} className="h-full">
+                    <ShiftBlock
+                    item={item}
+                    onClick={() => !isReadOnly && handleEditItemClick(item)}
+                    context="week"
+                    />
+                </div>
+            ))}
             {itemsForDay.length === 0 && !isReadOnly && (
                 <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
                 <PlusCircle className="h-5 w-5 text-muted-foreground" />
