@@ -97,6 +97,13 @@ function AppContent() {
   
   const role: UserRole = currentUser?.role || 'member';
 
+  const shiftsForView = useMemo(() => {
+    if (currentUser?.role === 'member') {
+      return shifts.filter(shift => shift.status === 'published');
+    }
+    return shifts;
+  }, [shifts, currentUser]);
+
   const handleNavigate = (view: NavItem) => {
     setActiveView(view);
   };
@@ -215,7 +222,7 @@ function AppContent() {
         return (
           <ScheduleView 
             employees={scheduleEmployees} 
-            shifts={shifts}
+            shifts={shiftsForView}
             setShifts={setShifts}
             leave={leave}
             setLeave={setLeave}
@@ -229,7 +236,7 @@ function AppContent() {
         return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
       }
       case 'my-schedule':
-        return <MyScheduleView shifts={shifts} employeeId={currentUser.id} employees={employees} />;
+        return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
       case 'admin':
         return (
             <AdminPanel 
@@ -256,7 +263,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, currentUser, groups]);
+  }, [activeView, employees, shifts, leave, currentUser, groups, shiftsForView]);
 
   if (!currentUser) {
       return null;
