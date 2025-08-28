@@ -204,7 +204,8 @@ function AppContent() {
         const scheduleEmployees = employees.filter(emp => emp.role !== 'admin' && (currentUser.role !== 'member' || emp.group === currentUser.group));
         return (
           <ScheduleView 
-            employees={scheduleEmployees} 
+            employees={scheduleEmployees}
+            setEmployees={setEmployees}
             shifts={shiftsForView}
             setShifts={setShifts}
             leave={leave}

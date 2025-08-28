@@ -29,6 +29,7 @@ type ViewMode = 'day' | 'week' | 'month';
 
 type ScheduleViewProps = {
   employees: Employee[];
+  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
   shifts: Shift[];
   setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
   leave: Leave[];
@@ -63,7 +64,7 @@ const initialLeaveTypes: LeaveTypeOption[] = [
 ];
 
 
-export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -313,10 +314,20 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     toast({ title: "Template Loaded", description: "The saved template has been applied to the current week." });
   };
 
-  const handleImportedData = (importedShifts: Shift[], importedLeave: Leave[]) => {
+  const handleImportedData = (importedShifts: Shift[], importedLeave: Leave[], employeeOrder: string[]) => {
       const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
       setShifts(prev => [...prev, ...shiftsWithStatus]);
       setLeave(prev => [...prev, ...importedLeave]);
+
+      // Reorder employees based on excel file
+      if (employeeOrder.length > 0) {
+        setEmployees(currentEmployees => {
+            const employeeMap = new Map(currentEmployees.map(e => [e.id, e]));
+            const orderedEmployees = employeeOrder.map(id => employeeMap.get(id)).filter((e): e is Employee => !!e);
+            const remainingEmployees = currentEmployees.filter(e => !employeeOrder.includes(e.id));
+            return [...orderedEmployees, ...remainingEmployees];
+        });
+      }
   };
   
   const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
@@ -391,8 +402,8 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         <div className="grid" style={{ gridTemplateColumns }}>
             {/* Header Row */}
             <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center", viewMode === 'month' ? "border-t" : "")}>
-                <span className="font-semibold text-sm">
-                    {viewMode === 'month' ? 'Employees' : 'Employees'}
+                 <span className="font-semibold text-sm">
+                    {viewMode === 'month' ? `Week ${weekNumber}` : 'Employees'}
                 </span>
             </div>
             {days.map((day) => {
@@ -412,7 +423,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
                 return (
                     <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l", viewMode === 'month' && "border-t")}>
-                        <div className="text-lg whitespace-nowrap">{format(day, 'E d/M')}</div>
+                        <div className="text-lg whitespace-nowrap">{format(day, 'E M/d')}</div>
                         <div className="text-xs text-muted-foreground font-normal flex justify-center gap-3 mt-1">
                             <TooltipProvider>
                                 <Tooltip>
@@ -646,7 +657,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         <Card className="h-full">
           <CardContent className="p-0 h-full">
              {viewMode === 'month' ? (
-              <div className="space-y-4">
+              <div className="space-y-4 p-4">
                 {weeksOfMonth.map((week, index) => (
                   <div key={index}>
                     {renderHorizontalGrid(week, getISOWeek(week[0]))}

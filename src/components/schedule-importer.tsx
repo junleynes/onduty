@@ -23,7 +23,7 @@ import type { ShiftTemplate } from './shift-editor';
 type ScheduleImporterProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onImport: (importedShifts: Shift[], importedLeave: Leave[]) => void;
+  onImport: (importedShifts: Shift[], importedLeave: Leave[], employeeOrder: string[]) => void;
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
 };
@@ -118,6 +118,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
 
         const importedShifts: Shift[] = [];
         const importedLeave: Leave[] = [];
+        const employeeOrder: string[] = [];
         
         let month = new Date().getMonth();
         let year = new Date().getFullYear();
@@ -194,6 +195,10 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                 if (!employee) {
                     continue;
                 };
+
+                if (!employeeOrder.includes(employee.id)) {
+                    employeeOrder.push(employee.id);
+                }
                 
                 Object.entries(dateMap).forEach(([colIndexStr, day]) => {
                     const colIndex = parseInt(colIndexStr);
@@ -290,7 +295,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
 
              toast({ title: 'Import Warning', description: `No shifts or leave were found. ${errorDetail}`, variant: 'destructive', duration: 8000 });
         } else {
-            onImport(importedShifts, importedLeave);
+            onImport(importedShifts, importedLeave, employeeOrder);
             toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
             setIsOpen(false);
         }
