@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,6 @@ import { Loader2 } from 'lucide-react';
 import type { Shift, Leave, Employee } from '@/types';
 import type { ShiftTemplate } from './shift-editor';
 
-
 type ScheduleImporterProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -28,61 +27,65 @@ type ScheduleImporterProps = {
   shiftTemplates: ShiftTemplate[];
 };
 
-const normalizeName = (name: string) => {
+const normalizeName = (name: string): string => {
   if (!name) return '';
-  // Keep periods for suffixes like Jr. but normalize whitespace and remove commas
   return name.trim().toLowerCase().replace(/,/g, '').replace(/\s+/g, ' ');
 };
 
+const findEmployeeByName = (name: string, allEmployees: Employee[]): Employee | null => {
+  if (!name || typeof name !== 'string') return null;
 
-const findEmployeeByName = (name: string, allEmployees: Employee[]) => {
-    if (!name || typeof name !== 'string') return null;
+  const normalizedInput = normalizeName(name);
 
-    const normalizedInput = normalizeName(name);
+  // Exact match first
+  for (const emp of allEmployees) {
+    const fullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
+    const fullNameWithMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''} ${emp.lastName}`);
+    if (fullName === normalizedInput || fullNameWithMI === normalizedInput) {
+      return emp;
+    }
+  }
+
+  // Handle "Lastname, Firstname M.I. Suffix"
+  if (name.includes(',')) {
+    const parts = name.split(',').map(p => p.trim());
+    const lastNamePart = normalizeName(parts[0]);
+    const firstNamePart = normalizeName(parts[1] || '');
 
     for (const emp of allEmployees) {
-        const normalizedEmpFirstName = normalizeName(emp.firstName);
-        const normalizedEmpLastName = normalizeName(emp.lastName);
-        // Full name with and without middle initial
-        const normalizedEmpFullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
-        const normalizedEmpFullNameWithMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''} ${emp.lastName}`);
-        
-        // Direct full name match
-        if (normalizedEmpFullName === normalizedInput || normalizedEmpFullNameWithMI === normalizedInput) {
-            return emp;
-        }
-
-        // Handle "Lastname, Firstname M.I. Suffix" format
-        if (name.includes(',')) {
-            const parts = name.split(',').map(p => p.trim());
-            const lastNamePart = normalizeName(parts[0]);
-            const restOfNamePart = normalizeName(parts.slice(1).join(' '));
-            
-            if (normalizedEmpLastName === lastNamePart) {
-                const empFirstNameAndRest = normalizeName(`${emp.firstName} ${emp.middleInitial || ''}`).trim();
-                const empFirstNameOnly = normalizeName(emp.firstName).trim();
-
-                // It should match the rest of the name
-                if (restOfNamePart.startsWith(empFirstNameOnly)) {
-                     return emp;
-                }
-            }
-        }
+      const normalizedEmpLastName = normalizeName(emp.lastName);
+      const normalizedEmpFirstName = normalizeName(emp.firstName);
+      if (normalizedEmpLastName === lastNamePart && firstNamePart.startsWith(normalizedEmpFirstName)) {
+        return emp;
+      }
     }
-    
-    // Fallback for "Firstname Lastname" or "Firstname M Lastname" if all else fails
-    const parts = normalizedInput.split(' ');
-    const firstNamePart = parts[0];
-    const lastNamePart = parts[parts.length -1];
-     for (const emp of allEmployees) {
-         if (normalizeName(emp.firstName) === firstNamePart && normalizeName(emp.lastName) === lastNamePart) {
-            return emp;
-        }
-    }
+  }
 
-    return null;
+  return null;
 };
 
+const convertTo24Hour = (time: string): string => {
+    let tempTime = time.toLowerCase().replace(/\s/g, '');
+    const isPm = tempTime.includes('pm') || tempTime.includes('p');
+    const isAm = tempTime.includes('am') || tempTime.includes('a');
+    
+    tempTime = tempTime.replace('pm', '').replace('p', '').replace('am', '').replace('a', '');
+    
+    let [h, m] = tempTime.split(':');
+    if (!m) m = '00';
+    let hour = parseInt(h, 10);
+
+    if (isNaN(hour)) return '';
+
+    if (isPm && hour < 12) {
+        hour += 12;
+    }
+    if (isAm && hour === 12) { // Midnight case: 12am is 00:00
+        hour = 0;
+    }
+    
+    return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
 export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shiftTemplates }: ScheduleImporterProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -95,235 +98,160 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
     }
   };
 
-  const getEmployeeById = (id: string | null) => {
-    if (!id) return null;
-    return employees.find(e => e.id === id);
-  };
-
   const handleImport = () => {
     if (!file) {
-      toast({ title: 'No file selected', description: 'Please select an XLSX file to import.', variant: 'destructive' });
+      toast({ title: 'No file selected', description: 'Please select a CSV file to import.', variant: 'destructive' });
       return;
     }
     setIsImporting(true);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null }) as (string | number | null)[][];
+    Papa.parse(file, {
+      header: false,
+      skipEmptyLines: false, // Keep empty lines to detect blocks
+      complete: (results) => {
+        try {
+          const rows = results.data as string[][];
+          const importedShifts: Shift[] = [];
+          const importedLeave: Leave[] = [];
+          const employeeOrder: string[] = [];
+          
+          const scheduleBlocks: string[][][] = [];
+          let currentBlock: string[][] = [];
 
-        const importedShifts: Shift[] = [];
-        const importedLeave: Leave[] = [];
-        const employeeOrder: string[] = [];
-        
-        let month = new Date().getMonth();
-        let year = new Date().getFullYear();
+          for (const row of rows) {
+              const isRowEmpty = row.every(cell => cell === null || cell.trim() === '');
+              if (isRowEmpty) {
+                  if (currentBlock.length > 0) {
+                      scheduleBlocks.push(currentBlock);
+                      currentBlock = [];
+                  }
+              } else {
+                  currentBlock.push(row);
+              }
+          }
+          if (currentBlock.length > 0) {
+              scheduleBlocks.push(currentBlock);
+          }
+          
+          if (scheduleBlocks.length === 0) {
+              throw new Error("Could not find any schedule blocks in the file.");
+          }
 
-        const monthRow = json.find(row => row.some(cell => typeof cell === 'string' && /(january|february|march|april|may|june|july|august|september|october|november|december)/i.test(String(cell))));
-        if (monthRow) {
-            const monthCell = monthRow.find(cell => typeof cell === 'string' && /(january|february|march|april|may|june|july|august|september|october|november|december)/i.test(String(cell)));
-            if (monthCell) {
-                 const monthString = String(monthCell);
-                 const monthStr = monthString.toLowerCase();
-                 const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-                 const monthIndex = months.findIndex(m => monthStr.includes(m));
-                 if (monthIndex > -1) {
-                    month = monthIndex;
-                 }
-                 
-                 const yearMatch = monthString.match(/\b(20\d{2})\b/);
-                 if (yearMatch) {
-                    year = parseInt(yearMatch[0], 10);
-                 }
-            }
+          scheduleBlocks.forEach((block, blockIndex) => {
+              const headerRow = block[0];
+              if (!headerRow || headerRow[0]?.trim().toLowerCase() !== 'employees') {
+                  console.warn(`Block ${blockIndex + 1} is missing a valid header row. Skipping.`);
+                  return;
+              }
+
+              const dates: { colIndex: number, date: Date }[] = [];
+              for(let i = 1; i < headerRow.length; i++) {
+                  const dateStr = headerRow[i]?.trim();
+                  if (dateStr) {
+                      // Handles yyyy-mm-dd format
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                          const date = new Date(`${dateStr}T00:00:00Z`); // Use UTC to avoid timezone issues
+                          if (!isNaN(date.getTime())) {
+                              dates.push({ colIndex: i, date });
+                          }
+                      }
+                  }
+              }
+
+              if (dates.length === 0) {
+                  console.warn(`No valid dates found in header of block ${blockIndex + 1}. Skipping.`);
+                  return;
+              }
+
+              for (let rowIndex = 1; rowIndex < block.length; rowIndex++) {
+                  const employeeRow = block[rowIndex];
+                  const employeeName = employeeRow[0];
+                  if (!employeeName) continue;
+
+                  const employee = findEmployeeByName(employeeName, employees);
+                  if (!employee) {
+                      console.warn(`Employee "${employeeName}" not found. Skipping row.`);
+                      continue;
+                  }
+
+                  if (!employeeOrder.includes(employee.id)) {
+                      employeeOrder.push(employee.id);
+                  }
+
+                  dates.forEach(({ colIndex, date }) => {
+                      const cellValue = employeeRow[colIndex]?.trim().toUpperCase();
+                      if (!cellValue) return;
+
+                      if (cellValue === 'OFF') {
+                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'OFF', color: 'transparent', isDayOff: true });
+                          return;
+                      }
+                      if (cellValue === 'HOL-OFF') {
+                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'HOL-OFF', color: 'transparent', isHolidayOff: true });
+                          return;
+                      }
+
+                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL'].includes(cellValue)) {
+                          importedLeave.push({ id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, type: cellValue, isAllDay: true });
+                          return;
+                      }
+                      
+                      const timeMatch = cellValue.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i);
+                      if (timeMatch) {
+                          const startTime = convertTo24Hour(timeMatch[1]);
+                          const endTime = convertTo24Hour(timeMatch[2]);
+                          if (!startTime || !endTime) return;
+                          
+                          const matchedTemplate = shiftTemplates.find(t => t.startTime === startTime && t.endTime === endTime);
+                          importedShifts.push({
+                              id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`,
+                              employeeId: employee.id,
+                              date,
+                              startTime,
+                              endTime,
+                              label: matchedTemplate ? matchedTemplate.label : 'Shift',
+                              color: matchedTemplate ? matchedTemplate.color : '#9b59b6'
+                          });
+                      }
+                  });
+              }
+          });
+
+          if (importedShifts.length === 0 && importedLeave.length === 0) {
+            throw new Error("No shifts or leave could be parsed from the file. Please check the file format, especially employee names and date headers.");
+          }
+
+          onImport(importedShifts, importedLeave, employeeOrder);
+          toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
+          setIsOpen(false);
+
+        } catch (error: any) {
+          console.error("Import failed:", error);
+          toast({ title: 'Import Failed', description: error.message || 'An unknown error occurred.', variant: 'destructive', duration: 8000 });
+        } finally {
+          setIsImporting(false);
+          setFile(null);
         }
-
-        const isDateRow = (row: (string | number | null)[]): boolean => {
-            if (!row || row.length === 0) return false;
-            const dateLikeCells = row.filter(cell => {
-                if (cell === null || cell === undefined) return false;
-                const cellStr = String(cell).trim();
-                if (cellStr === '') return false;
-                // Check if it's a number between 1 and 31
-                if (!/^\d{1,2}$/.test(cellStr)) return false;
-                const num = Number(cellStr);
-                return !isNaN(num) && num >= 1 && num <= 31;
-            });
-            // A row is considered a date row if it has more than 5 numbers between 1 and 31.
-            return dateLikeCells.length > 5;
-        };
-
-
-        const dateRowIndices = json.reduce((acc, row, index) => {
-            if (isDateRow(row)) {
-                acc.push(index);
-            }
-            return acc;
-        }, [] as number[]);
-
-
-        if (dateRowIndices.length === 0) {
-            throw new Error("Could not find any date rows (e.g., 1-31) in the Excel sheet. Please ensure the dates are present and formatted as numbers or text.");
-        }
-        
-        dateRowIndices.forEach((dateRowIndex, i) => {
-            const dateRow = json[dateRowIndex];
-            const dateMap: { [key: number]: number } = {};
-            dateRow.forEach((cell, index) => {
-                if (cell === null || cell === undefined) return;
-                const dayStr = String(cell).trim();
-                if (/^\d{1,2}$/.test(dayStr)) {
-                    const day = Number(dayStr);
-                     if (!isNaN(day) && day >= 1 && day <= 31) {
-                        dateMap[index] = day;
-                    }
-                }
-            });
-
-            const startRow = dateRowIndex + 1;
-            const endRow = i < dateRowIndices.length - 1 ? dateRowIndices[i+1] : json.length;
-
-            for (let rowIndex = startRow; rowIndex < endRow; rowIndex++) {
-                const row = json[rowIndex];
-                if (!row || !row[0] || typeof row[0] !== 'string') continue;
-                
-                const employee = findEmployeeByName(row[0] as string, employees);
-                if (!employee) {
-                    continue;
-                };
-
-                if (!employeeOrder.includes(employee.id)) {
-                    employeeOrder.push(employee.id);
-                }
-                
-                Object.entries(dateMap).forEach(([colIndexStr, day]) => {
-                    const colIndex = parseInt(colIndexStr);
-                    const cellValue = row[colIndex];
-                    if (cellValue === null || cellValue === undefined || String(cellValue).trim() === '') return;
-
-                    const date = new Date(Date.UTC(year, month, day));
-                    const cellString = String(cellValue).toUpperCase().trim();
-                    
-                    if (cellString === 'OFF') {
-                        importedShifts.push({
-                            id: `imp-sh-${rowIndex}-${colIndex}`,
-                            employeeId: employee.id,
-                            date,
-                            startTime: '',
-                            endTime: '',
-                            label: 'OFF',
-                            color: 'transparent',
-                            isDayOff: true,
-                        });
-                        return;
-                    }
-                     if (cellString === 'HOL-OFF') {
-                        importedShifts.push({
-                            id: `imp-sh-${rowIndex}-${colIndex}`,
-                            employeeId: employee.id,
-                            date,
-                            startTime: '',
-                            endTime: '',
-                            label: 'HOL-OFF',
-                            color: 'transparent',
-                            isHolidayOff: true,
-                        });
-                        return;
-                    }
-                    
-                    const timeMatch = cellString.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i);
-                    
-                    if (timeMatch) {
-                        const convertTo24Hour = (time: string) => {
-                            let tempTime = time.toLowerCase().replace(/\s/g, '');
-                            let [h, m] = tempTime.replace('am', '').replace('pm', '').split(':');
-                            let hour = parseInt(h);
-                            
-                            if (tempTime.includes('pm') && hour < 12) {
-                                hour += 12;
-                            }
-                            if (tempTime.includes('am') && hour === 12) { // Midnight case: 12am is 00:00
-                               hour = 0;
-                            }
-                            return `${String(hour).padStart(2, '0')}:${m || '00'}`;
-                        }
-
-                        const startTime = convertTo24Hour(timeMatch[1]);
-                        const endTime = convertTo24Hour(timeMatch[2]);
-                        
-                        const matchedTemplate = shiftTemplates.find(t => t.startTime === startTime && t.endTime === endTime);
-
-                        importedShifts.push({
-                            id: `imp-sh-${rowIndex}-${colIndex}`,
-                            employeeId: employee.id,
-                            date,
-                            startTime,
-                            endTime,
-                            label: matchedTemplate ? matchedTemplate.label : 'Unknown Shift',
-                            color: matchedTemplate ? matchedTemplate.color : '#9b59b6' // purple for unknown
-                        });
-
-                    } else if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL'].includes(cellString)) {
-                         importedLeave.push({
-                            id: `imp-lv-${rowIndex}-${colIndex}`,
-                            employeeId: employee.id,
-                            date,
-                            type: cellString,
-                            isAllDay: true,
-                         })
-                    }
-                });
-            }
-        });
-        
-        const matchedEmployeeNames = new Set(importedShifts.map(s => getEmployeeById(s.employeeId)?.firstName).filter(Boolean));
-        
-        if (importedShifts.length === 0 && importedLeave.length === 0) {
-             const employeeNamesInFile = new Set(json.map(row => row[0]).filter(name => typeof name === 'string' && name.trim() !== '' && !isDateRow(row as any) && name.toLowerCase() !== 'employee'));
-             const unmatchedNames = [...employeeNamesInFile].filter(name => !findEmployeeByName(name as string, employees));
-
-             let errorDetail = 'Please check that the file format is correct.';
-             if (unmatchedNames.length > 0) {
-                 errorDetail = `No employees from the Excel file could be matched to team members. Unmatched names include: ${unmatchedNames.slice(0, 3).join(', ')}...`
-             } else if(dateRowIndices.length === 0) {
-                 errorDetail = "Could not find the date row (1-31). Please ensure it exists and contains numbers."
-             }
-
-             toast({ title: 'Import Warning', description: `No shifts or leave were found. ${errorDetail}`, variant: 'destructive', duration: 8000 });
-        } else {
-            onImport(importedShifts, importedLeave, employeeOrder);
-            toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
-            setIsOpen(false);
-        }
-
-      } catch (error) {
-        console.error("Import failed:", error);
-        toast({ title: 'Import Failed', description: (error as Error).message || 'There was an error processing the file.', variant: 'destructive' });
-      } finally {
+      },
+      error: (error) => {
+        toast({ title: 'Import Failed', description: error.message, variant: 'destructive' });
         setIsImporting(false);
-        setFile(null);
       }
-    };
-    reader.readAsArrayBuffer(file);
+    });
   };
-
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Import Schedule from Excel</DialogTitle>
+          <DialogTitle>Import Schedule from CSV</DialogTitle>
           <DialogDescription>
-            Upload an XLSX file to import shifts and leave. The file should have employee names in the first column and dates in a header row.
+            Upload a CSV file. The file should have a header row starting with "Employees" followed by dates in yyyy-mm-dd format.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-            <Label htmlFor="schedule-file">Excel File (.xlsx)</Label>
-            <Input id="schedule-file" type="file" onChange={handleFileChange} accept=".xlsx, .xls" />
+          <Label htmlFor="schedule-file">CSV File</Label>
+          <Input id="schedule-file" type="file" onChange={handleFileChange} accept=".csv" />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
@@ -336,5 +264,3 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
     </Dialog>
   );
 }
-
-    
