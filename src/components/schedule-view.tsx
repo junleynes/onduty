@@ -64,6 +64,8 @@ const initialLeaveTypes: LeaveTypeOption[] = [
 
 // New component for rendering shifts inside a month cell
 const MonthShiftItem: React.FC<{item: Shift | Leave, employee?: Employee | null, onClick: () => void}> = ({ item, employee, onClick }) => {
+  const employeeForBlock = 'employeeId' in item ? employee : undefined;
+
   return (
     <div onClick={onClick} className="flex items-center gap-1.5 p-1 rounded-md hover:bg-accent cursor-pointer group">
       {employee && (
@@ -75,7 +77,7 @@ const MonthShiftItem: React.FC<{item: Shift | Leave, employee?: Employee | null,
         </Avatar>
       )}
       <div className="flex-1 overflow-hidden">
-         <ShiftBlock item={item} onClick={() => {}} context="month" interactive={false} />
+         <ShiftBlock item={item} onClick={() => {}} context="month" interactive={false} employee={employeeForBlock} />
       </div>
     </div>
   )
@@ -518,91 +520,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     );
   }
 
-  const renderMonthGrid = () => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-
-    const weeks = eachWeekOfInterval(
-        { start: monthStart, end: monthEnd },
-        { weekStartsOn: 1 }
-    ).map(weekStart => {
-        return eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) });
-    });
-    
-    const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-    const getEmployee = (id: string | null) => employees.find(e => e.id === id);
-
-    return (
-        <div className="grid grid-cols-7 h-full">
-             {/* Header Row */}
-            {weekDays.map(day => (
-                <div key={day} className="p-2 text-center font-semibold border-b border-l bg-card sticky top-0 z-10">
-                    {day}
-                </div>
-            ))}
-            
-            {/* Day Cells */}
-            {weeks.flat().map((day, index) => {
-                 const itemsForDay = [
-                    ...shifts.filter(s => isSameDay(s.date, day)),
-                    ...leave.filter(l => isSameDay(l.date, day))
-                ];
-
-                const itemsByEmployee = itemsForDay.reduce((acc, item) => {
-                    const empId = item.employeeId ?? 'unassigned';
-                    if (!acc[empId]) {
-                        acc[empId] = [];
-                    }
-                    acc[empId].push(item);
-                    return acc;
-                }, {} as Record<string, (Shift | Leave)[]>);
-
-
-                return (
-                    <div
-                        key={day.toISOString()}
-                        className={cn(
-                            "group/cell col-start-auto p-1 border-b border-l min-h-[120px] bg-background/30 relative flex flex-col",
-                             day.getMonth() !== currentDate.getMonth() && 'bg-muted/50',
-                        )}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, null, day)} // Simplified drop, maybe improve later
-                    >
-                        <div className={cn('font-semibold text-sm', isToday(day) && 'text-primary')}>
-                            {format(day, 'd')}
-                        </div>
-                        <div className="flex-1 space-y-1 overflow-y-auto mt-1">
-                          {Object.entries(itemsByEmployee).map(([empId, items]) => {
-                             const employee = empId !== 'unassigned' ? getEmployee(empId) : null;
-                             return (
-                                <div key={empId}>
-                                  {items.map(item => (
-                                     <MonthShiftItem 
-                                        key={item.id}
-                                        item={item} 
-                                        employee={employee} 
-                                        onClick={() => !isReadOnly && handleEditItemClick(item)} 
-                                     />
-                                  ))}
-                                </div>
-                             )
-                          })}
-                        </div>
-                        {!isReadOnly && (
-                            <Button variant="ghost" size="icon" className="absolute top-0 right-0 h-7 w-7 opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(null, day)}>
-                                <PlusCircle className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                        )}
-                    </div>
-                )
-            })}
-        </div>
-    )
-  }
-
   return (
     <div className="flex flex-col gap-4 h-full">
        <header className="flex items-center justify-between p-4 border-b">
@@ -732,7 +649,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       <div className="flex-1 overflow-auto">
         <Card className="h-full">
           <CardContent className="p-0 h-full">
-            {viewMode === 'month' ? renderMonthGrid() : renderHorizontalGrid()}
+            {renderHorizontalGrid()}
           </CardContent>
         </Card>
       </div>
