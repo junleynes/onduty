@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -451,10 +449,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const renderGridHeader = (days: Date[]) => (
      <div className="contents">
          {/* Header Row */}
-        <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center")}>
-            <div className="flex items-center gap-3">
-                <p className="font-semibold text-sm">Employees</p>
-            </div>
+        <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center")}>
+            <p className="font-semibold text-sm">Employees</p>
         </div>
         {days.map((day) => {
             const shiftsForDay = shifts.filter(shift => isSameDay(shift.date, day) && !shift.isDayOff && !shift.isHolidayOff);
@@ -470,9 +466,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 }
                 return acc;
             }, 0);
+            
+            const isMonthAndOutside = viewMode === 'month' && day.getMonth() !== currentDate.getMonth();
 
             return (
-                <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l")}>
+                <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l",
+                    isMonthAndOutside && 'bg-muted/50'
+                )}>
                     <div className="text-lg whitespace-nowrap">{format(day, 'E M/d')}</div>
                     <div className="text-xs text-muted-foreground font-normal flex justify-center gap-3 mt-1">
                         <TooltipProvider>
@@ -527,9 +527,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         onDrop={(e) => handleEmployeeDrop(e, employee.id)}
         >
         {/* Employee Cell */}
-        <div className={cn("sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card group",
-            viewMode === 'month' && 'bg-background/20'
-        )}>
+        <div className={cn("sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card group")}>
             {!isReadOnly && employee.id !== 'unassigned' && <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab group-hover:opacity-100 opacity-0 transition-opacity" />}
             <div className="flex items-center gap-3">
                  {employee.id !== 'unassigned' ? (
@@ -564,7 +562,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             <div
             key={`${employee.id}-${day.toISOString()}`}
             className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative",
-             viewMode === 'month' && !isSameDay(startOfMonth(currentDate), day) && day.getMonth() !== currentDate.getMonth() && 'bg-muted/30',
+             viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50',
             )}
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => handleShiftDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
@@ -574,7 +572,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     ? null // For shifts, ShiftBlock looks it up
                     : employees.find(e => e.id === item.employeeId);
                 return (
-                    <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleShiftDragStart(e, item)}>
+                    <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleShiftDragStart(e, item)} className="h-full">
                         <ShiftBlock
                         item={item}
                         onClick={() => !isReadOnly && handleEditItemClick(item)}
@@ -725,17 +723,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         <Card className="h-full">
           <CardContent className="p-0 h-full overflow-auto">
             {viewMode === 'month' ? (
-              <div className="grid" style={{ gridTemplateColumns: `200px repeat(7, minmax(140px, 1fr))` }}>
-                  {renderGridHeader(weeksOfMonth[0])}
+                <div className="space-y-4">
                   {weeksOfMonth.map((week, index) => (
-                      <React.Fragment key={index}>
-                         {orderedEmployees.map((employee) => renderEmployeeRow(employee, week))}
-                         {index < weeksOfMonth.length -1 && (
-                            <div className="col-span-8 h-4 bg-muted border-l border-r"></div>
-                         )}
-                      </React.Fragment>
+                      <div key={index} className="grid" style={{ gridTemplateColumns: `200px repeat(7, minmax(140px, 1fr))` }}>
+                          {renderGridHeader(week)}
+                          {orderedEmployees.map((employee) => renderEmployeeRow(employee, week))}
+                      </div>
                   ))}
-              </div>
+                </div>
             ) : (
                 <div className="grid" style={{ gridTemplateColumns: `200px repeat(${displayedDays.length}, minmax(140px, 1fr))` }}>
                   {renderGridHeader(displayedDays)}
@@ -785,4 +780,3 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       />
     </div>
   );
-}
