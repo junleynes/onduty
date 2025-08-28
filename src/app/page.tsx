@@ -201,7 +201,7 @@ function AppContent() {
 
     switch (activeView) {
       case 'schedule': {
-        const scheduleEmployees = employees.filter(emp => emp.role !== 'admin' && (currentUser.role !== 'member' || emp.group === currentUser.group));
+        const scheduleEmployees = employees.filter(emp => emp.role !== 'admin');
         return (
           <ScheduleView 
             employees={scheduleEmployees}

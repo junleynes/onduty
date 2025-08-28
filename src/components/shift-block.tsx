@@ -59,11 +59,11 @@ export function ShiftBlock({ item, onClick, interactive, context, employee: empl
         className={cn(blockVariants({ type: 'leave', interactive, context }))}
         style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
-        <p className={cn("font-bold text-xs truncate", context === 'month' && 'pl-1')}>
+        <p className={cn("font-bold text-xs truncate text-center", context === 'month' && 'pl-1')}>
           {context === 'month' ? item.type : getFullName(employee)}
         </p>
-         {context === 'week' && <p className="text-xs truncate">{item.type}</p>}
-        {!item.isAllDay && <p className="text-xs truncate">{item.startTime} - {item.endTime}</p>}
+         {context === 'week' && <p className="text-xs truncate text-center">{item.type}</p>}
+        {!item.isAllDay && <p className="text-xs truncate text-center">{item.startTime} - {item.endTime}</p>}
       </div>
     );
   }
@@ -108,7 +108,7 @@ export function ShiftBlock({ item, onClick, interactive, context, employee: empl
   return (
     <div
       onClick={onClick}
-      className={cn(blockVariants({ type: 'shift', interactive, context }), 'p-1.5')}
+      className={cn(blockVariants({ type: 'shift', interactive, context }), 'p-1.5 text-center')}
       style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
       {isDraft && context !== 'month' && (
