@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Employee, Shift, Leave, Notification } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -89,7 +90,11 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         case 'week':
             return { from: startOfWeek(currentDate, { weekStartsOn: 1 }), to: endOfWeek(currentDate, { weekStartsOn: 1 }) };
         case 'month':
-            return { from: startOfMonth(currentDate), to: endOfMonth(currentDate) };
+            const monthStart = startOfMonth(currentDate);
+            const monthEnd = endOfMonth(currentDate);
+            const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+            const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+            return { from: startDate, to: endDate };
         default:
             return { from: startOfWeek(currentDate, { weekStartsOn: 1 }), to: endOfWeek(currentDate, { weekStartsOn: 1 }) };
     }
@@ -101,6 +106,15 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     }
     return [];
   }, [dateRange]);
+  
+  const monthViewDays = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: startDate, end: endDate });
+  }, [currentDate, viewMode]);
 
   const handleAddShiftClick = () => {
     if (isReadOnly) return;
@@ -200,7 +214,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       
       let newDate;
       if (viewMode === 'month') {
-        newDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + (direction === 'prev' ? -1 : 1), 1);
+        newDate = addMonths(currentDate, direction === 'prev' ? -1 : 1);
       } else {
         newDate = addDays(currentDate, direction === 'prev' ? -daysToAdd : daysToAdd);
       }
@@ -382,6 +396,9 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   };
   
   const formatRange = (start: Date, end: Date) => {
+      if (viewMode === 'month') {
+        return format(start, 'MMMM yyyy');
+      }
       if (isSameDay(start, end)) {
           return format(start, 'MMM d, yyyy');
       }
@@ -392,6 +409,120 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
           return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
       }
       return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
+  }
+  
+  const weekDayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  const renderGrid = () => {
+    const days = viewMode === 'month' ? monthViewDays : displayedDays;
+    const gridTemplateColumns = viewMode === 'month'
+      ? `200px repeat(7, 1fr)`
+      : `200px repeat(${days.length}, 1fr)`;
+
+    return (
+        <div className="grid" style={{ gridTemplateColumns }}>
+            {/* Header Row */}
+            <div className="sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center">
+            <span className="font-semibold text-sm">Employees</span>
+            </div>
+            {(viewMode === 'week' || viewMode === 'day') && days.map((day) => (
+            <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
+                <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
+                <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                    <div className="text-xs text-muted-foreground mt-1 cursor-default">
+                        {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
+                    </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                    <p>Total shifts and unique employees scheduled for the day.</p>
+                    </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                    <div>
+                        <Progress value={(calculateDailyHours(day) / (8 * 5)) * 100} className="h-1 mt-1"/>
+                        <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
+                    </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                    <p>Total scheduled work hours for the day.</p>
+                    </TooltipContent>
+                </Tooltip>
+                </TooltipProvider>
+            </div>
+            ))}
+            {viewMode === 'month' && weekDayHeaders.map(day => (
+                <div key={day} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
+                    <div className="text-sm whitespace-nowrap">{day}</div>
+                </div>
+            ))}
+
+            {/* Employee Rows */}
+            {allEmployees.map((employee) => (
+            <React.Fragment key={employee.id}>
+                {/* Employee Cell */}
+                <div className="sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card">
+                {employee.id !== 'unassigned' ? (
+                <Avatar className="h-9 w-9">
+                    <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                    <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
+                    {getInitials(getFullName(employee))}
+                    </AvatarFallback>
+                </Avatar>
+                ) : <div className="w-full flex items-center justify-center">
+                        <p className="font-semibold text-sm text-center">{getFullName(employee)}</p>
+                    </div>}
+                {employee.id !== 'unassigned' && <div>
+                    <p className="font-semibold text-sm">{getFullName(employee)}</p>
+                </div>}
+                </div>
+
+                {/* Day Cells for Shifts */}
+                {days.map((day) => {
+                const itemsForDay = [
+                    ...shifts.filter(
+                        (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
+                    ),
+                    ...leave.filter(
+                        (l) => l.employeeId === employee.id && isSameDay(l.date, day)
+                    )
+                ];
+                const isCurrentMonth = format(day, 'M') === format(currentDate, 'M');
+                return (
+                    <div
+                    key={`${employee.id}-${day.toISOString()}`}
+                    className={cn(
+                        "group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative",
+                        viewMode === 'month' && !isCurrentMonth && 'bg-muted/50'
+                        )}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
+                    >
+                    {viewMode === 'month' && <div className="absolute top-1 right-1 text-xs text-muted-foreground">{format(day, 'd')}</div>}
+                    <div className={cn(viewMode === 'month' && 'mt-5')}>
+                        {itemsForDay.map((item) => (
+                        <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleDragStart(e, item)}>
+                            <ShiftBlock
+                            item={item}
+                            onClick={() => !isReadOnly && handleEditItemClick(item)}
+                            />
+                        </div>
+                        ))}
+                    </div>
+                    {itemsForDay.length === 0 && !isReadOnly && (
+                        <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
+                        <PlusCircle className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                    )}
+                    </div>
+                );
+                })}
+            </React.Fragment>
+            ))}
+        </div>
+    );
   }
 
 
@@ -408,11 +539,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
-                  dateRange.to ? (
-                    formatRange(dateRange.from, dateRange.to)
-                  ) : (
-                    format(dateRange.from, 'MM/dd/yyyy')
-                  )
+                  formatRange(currentDate, dateRange.to)
                 ) : (
                   <span>Pick a date</span>
                 )}
@@ -528,96 +655,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       <div className="flex-1 overflow-auto">
         <Card className="h-full">
           <CardContent className="p-0 grid">
-            <div className="grid" style={{gridTemplateColumns: `200px repeat(${displayedDays.length}, 1fr)`}}>
-              {/* Header Row */}
-              <div className="sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center">
-                <span className="font-semibold text-sm">Employees</span>
-              </div>
-              {displayedDays.map((day) => (
-                <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
-                  <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
-                  <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="text-xs text-muted-foreground mt-1 cursor-default">
-                          {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Total shifts and unique employees scheduled for the day.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                   <Tooltip>
-                    <TooltipTrigger asChild>
-                       <div>
-                         <Progress value={(calculateDailyHours(day) / (8 * 5)) * 100} className="h-1 mt-1"/>
-                         <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
-                       </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Total scheduled work hours for the day.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                  </TooltipProvider>
-                </div>
-              ))}
-
-              {/* Employee Rows */}
-              {allEmployees.map((employee) => (
-                <React.Fragment key={employee.id}>
-                  {/* Employee Cell */}
-                  <div className="sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card">
-                    {employee.id !== 'unassigned' ? (
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                      <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
-                        {getInitials(getFullName(employee))}
-                      </AvatarFallback>
-                    </Avatar>
-                    ) : <div className="w-full flex items-center justify-center">
-                          <p className="font-semibold text-sm text-center">{getFullName(employee)}</p>
-                        </div>}
-                    {employee.id !== 'unassigned' && <div>
-                      <p className="font-semibold text-sm">{getFullName(employee)}</p>
-                    </div>}
-                  </div>
-
-                  {/* Day Cells for Shifts */}
-                  {displayedDays.map((day) => {
-                    const itemsForDay = [
-                        ...shifts.filter(
-                          (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
-                        ),
-                        ...leave.filter(
-                          (l) => l.employeeId === employee.id && isSameDay(l.date, day)
-                        )
-                    ];
-                    return (
-                      <div
-                        key={`${employee.id}-${day.toISOString()}`}
-                        className="group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative"
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
-                      >
-                        {itemsForDay.map((item) => (
-                          <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleDragStart(e, item)}>
-                            <ShiftBlock
-                              item={item}
-                              onClick={() => !isReadOnly && handleEditItemClick(item)}
-                            />
-                          </div>
-                        ))}
-                        {itemsForDay.length === 0 && !isReadOnly && (
-                          <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
-                            <PlusCircle className="h-5 w-5 text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-            </div>
+            {renderGrid()}
           </CardContent>
         </Card>
       </div>
