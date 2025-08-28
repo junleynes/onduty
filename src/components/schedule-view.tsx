@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Employee, Shift, Leave } from '@/types';
+import type { Employee, Shift, Leave, Notification } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown } from 'lucide-react';
@@ -34,6 +34,7 @@ type ScheduleViewProps = {
   setLeave: React.Dispatch<React.SetStateAction<Leave[]>>;
   currentUser: Employee | null;
   onPublish: () => void;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
 }
 
 const initialShiftTemplates: ShiftTemplate[] = [
@@ -60,7 +61,7 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'ML', color: '#ec4899' }, // pink
 ];
 
-export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser, onPublish }: ScheduleViewProps) {
+export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -132,13 +133,16 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
   const handleSaveShift = (savedShift: Shift | Partial<Shift>) => {
     if (isReadOnly) return;
+    const employeeName = savedShift.employeeId ? getFullName(employees.find(e => e.id === savedShift.employeeId)!) : 'Unassigned';
     if ('id' in savedShift && savedShift.id) {
       // Update existing shift
       setShifts(shifts.map(s => s.id === savedShift.id ? { ...s, ...savedShift, status: 'draft' } as Shift : s));
+      addNotification({ message: `Shift for ${employeeName} on ${format(savedShift.date!, 'MMM d')} was updated.` });
     } else {
       // Add new shift
       const newShiftWithId = { ...savedShift, id: `sh-${Date.now()}`, status: 'draft' };
       setShifts([...shifts, newShiftWithId as Shift]);
+      addNotification({ message: `New shift created for ${employeeName} on ${format(savedShift.date!, 'MMM d')}.` });
     }
     setIsShiftEditorOpen(false);
     setEditingShift(null);
@@ -146,6 +150,11 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   
   const handleDeleteShift = (shiftId: string) => {
     if (isReadOnly) return;
+    const deletedShift = shifts.find(s => s.id === shiftId);
+    if(deletedShift) {
+      const employeeName = deletedShift.employeeId ? getFullName(employees.find(e => e.id === deletedShift.employeeId)!) : 'Unassigned';
+      addNotification({ message: `Shift for ${employeeName} on ${format(deletedShift.date!, 'MMM d')} was deleted.` });
+    }
     setShifts(shifts.filter(s => s.id !== shiftId));
     setIsShiftEditorOpen(false);
     setEditingShift(null);
@@ -155,12 +164,15 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
   const handleSaveLeave = (savedLeave: Leave | Partial<Leave>) => {
     if (isReadOnly) return;
+    const employeeName = getFullName(employees.find(e => e.id === savedLeave.employeeId)!);
     if (savedLeave.id) {
         setLeave(leave.map(l => l.id === savedLeave.id ? savedLeave as Leave : l));
+        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')} was updated.` });
         toast({ title: "Leave Updated" });
     } else {
         const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
+        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')} was added.` });
         toast({ title: "Time Off Added" });
     }
     setIsLeaveEditorOpen(false);
@@ -169,6 +181,11 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   
   const handleDeleteLeave = (leaveId: string) => {
     if (isReadOnly) return;
+    const deletedLeave = leave.find(l => l.id === leaveId);
+     if(deletedLeave) {
+      const employeeName = getFullName(employees.find(e => e.id === deletedLeave.employeeId)!);
+      addNotification({ message: `Time off for ${employeeName} on ${format(deletedLeave.date!, 'MMM d')} was deleted.` });
+    }
     setLeave(leave.filter(l => l.id !== leaveId));
     setIsLeaveEditorOpen(false);
     setEditingLeave(null);

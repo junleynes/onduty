@@ -19,7 +19,7 @@ export type Employee = {
 };
 
 export type Shift = {
-  id: string;
+  id:string;
   employeeId: string | null; // null for unassigned
   label: string;
   startTime: string; // e.g., "09:00"
@@ -42,4 +42,12 @@ export type Leave = {
   isAllDay: boolean;
   startTime?: string;
   endTime?: string;
+};
+
+export type Notification = {
+  id: string;
+  message: string;
+  timestamp: Date;
+  isRead: boolean;
+  employeeId?: string; // Optional: for user-specific notifications
 };

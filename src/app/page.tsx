@@ -2,12 +2,14 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { UserRole, Employee, Shift, Leave } from '@/types';
+import type { UserRole, Employee, Shift, Leave, Notification } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave } from '@/lib/data';
 import { useRouter } from 'next/navigation';
+import { useNotifications } from '@/hooks/use-notifications';
+import { getInitialState } from '@/lib/utils';
 
 // Views
 import ScheduleView from '@/components/schedule-view';
@@ -22,29 +24,6 @@ import { GroupEditor } from '@/components/group-editor';
 
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin';
-
-// Helper function to get initial state from localStorage or defaults
-const getInitialState = <T>(key: string, defaultValue: T): T => {
-    if (typeof window === 'undefined') {
-        return defaultValue;
-    }
-    try {
-        const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item, (k, v) => {
-            // Revive dates from string format
-            if (['date', 'birthDate', 'startDate'].includes(k) && v) {
-                const date = new Date(v);
-                if (!isNaN(date.getTime())) {
-                    return date;
-                }
-            }
-            return v;
-        }) : defaultValue;
-    } catch (error) {
-        console.error(`Error reading from localStorage for key "${key}":`, error);
-        return defaultValue;
-    }
-};
 
 
 function AppContent() {
@@ -66,11 +45,14 @@ function AppContent() {
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
 
+  const { notifications, setNotifications, addNotification } = useNotifications();
+
   // Persist state to localStorage on change
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('shifts', JSON.stringify(shifts)); }, [shifts]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('leave', JSON.stringify(leave)); }, [leave]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notifications', JSON.stringify(notifications)); }, [notifications]);
 
 
   useEffect(() => {
@@ -198,6 +180,7 @@ function AppContent() {
     setShifts(currentShifts => 
         currentShifts.map(shift => ({...shift, status: 'published' }))
     );
+    addNotification({ message: 'The schedule has been published.' });
     toast({ title: "Schedule Published!", description: "All shifts are now marked as published." });
   };
 
@@ -228,6 +211,7 @@ function AppContent() {
             setLeave={setLeave}
             currentUser={currentUser}
             onPublish={handlePublish}
+            addNotification={addNotification}
           />
         );
       }
@@ -263,7 +247,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, currentUser, groups, shiftsForView]);
+  }, [activeView, employees, shifts, leave, currentUser, groups, shiftsForView, addNotification]);
 
   if (!currentUser) {
       return null;
@@ -277,7 +261,14 @@ function AppContent() {
         <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header currentUser={currentUser} onLogout={handleLogout} onEditProfile={handleOpenProfileEditor} onResetPassword={handleOpenPasswordEditor} />
+        <Header 
+          currentUser={currentUser} 
+          onLogout={handleLogout} 
+          onEditProfile={handleOpenProfileEditor} 
+          onResetPassword={handleOpenPasswordEditor}
+          notifications={notifications}
+          setNotifications={setNotifications}
+        />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {currentView}
         </main>
