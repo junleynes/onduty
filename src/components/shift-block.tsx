@@ -19,11 +19,16 @@ const blockVariants = cva(
       interactive: {
         true: 'cursor-pointer',
         false: 'cursor-default',
+      },
+      context: {
+        week: '',
+        month: 'p-1',
       }
     },
     defaultVariants: {
       type: 'shift',
       interactive: true,
+      context: 'week',
     },
   }
 );
@@ -38,7 +43,7 @@ function isLeave(item: Shift | Leave): item is Leave {
   return 'type' in item;
 }
 
-export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
+export function ShiftBlock({ item, onClick, interactive, context }: ShiftBlockProps) {
   if (isLeave(item)) {
     const employee = getEmployeeById(item.employeeId);
     if (!employee) return null;
@@ -48,7 +53,7 @@ export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
     return (
       <div
         onClick={onClick}
-        className={cn(blockVariants({ type: 'leave', interactive }))}
+        className={cn(blockVariants({ type: 'leave', interactive, context }))}
         style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
         <p className="font-bold text-xs truncate">{item.type}</p>
@@ -65,10 +70,10 @@ export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
     return (
        <div
         onClick={onClick}
-        className={cn(blockVariants({ type: 'dayOff', interactive }))}
+        className={cn(blockVariants({ type: 'dayOff', interactive, context }))}
       >
         <p className="font-bold text-xs truncate whitespace-pre-wrap">{shift.label}</p>
-        <p className="text-xs truncate whitespace-pre-wrap">All day</p>
+         {context === 'week' && <p className="text-xs truncate whitespace-pre-wrap">All day</p>}
       </div>
     )
   }
@@ -81,6 +86,12 @@ export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
     let hour = parseInt(h, 10);
     const suffix = hour >= 12 ? 'p' : 'a';
     hour = hour % 12 || 12; // convert to 12-hour format
+    
+    if (context === 'month') {
+        if (m === '00') return `${hour}${suffix}`;
+        return `${hour}:${m}${suffix}`;
+    }
+
     return `${hour}:${m}${suffix}`;
   };
 
@@ -91,7 +102,7 @@ export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
   return (
     <div
       onClick={onClick}
-      className={cn(blockVariants({ type: 'shift', interactive }))}
+      className={cn(blockVariants({ type: 'shift', interactive, context }))}
       style={{ backgroundColor: backgroundColor, color: textColor, borderColor: backgroundColor === '#ffffff' ? 'hsl(var(--border))' : 'transparent' }}
     >
       {isDraft && (
@@ -101,9 +112,9 @@ export function ShiftBlock({ item, onClick, interactive }: ShiftBlockProps) {
         <p className="font-semibold text-xs truncate whitespace-pre-wrap">
           {formatTime(shift.startTime)}-{formatTime(shift.endTime)}
         </p>
-        <p className="text-xs truncate whitespace-pre-wrap">
+         {context === 'week' && <p className="text-xs truncate whitespace-pre-wrap">
           {shift.label}
-        </p>
+        </p>}
       </div>
     </div>
   );

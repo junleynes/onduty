@@ -63,20 +63,10 @@ const initialLeaveTypes: LeaveTypeOption[] = [
 ];
 
 // Helper component for rendering items in month view
-const MonthViewItem = ({ item, onClick, employee }: { item: Shift | Leave, onClick: () => void, employee?: Employee | null }) => {
-    if (!employee) return null;
+const MonthViewItem = ({ item, onClick }: { item: Shift | Leave, onClick: () => void }) => {
     return (
-        <div onClick={onClick} className="flex items-center gap-2 p-1 rounded-md hover:bg-muted cursor-pointer">
-            <Avatar className="h-6 w-6">
-                <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xs">
-                    {getInitials(getFullName(employee))}
-                </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 overflow-hidden">
-                 <p className="text-xs font-semibold truncate">{getFullName(employee)}</p>
-                 <ShiftBlock item={item} onClick={() => {}} />
-            </div>
+        <div onClick={onClick} className="cursor-pointer">
+            <ShiftBlock item={item} onClick={() => {}} context="month" />
         </div>
     );
 };
@@ -518,6 +508,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                             <ShiftBlock
                             item={item}
                             onClick={() => !isReadOnly && handleEditItemClick(item)}
+                            context="week"
                             />
                         </div>
                         ))}
@@ -554,6 +545,16 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                     ...leave.filter(l => isSameDay(l.date, day))
                  ];
 
+                 const itemsByEmployee = itemsForDay.reduce((acc, item) => {
+                    const empId = item.employeeId;
+                    if (!empId) return acc;
+                    if (!acc[empId]) {
+                        acc[empId] = [];
+                    }
+                    acc[empId].push(item);
+                    return acc;
+                 }, {} as Record<string, (Shift | Leave)[]>);
+
                  return (
                     <div
                         key={day.toISOString()}
@@ -565,18 +566,33 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                         <div className={cn("self-end font-medium p-1", isToday(day) && "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center")}>
                             {format(day, 'd')}
                         </div>
-                        <div className="flex-1 overflow-y-auto space-y-1">
-                          {itemsForDay.map(item => {
-                                const employee = employees.find(e => e.id === item.employeeId);
+                        <div className="flex-1 overflow-y-auto space-y-2">
+                           {Object.entries(itemsByEmployee).map(([employeeId, items]) => {
+                                const employee = employees.find(e => e.id === employeeId);
+                                if (!employee) return null;
                                 return (
-                                    <MonthViewItem 
-                                        key={item.id} 
-                                        item={item} 
-                                        employee={employee}
-                                        onClick={() => !isReadOnly && handleEditItemClick(item)} 
-                                    />
+                                    <div key={employeeId} className="space-y-1">
+                                         <div className="flex items-center gap-2 px-1">
+                                            <Avatar className="h-5 w-5">
+                                                <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                                                <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xs">
+                                                    {getInitials(getFullName(employee))}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <p className="text-xs font-semibold truncate">{getFullName(employee)}</p>
+                                        </div>
+                                        <div className="space-y-1 pl-2">
+                                            {items.map(item => (
+                                                <MonthViewItem 
+                                                    key={item.id} 
+                                                    item={item} 
+                                                    onClick={() => !isReadOnly && handleEditItemClick(item)} 
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
                                 );
-                            })}
+                           })}
                         </div>
                          {!isReadOnly && (
                             <Button variant="ghost" size="icon" className="absolute top-1 left-1 opacity-0 group-hover/cell:opacity-100 transition-opacity h-6 w-6" onClick={() => handleEmptyCellClick(null, day)}>
