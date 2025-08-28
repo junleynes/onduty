@@ -386,13 +386,12 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   
   const renderHorizontalGrid = (days: Date[], weekNumber?: number) => {
     const gridTemplateColumns = `200px repeat(${days.length}, 1fr)`;
-    const weekLabel = weekNumber ? `Week ${weekNumber}` : format(currentDate, 'MMMM yyyy');
 
     return (
         <div className="grid" style={{ gridTemplateColumns }}>
             {/* Header Row */}
-            <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center", viewMode === 'month' && "border-t")}>
-              <span className="font-semibold text-sm">{viewMode === 'month' ? format(days[0], 'MMMM').toUpperCase() : 'Employees'}</span>
+            <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center", viewMode === 'month' && "border-t")}>
+              <span className="font-semibold text-sm">Employees</span>
             </div>
             {days.map((day) => (
             <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l", viewMode === 'month' && "border-t")}>
