@@ -9,12 +9,17 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getFullName(employee: Partial<Employee | null>): string {
     if (!employee) return '';
-    return [employee.firstName, employee.middleInitial, employee.lastName].filter(Boolean).join(' ');
+    const parts: string[] = [];
+    if (employee.firstName) parts.push(employee.firstName);
+    if (employee.middleInitial) parts.push(employee.middleInitial);
+    if (employee.lastName) parts.push(employee.lastName);
+    return parts.join(' ');
 }
 
 export function getInitials(name: string) {
   if (!name) return '';
-  const names = name.split(' ');
+  const names = name.trim().split(' ').filter(Boolean);
+  if (names.length === 0) return '';
   const first = names[0]?.[0] || '';
   const last = names.length > 1 ? names[names.length - 1]?.[0] : '';
   return (first + last).toUpperCase();
