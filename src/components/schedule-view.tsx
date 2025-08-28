@@ -112,6 +112,16 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     }
     return [];
   }, [dateRange]);
+
+  const weeksOfMonth = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    return eachWeekOfInterval(
+      { start: startOfMonth(currentDate), end: endOfMonth(currentDate) },
+      { weekStartsOn: 1 }
+    ).map(weekStart =>
+      eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) })
+    );
+  }, [currentDate, viewMode]);
   
   const orderedEmployees = useMemo(() => {
     const employeeMap = new Map(employees.map(e => [e.id, e]));
@@ -427,6 +437,140 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
   }
 
+  const renderGrid = (days: Date[]) => (
+    <div className="grid" style={{ gridTemplateColumns: `200px repeat(${days.length}, minmax(140px, 1fr))` }}>
+        {/* Header Row */}
+        <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center")}>
+              <span className="font-semibold text-sm">
+                {viewMode === 'month' ? 'Employees' : 'Employees'}
+            </span>
+        </div>
+        {days.map((day) => {
+            const shiftsForDay = shifts.filter(shift => isSameDay(shift.date, day) && !shift.isDayOff && !shift.isHolidayOff);
+            const totalShifts = shiftsForDay.length;
+            const onDutyEmployees = new Set(shiftsForDay.map(shift => shift.employeeId)).size;
+            const totalHours = shiftsForDay.reduce((acc, shift) => {
+                if (shift.startTime && shift.endTime) {
+                    const start = new Date(`1970-01-01T${shift.startTime}`);
+                    const end = new Date(`1970-01-01T${shift.endTime}`);
+                    let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                    if (diff < 0) diff += 24; // Account for overnight shifts
+                    return acc + diff;
+                }
+                return acc;
+            }, 0);
+
+            return (
+                <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l")}>
+                    <div className="text-lg whitespace-nowrap">{format(day, 'E M/d')}</div>
+                    <div className="text-xs text-muted-foreground font-normal flex justify-center gap-3 mt-1">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1">
+                                        <Briefcase className="h-3 w-3" />
+                                        <span>{totalShifts}</span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{totalShifts} shifts</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1">
+                                        <Users className="h-3 w-3" />
+                                        <span>{onDutyEmployees}</span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{onDutyEmployees} employees on duty</p>
+                                </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        <span>{totalHours.toFixed(1)}h</span>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{totalHours.toFixed(1)} scheduled hours</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                </div>
+            );
+        })}
+
+        {/* Employee Rows */}
+        {orderedEmployees.map((employee) => (
+        <div 
+            className="contents" 
+            key={employee.id} 
+            draggable={!isReadOnly && employee.id !== 'unassigned'}
+            onDragStart={(e) => handleEmployeeDragStart(e, employee.id)}
+            onDragOver={handleEmployeeDragOver}
+            onDrop={(e) => handleEmployeeDrop(e, employee.id)}
+         >
+            {/* Employee Cell */}
+            <div className="sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card group">
+               {!isReadOnly && employee.id !== 'unassigned' && <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab group-hover:opacity-100 opacity-0 transition-opacity" />}
+                {employee.id !== 'unassigned' ? (
+                <Avatar className="h-9 w-9">
+                    <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                    <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
+                    {getInitials(getFullName(employee))}
+                    </AvatarFallback>
+                </Avatar>
+                ) : <div className="w-full flex items-center justify-center">
+                        <p className="font-semibold text-sm text-center">{getFullName(employee)}</p>
+                    </div>}
+                {employee.id !== 'unassigned' && <div>
+                    <p className="font-semibold text-sm">{getFullName(employee)}</p>
+                </div>}
+            </div>
+
+            {/* Day Cells for Shifts */}
+            {days.map((day) => {
+            const itemsForDay = [
+                ...shifts.filter(
+                    (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
+                ),
+                ...leave.filter(
+                    (l) => l.employeeId === employee.id && isSameDay(l.date, day)
+                )
+            ];
+            return (
+                <div
+                key={`${employee.id}-${day.toISOString()}`}
+                className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative")}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => handleShiftDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
+                >
+                {itemsForDay.map((item) => (
+                    <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleShiftDragStart(e, item)}>
+                        <ShiftBlock
+                        item={item}
+                        onClick={() => !isReadOnly && handleEditItemClick(item)}
+                        context="week"
+                        />
+                    </div>
+                ))}
+                {itemsForDay.length === 0 && !isReadOnly && (
+                    <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
+                    <PlusCircle className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                )}
+                </div>
+            );
+            })}
+        </div>
+        ))}
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4 h-full">
        <header className="flex items-center justify-between p-4 border-b">
@@ -556,137 +700,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       <div className="flex-1 overflow-auto">
         <Card className="h-full">
           <CardContent className="p-0 h-full">
-             <div className="grid" style={{ gridTemplateColumns: `200px repeat(${displayedDays.length}, minmax(140px, 1fr))` }}>
-                {/* Header Row */}
-                <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center")}>
-                     <span className="font-semibold text-sm">
-                        Employees
-                    </span>
-                </div>
-                {displayedDays.map((day) => {
-                    const shiftsForDay = shifts.filter(shift => isSameDay(shift.date, day) && !shift.isDayOff && !shift.isHolidayOff);
-                    const totalShifts = shiftsForDay.length;
-                    const onDutyEmployees = new Set(shiftsForDay.map(shift => shift.employeeId)).size;
-                    const totalHours = shiftsForDay.reduce((acc, shift) => {
-                        if (shift.startTime && shift.endTime) {
-                            const start = new Date(`1970-01-01T${shift.startTime}`);
-                            const end = new Date(`1970-01-01T${shift.endTime}`);
-                            let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                            if (diff < 0) diff += 24; // Account for overnight shifts
-                            return acc + diff;
-                        }
-                        return acc;
-                    }, 0);
-
-                    return (
-                        <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l")}>
-                            <div className="text-lg whitespace-nowrap">{format(day, 'E M/d')}</div>
-                            <div className="text-xs text-muted-foreground font-normal flex justify-center gap-3 mt-1">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="flex items-center gap-1">
-                                                <Briefcase className="h-3 w-3" />
-                                                <span>{totalShifts}</span>
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>{totalShifts} shifts</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="flex items-center gap-1">
-                                                <Users className="h-3 w-3" />
-                                                <span>{onDutyEmployees}</span>
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>{onDutyEmployees} employees on duty</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                <span>{totalHours.toFixed(1)}h</span>
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>{totalHours.toFixed(1)} scheduled hours</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </div>
+            {viewMode === 'month' ? (
+                <div className="space-y-8 p-4">
+                    {weeksOfMonth.map((week, index) => (
+                        <div key={index}>
+                            {renderGrid(week)}
                         </div>
-                    );
-                })}
-
-                {/* Employee Rows */}
-                {orderedEmployees.map((employee) => (
-                <div 
-                    className="contents" 
-                    key={employee.id} 
-                    draggable={!isReadOnly && employee.id !== 'unassigned'}
-                    onDragStart={(e) => handleEmployeeDragStart(e, employee.id)}
-                    onDragOver={handleEmployeeDragOver}
-                    onDrop={(e) => handleEmployeeDrop(e, employee.id)}
-                 >
-                    {/* Employee Cell */}
-                    <div className="sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card group">
-                       {!isReadOnly && employee.id !== 'unassigned' && <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab group-hover:opacity-100 opacity-0 transition-opacity" />}
-                        {employee.id !== 'unassigned' ? (
-                        <Avatar className="h-9 w-9">
-                            <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
-                            {getInitials(getFullName(employee))}
-                            </AvatarFallback>
-                        </Avatar>
-                        ) : <div className="w-full flex items-center justify-center">
-                                <p className="font-semibold text-sm text-center">{getFullName(employee)}</p>
-                            </div>}
-                        {employee.id !== 'unassigned' && <div>
-                            <p className="font-semibold text-sm">{getFullName(employee)}</p>
-                        </div>}
-                    </div>
-
-                    {/* Day Cells for Shifts */}
-                    {displayedDays.map((day) => {
-                    const itemsForDay = [
-                        ...shifts.filter(
-                            (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
-                        ),
-                        ...leave.filter(
-                            (l) => l.employeeId === employee.id && isSameDay(l.date, day)
-                        )
-                    ];
-                    return (
-                        <div
-                        key={`${employee.id}-${day.toISOString()}`}
-                        className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[52px] space-y-1 bg-background/30 relative")}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => handleShiftDrop(e, employee.id === 'unassigned' ? null : employee.id, day)}
-                        >
-                        {itemsForDay.map((item) => (
-                            <div key={item.id} draggable={!isReadOnly} onDragStart={(e) => handleShiftDragStart(e, item)}>
-                                <ShiftBlock
-                                item={item}
-                                onClick={() => !isReadOnly && handleEditItemClick(item)}
-                                context="week"
-                                />
-                            </div>
-                        ))}
-                        {itemsForDay.length === 0 && !isReadOnly && (
-                            <Button variant="ghost" className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity" onClick={() => handleEmptyCellClick(employee.id === 'unassigned' ? null : employee.id, day)}>
-                            <PlusCircle className="h-5 w-5 text-muted-foreground" />
-                            </Button>
-                        )}
-                        </div>
-                    );
-                    })}
+                    ))}
                 </div>
-                ))}
-            </div>
+            ) : (
+                renderGrid(displayedDays)
+            )}
           </CardContent>
         </Card>
       </div>
