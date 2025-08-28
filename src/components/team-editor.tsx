@@ -165,7 +165,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                 />
             ) : (
                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_80px] gap-4">
                      <FormField
                         control={form.control}
                         name="firstName"
@@ -185,6 +185,19 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                         render={({ field }) => (
                         <FormItem>
                             <FormLabel>Last Name</FormLabel>
+                            <FormControl>
+                            <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="middleInitial"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>M.I.</FormLabel>
                             <FormControl>
                             <Input {...field} />
                             </FormControl>
@@ -300,20 +313,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     )}
                                 />
                             </div>
-
-                             <FormField
-                                control={form.control}
-                                name="middleInitial"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>M.I.</FormLabel>
-                                    <FormControl>
-                                    <Input {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
 
                              <FormField
                                 control={form.control}
