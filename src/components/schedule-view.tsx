@@ -62,16 +62,6 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'ML', color: '#ec4899' }, // pink
 ];
 
-// Helper component for rendering items in month view
-const MonthViewItem = ({ item, onClick }: { item: Shift | Leave, onClick: () => void }) => {
-    return (
-        <div onClick={onClick} className="cursor-pointer">
-            <ShiftBlock item={item} onClick={() => {}} context="month" />
-        </div>
-    );
-};
-
-
 export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
@@ -100,11 +90,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         case 'week':
             return { from: startOfWeek(currentDate, { weekStartsOn: 1 }), to: endOfWeek(currentDate, { weekStartsOn: 1 }) };
         case 'month':
-            const monthStart = startOfMonth(currentDate);
-            const monthEnd = endOfMonth(currentDate);
-            const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-            const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-            return { from: startDate, to: endDate };
+            return { from: startOfMonth(currentDate), to: endOfMonth(currentDate) };
         default:
             return { from: startOfWeek(currentDate, { weekStartsOn: 1 }), to: endOfWeek(currentDate, { weekStartsOn: 1 }) };
     }
@@ -116,15 +102,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     }
     return [];
   }, [dateRange]);
-  
-  const monthViewDays = useMemo(() => {
-    if (viewMode !== 'month') return [];
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    return eachDayOfInterval({ start: startDate, end: endDate });
-  }, [currentDate, viewMode]);
 
   const handleAddShiftClick = () => {
     if (isReadOnly) return;
@@ -369,19 +346,19 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: Shift | Leave) => {
-    if (isReadOnly || viewMode === 'month') return;
+    if (isReadOnly) return;
     e.dataTransfer.setData("itemId", item.id);
     const itemType = 'label' in item ? 'shift' : 'leave';
     e.dataTransfer.setData("itemType", itemType);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    if (isReadOnly || viewMode === 'month') return;
+    if (isReadOnly) return;
     e.preventDefault();
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetEmployeeId: string | null, targetDate: Date) => {
-    if (isReadOnly || viewMode === 'month') return;
+    if (isReadOnly) return;
     e.preventDefault();
     const itemId = e.dataTransfer.getData("itemId");
     const itemType = e.dataTransfer.getData("itemType");
@@ -421,12 +398,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
   }
   
-  const weekDayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
   const renderGrid = () => {
-     if (viewMode === 'month') {
-        return renderMonthGrid();
-    }
     const days = displayedDays;
     const gridTemplateColumns = `200px repeat(${days.length}, 1fr)`;
 
@@ -527,86 +499,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     );
   }
 
-  const renderMonthGrid = () => {
-    const days = monthViewDays;
-    
-    return (
-        <div className="grid grid-cols-7 h-full">
-            {weekDayHeaders.map(day => (
-                <div key={day} className="sticky top-0 z-10 p-2 text-center font-semibold bg-card border-b border-l">
-                    <div className="text-sm whitespace-nowrap">{day}</div>
-                </div>
-            ))}
-            
-            {days.map(day => {
-                 const isCurrentMonth = format(day, 'M') === format(currentDate, 'M');
-                 const itemsForDay = [
-                    ...shifts.filter(s => isSameDay(s.date, day)),
-                    ...leave.filter(l => isSameDay(l.date, day))
-                 ];
-
-                 const itemsByEmployee = itemsForDay.reduce((acc, item) => {
-                    const empId = item.employeeId;
-                    if (!empId) return acc;
-                    if (!acc[empId]) {
-                        acc[empId] = [];
-                    }
-                    acc[empId].push(item);
-                    return acc;
-                 }, {} as Record<string, (Shift | Leave)[]>);
-
-                 return (
-                    <div
-                        key={day.toISOString()}
-                        className={cn(
-                            "group/cell col-start-auto p-1 border-b border-l min-h-[120px] space-y-1 bg-background/30 relative flex flex-col",
-                           !isCurrentMonth && 'bg-muted/50 text-muted-foreground'
-                        )}
-                    >
-                        <div className={cn("self-end font-medium p-1", isToday(day) && "bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center")}>
-                            {format(day, 'd')}
-                        </div>
-                        <div className="flex-1 overflow-y-auto space-y-2">
-                           {Object.entries(itemsByEmployee).map(([employeeId, items]) => {
-                                const employee = employees.find(e => e.id === employeeId);
-                                if (!employee) return null;
-                                return (
-                                    <div key={employeeId} className="space-y-1">
-                                         <div className="flex items-center gap-2 px-1">
-                                            <Avatar className="h-5 w-5">
-                                                <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                                                <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xs">
-                                                    {getInitials(getFullName(employee))}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <p className="text-xs font-semibold truncate">{getFullName(employee)}</p>
-                                        </div>
-                                        <div className="space-y-1 pl-2">
-                                            {items.map(item => (
-                                                <MonthViewItem 
-                                                    key={item.id} 
-                                                    item={item} 
-                                                    onClick={() => !isReadOnly && handleEditItemClick(item)} 
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                           })}
-                        </div>
-                         {!isReadOnly && (
-                            <Button variant="ghost" size="icon" className="absolute top-1 left-1 opacity-0 group-hover/cell:opacity-100 transition-opacity h-6 w-6" onClick={() => handleEmptyCellClick(null, day)}>
-                                <PlusCircle className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                        )}
-                    </div>
-                 );
-            })}
-        </div>
-    );
-  }
-
-
   return (
     <div className="flex flex-col gap-4 h-full">
        <header className="flex items-center justify-between p-4 border-b">
@@ -620,7 +512,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
-                  formatRange(currentDate, dateRange.to)
+                  formatRange(dateRange.from, dateRange.to)
                 ) : (
                   <span>Pick a date</span>
                 )}
