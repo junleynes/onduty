@@ -62,26 +62,6 @@ const initialLeaveTypes: LeaveTypeOption[] = [
     { type: 'ML', color: '#ec4899' }, // pink
 ];
 
-// New component for rendering shifts inside a month cell
-const MonthShiftItem: React.FC<{item: Shift | Leave, employee?: Employee | null, onClick: () => void}> = ({ item, employee, onClick }) => {
-  const employeeForBlock = 'employeeId' in item ? employee : undefined;
-
-  return (
-    <div onClick={onClick} className="flex items-center gap-1.5 p-1 rounded-md hover:bg-accent cursor-pointer group">
-      {employee && (
-        <Avatar className="h-5 w-5">
-            <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xs">
-                {getInitials(getFullName(employee))}
-            </AvatarFallback>
-        </Avatar>
-      )}
-      <div className="flex-1 overflow-hidden">
-         <ShiftBlock item={item} onClick={() => {}} context="month" interactive={false} employee={employeeForBlock} />
-      </div>
-    </div>
-  )
-}
 
 export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
@@ -123,6 +103,17 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
     }
     return [];
   }, [dateRange]);
+
+  const weeksOfMonth = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    
+    return eachWeekOfInterval(
+      { start: startOfMonth(currentDate), end: endOfMonth(currentDate) },
+      { weekStartsOn: 1 }
+    ).map(weekStart =>
+      eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) })
+    );
+  }, [currentDate, viewMode]);
 
   const handleAddShiftClick = () => {
     if (isReadOnly) return;
@@ -339,32 +330,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
 
   const allEmployeesForGrid = [{ id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', role: 'member', position: 'Special', avatar: '' }, ...employees];
 
-  const calculateDailyHours = (day: Date) => {
-    const dailyShifts = shifts.filter(s => isSameDay(s.date, day) && !s.isDayOff && !s.isHolidayOff);
-    return dailyShifts.reduce((acc, shift) => {
-        if (!shift.startTime || !shift.endTime) return acc;
-        
-        const start = new Date(`1970-01-01T${shift.startTime}`);
-        const end = new Date(`1970-01-01T${shift.endTime}`);
-        
-        let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        if (diff < 0) { // Handles overnight shifts
-            diff += 24;
-        }
-        return acc + diff;
-    }, 0);
-  }
-
-  const dailyShiftCount = (day: Date) => {
-    return shifts.filter(s => isSameDay(s.date, day) && !s.isDayOff && !s.isHolidayOff).length;
-  }
-
-  const dailyEmployeeCount = (day: Date) => {
-    const assignedShifts = shifts.filter(s => isSameDay(s.date, day) && s.employeeId && !s.isDayOff && !s.isHolidayOff);
-    const assignedLeave = leave.filter(l => isSameDay(l.date, day) && l.employeeId);
-    return new Set([...assignedShifts.map(s => s.employeeId), ...assignedLeave.map(l => l.employeeId)]).size;
-  }
-
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: Shift | Leave) => {
     if (isReadOnly) return;
@@ -419,42 +384,20 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
   }
   
-  const renderHorizontalGrid = () => {
-    const days = displayedDays;
+  const renderHorizontalGrid = (days: Date[], weekNumber?: number) => {
     const gridTemplateColumns = `200px repeat(${days.length}, 1fr)`;
+    const weekLabel = weekNumber ? `Week ${weekNumber}` : format(currentDate, 'MMMM yyyy');
 
     return (
         <div className="grid" style={{ gridTemplateColumns }}>
             {/* Header Row */}
-            <div className="sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center justify-center">
-            <span className="font-semibold text-sm">Employees</span>
+            <div className={cn("sticky top-0 left-0 z-30 p-2 bg-card border-b border-r flex items-center", viewMode === 'month' && "border-t")}>
+              <span className="font-semibold text-sm">{viewMode === 'month' ? format(days[0], 'MMMM').toUpperCase() : 'Employees'}</span>
             </div>
             {days.map((day) => (
-            <div key={day.toISOString()} className="sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l">
-                <div className="text-sm whitespace-nowrap">{format(day, 'E d')}</div>
-                <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                    <div className="text-xs text-muted-foreground mt-1 cursor-default">
-                        {dailyShiftCount(day)} shifts, {dailyEmployeeCount(day)} users
-                    </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                    <p>Total shifts and unique employees scheduled for the day.</p>
-                    </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                    <div>
-                        <Progress value={(calculateDailyHours(day) / (8 * 5)) * 100} className="h-1 mt-1"/>
-                        <div className="text-xs font-normal text-muted-foreground">{calculateDailyHours(day)} hrs</div>
-                    </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                    <p>Total scheduled work hours for the day.</p>
-                    </TooltipContent>
-                </Tooltip>
-                </TooltipProvider>
+            <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l", viewMode === 'month' && "border-t")}>
+                <div className="text-sm whitespace-nowrap">{format(day, 'E')}</div>
+                <div className="text-lg whitespace-nowrap">{format(day, 'd')}</div>
             </div>
             ))}
 
@@ -649,7 +592,17 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
       <div className="flex-1 overflow-auto">
         <Card className="h-full">
           <CardContent className="p-0 h-full">
-            {renderHorizontalGrid()}
+             {viewMode === 'month' ? (
+              <div className="space-y-4">
+                {weeksOfMonth.map((week, index) => (
+                  <div key={index}>
+                    {renderHorizontalGrid(week, getISOWeek(week[0]))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              renderHorizontalGrid(displayedDays)
+            )}
           </CardContent>
         </Card>
       </div>
