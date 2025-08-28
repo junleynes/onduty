@@ -46,24 +46,52 @@ function isLeave(item: Shift | Leave): item is Leave {
   return 'type' in item;
 }
 
+const formatLeaveTime = (time: string) => {
+    if (!time) return '';
+    const [h, m] = time.split(':');
+    let hour = parseInt(h, 10);
+    const suffix = hour >= 12 ? 'p' : 'a';
+    hour = hour % 12 || 12; // convert to 12-hour format
+    if (m === '00') return `${hour}${suffix}`;
+    return `${hour}:${m}${suffix}`;
+};
+
+
 export function ShiftBlock({ item, onClick, interactive, context, employee: employeeProp }: ShiftBlockProps) {
   if (isLeave(item)) {
     const employee = employeeProp ?? getEmployeeById(item.employeeId);
     if (!employee) return null;
 
-    const backgroundColor = item.color || '#f97316'; // default to orange if no color
+    const backgroundColor = item.color || '#f97316';
 
+    // For month view, just show the leave type for compactness
+    if (context === 'month') {
+       return (
+          <div
+            onClick={onClick}
+            className={cn(blockVariants({ type: 'leave', interactive, context }), "text-center")}
+            style={{ backgroundColor: backgroundColor, color: 'white' }}
+          >
+            <p className="font-bold text-xs truncate">{item.type}</p>
+          </div>
+       );
+    }
+    
+    // Detailed view for day/week
     return (
       <div
         onClick={onClick}
         className={cn(blockVariants({ type: 'leave', interactive, context }))}
         style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
-        <p className={cn("font-bold text-xs truncate text-center", context === 'month' && 'pl-1')}>
-          {context === 'month' ? item.type : getFullName(employee)}
-        </p>
-         {context === 'week' && <p className="text-xs truncate text-center">{item.type}</p>}
-        {!item.isAllDay && <p className="text-xs truncate text-center">{item.startTime} - {item.endTime}</p>}
+        <div className="text-center">
+             <p className="font-bold text-xs truncate">{item.type}</p>
+            {item.isAllDay ? (
+                 <p className="text-xs truncate">All day</p>
+            ) : (
+                <p className="text-xs truncate">{formatLeaveTime(item.startTime || '')}-{formatLeaveTime(item.endTime || '')}</p>
+            )}
+        </div>
       </div>
     );
   }
