@@ -139,7 +139,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
 
           scheduleBlocks.forEach((block, blockIndex) => {
               const headerRow = block[0];
-              if (!headerRow || headerRow[0]?.trim().toLowerCase() !== 'employees') {
+              if (!headerRow || !headerRow[0] || headerRow[0].trim().toLowerCase() !== 'employees') {
                   console.warn(`Block ${blockIndex + 1} is missing a valid header row. Skipping.`);
                   return;
               }
@@ -148,7 +148,6 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
               for(let i = 1; i < headerRow.length; i++) {
                   const dateStr = headerRow[i]?.trim();
                   if (dateStr) {
-                      // Handles yyyy-mm-dd format
                       if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
                           const date = new Date(`${dateStr}T00:00:00Z`); // Use UTC to avoid timezone issues
                           if (!isNaN(date.getTime())) {
