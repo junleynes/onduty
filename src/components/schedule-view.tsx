@@ -53,14 +53,14 @@ const initialShiftTemplates: ShiftTemplate[] = [
 ];
 
 const initialLeaveTypes: LeaveTypeOption[] = [
-    { type: 'VL', color: '#3b82f6' }, // blue
+    { type: 'VL', color: '#6b7280' }, // gray
     { type: 'EL', color: '#ef4444' }, // red
     { type: 'OFFSET', color: '#6b7280' }, // gray
     { type: 'SL', color: '#f97316' }, // orange
     { type: 'BL', color: '#14b8a6' }, // teal
     { type: 'PL', color: '#8b5cf6' }, // purple
     { type: 'ML', color: '#ec4899' }, // pink
-    { type: 'AVL', color: '#eab308' }, // yellow
+    { type: 'AVL', color: '#6b7280' }, // gray
 ];
 
 
@@ -779,5 +779,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       />
     </div>
   );
+
+    
+
 
     
