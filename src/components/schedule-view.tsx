@@ -515,7 +515,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             onDrop={(e) => handleEmployeeDrop(e, employee.id)}
          >
             {/* Employee Cell */}
-            <div className="sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card group">
+            <div className={cn("sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card group",
+               viewMode === 'month' && employee.id !== 'unassigned' && 'justify-center'
+            )}>
                {!isReadOnly && employee.id !== 'unassigned' && <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab group-hover:opacity-100 opacity-0 transition-opacity" />}
                 {employee.id !== 'unassigned' ? (
                 <Avatar className="h-9 w-9">
