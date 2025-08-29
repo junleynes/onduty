@@ -21,7 +21,7 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
   const hasChildren = node.children && node.children.length > 0;
   return (
     <div className="flex flex-col items-center text-center relative">
-      <Card className="min-w-64 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
+      <Card className="min-w-56 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
         <CardContent className="p-4 flex flex-col items-center">
           <Avatar className="w-16 h-16 mb-2 border-2 border-primary">
             <AvatarImage src={node.avatar} data-ai-hint="profile avatar" />
@@ -47,8 +47,8 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
               top: `calc(100% + 1.5rem)`, // Position below parent card
               left: '50%',
               right: '50%',
-              width: `calc(${node.children.length > 1 ? '100% - 16rem' : '0px'})`, // Full width minus one card width
-              transform: `translateX(calc(-50% + ${node.children.length > 1 ? '8rem' : '0px'}))` // Adjust for card width
+              width: `calc(${node.children.length > 1 ? '100% - 14rem' : '0px'})`, // Full width minus one card width
+              transform: `translateX(calc(-50% + ${node.children.length > 1 ? '7rem' : '0px'}))` // Adjust for card width
             }}
           />
           <div className="flex justify-center gap-8 pt-8 relative">
