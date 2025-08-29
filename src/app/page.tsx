@@ -383,7 +383,7 @@ function AppContent() {
         return (
             <Card>
                 <CardHeader>
-                    <CardTitle>Welcome to ShiftMaster</CardTitle>
+                    <CardTitle>Welcome to OnDuty</CardTitle>
                     <CardDescription>Select a view from the sidebar to get started.</CardDescription>
                 </CardHeader>
                 <CardContent>

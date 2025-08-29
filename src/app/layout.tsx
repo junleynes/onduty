@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'ShiftMaster',
-  description: 'Intelligent Shift Scheduling',
+  title: 'OnDuty',
+  description: 'Modern Duty Scheduling',
 };
 
 export default function RootLayout({

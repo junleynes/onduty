@@ -50,7 +50,7 @@ export default function Header({ currentUser, onLogout, onEditProfile, onResetPa
       <div className="flex items-center gap-2">
         <SidebarTrigger className={cn(isMobile ? "block" : "hidden md:flex")}/>
         <LayoutGrid className="h-6 w-6 text-primary" />
-        <h1 className="text-xl font-bold text-primary tracking-tight">ShiftMaster</h1>
+        <h1 className="text-xl font-bold text-primary tracking-tight">OnDuty</h1>
       </div>
       <div className="flex w-full items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <div className="ml-auto flex items-center gap-4">
