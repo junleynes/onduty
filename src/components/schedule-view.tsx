@@ -378,8 +378,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       return;
     }
 
-    const mamsEmployees = employees.filter(e => e.group === 'MAMS Support');
-    const employeeMap = new Map(mamsEmployees.map(e => [e.id, e]));
+    if (!currentUser?.group) {
+        toast({
+            variant: 'destructive',
+            title: 'No Group Assigned',
+            description: 'You must be assigned to a group to generate a report.',
+        });
+        return;
+    }
+
+    const reportGroup = currentUser.group;
+    const groupEmployees = employees.filter(e => e.group === reportGroup);
 
     const data: (string | number)[][] = [];
 
@@ -397,7 +406,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     data.push(dateHeader);
 
     // Employee Data Rows
-    mamsEmployees.forEach(emp => {
+    groupEmployees.forEach(emp => {
       const row = [
         `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
         emp.group,
@@ -450,25 +459,25 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         XLSX.utils.decode_range("A3:J3"),
         XLSX.utils.decode_range("G4:J4"),
         // Legend Merges
-        XLSX.utils.decode_range("F8:G8"),
         XLSX.utils.decode_range("F9:G9"),
         XLSX.utils.decode_range("F10:G10"),
-        XLSX.utils.decode_range("I8:J8"),
+        XLSX.utils.decode_range("F11:G11"),
         XLSX.utils.decode_range("I9:J9"),
         XLSX.utils.decode_range("I10:J10"),
+        XLSX.utils.decode_range("I11:J11"),
         // Others Merges
-        XLSX.utils.decode_range("L12:M12"),
-        XLSX.utils.decode_range("L13:M13"),
-        XLSX.utils.decode_range("L14:M14"),
+        XLSX.utils.decode_range("K13:M13"),
+        XLSX.utils.decode_range("K14:M14"),
+        XLSX.utils.decode_range("K15:M15"),
     ];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'MAMS Attendance Sheet');
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
 
     // Trigger download
-    XLSX.writeFile(wb, 'MAMS_Attendance_Sheet.xlsx');
+    XLSX.writeFile(wb, `${reportGroup} Attendance Sheet.xlsx`);
     
-    toast({ title: "Report Downloaded", description: "The attendance sheet has been generated." });
+    toast({ title: "Report Downloaded", description: `The attendance sheet for ${reportGroup} has been generated.` });
   };
 
 
@@ -801,14 +810,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                   <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={handleSaveDraft} className="w-full md:w-auto">
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Draft
-                </Button>
-                <Button onClick={onPublish} className="w-full md:w-auto">
-                    <Send className="mr-2 h-4 w-4" />
-                    Publish
-                </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button className="w-full md:w-auto">
@@ -818,10 +819,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={handleDownloadAttendanceSheet} disabled={viewMode !== 'week'}>
-                                <Download className="mr-2 h-4 w-4" />
-                                <span>Download Attendance Sheet</span>
-                            </DropdownMenuItem>
+                           <DropdownMenuItem onClick={handleSaveDraft}>
+                                <Save className="mr-2 h-4 w-4" />
+                                <span>Save Draft</span>
+                           </DropdownMenuItem>
+                           <DropdownMenuItem onClick={onPublish}>
+                                <Send className="mr-2 h-4 w-4" />
+                                <span>Publish</span>
+                           </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
                             <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
                                 <Upload className="mr-2 h-4 w-4" />
                                 <span>Import Schedule</span>
@@ -854,6 +862,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                                 <span>Load Template</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
+                         <DropdownMenuSeparator />
+                         <DropdownMenuGroup>
+                             <DropdownMenuItem onClick={handleDownloadAttendanceSheet} disabled={viewMode !== 'week'}>
+                                <Download className="mr-2 h-4 w-4" />
+                                <span>Download Attendance Sheet</span>
+                             </DropdownMenuItem>
+                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                          <DropdownMenuGroup>
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={viewMode === 'month' ? handleClearMonth : handleClearWeek}>
