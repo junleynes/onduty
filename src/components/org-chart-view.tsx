@@ -18,9 +18,10 @@ type TreeNode = Employee & {
 };
 
 const EmployeeNode = ({ node }: { node: TreeNode }) => {
+  const hasChildren = node.children && node.children.length > 0;
   return (
-    <div className="flex flex-col items-center">
-      <Card className="min-w-64 text-center shadow-md hover:shadow-lg transition-shadow">
+    <div className="flex flex-col items-center text-center relative">
+      <Card className="min-w-64 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
         <CardContent className="p-4 flex flex-col items-center">
           <Avatar className="w-16 h-16 mb-2 border-2 border-primary">
             <AvatarImage src={node.avatar} data-ai-hint="profile avatar" />
@@ -35,13 +36,25 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
           </Badge>
         </CardContent>
       </Card>
-      {node.children && node.children.length > 0 && (
+      {hasChildren && (
         <>
+          {/* Vertical line from parent */}
           <div className="w-px h-8 bg-border" />
-          <div className="flex justify-center gap-8 relative">
-            <div className="absolute top-0 left-1/2 -right-1/2 h-px bg-border -translate-x-1/2" style={{ left: 'calc(50% - (50% / var(--child-count)))', right: 'calc(50% - (50% / var(--child-count)))' }}></div>
+          {/* Horizontal line connecting children */}
+          <div
+            className="absolute h-px bg-border"
+            style={{
+              top: `calc(100% + 1.5rem)`, // Position below parent card
+              left: '50%',
+              right: '50%',
+              width: `calc(${node.children.length > 1 ? '100% - 16rem' : '0px'})`, // Full width minus one card width
+              transform: `translateX(calc(-50% + ${node.children.length > 1 ? '8rem' : '0px'}))` // Adjust for card width
+            }}
+          />
+          <div className="flex justify-center gap-8 pt-8 relative">
             {node.children.map((child) => (
-              <div key={child.id} className="flex flex-col items-center relative" style={{ '--child-count': node.children.length } as React.CSSProperties}>
+              <div key={child.id} className="flex flex-col items-center relative">
+                 {/* Vertical line to child */}
                  <div className="absolute -top-8 w-px h-8 bg-border" />
                 <EmployeeNode node={child} />
               </div>
@@ -66,8 +79,8 @@ export default function OrgChartView({ employees }: OrgChartViewProps) {
     const seniorManagers: TreeNode[] = [];
     const managers: TreeNode[] = [];
     const members: TreeNode[] = [];
-    const roots: TreeNode[] = [];
-
+    
+    // Separate employees by role/position
     map.forEach(node => {
         if (node.position === 'Senior Manager') {
             seniorManagers.push(node);
@@ -77,31 +90,47 @@ export default function OrgChartView({ employees }: OrgChartViewProps) {
             members.push(node);
         }
     });
+    
+    const roots: TreeNode[] = [];
+    const assignedManagers = new Set<string>();
 
+    // Assign members to managers
     members.forEach(member => {
-        // Find a manager in the same group (can be senior or regular)
         const manager = managers.find(m => m.group === member.group) || seniorManagers.find(sm => sm.group === member.group);
         if (manager) {
             manager.children.push(member);
         } else {
-            // If no manager in group, attach to any senior manager as a fallback
+            // If no manager in group, attach to any senior manager as a fallback, or consider them root-level if none exist.
              const fallbackManager = seniorManagers[0];
              if(fallbackManager) fallbackManager.children.push(member);
         }
     });
     
+    // Assign managers to senior managers
     managers.forEach(manager => {
         const seniorManager = seniorManagers.find(sm => sm.group === manager.group);
         if (seniorManager) {
             seniorManager.children.push(manager);
-        } else {
-            // This manager has no senior manager in their group, so they are a root
+            assignedManagers.add(manager.id);
+        }
+    });
+    
+    // All senior managers are roots
+    roots.push(...seniorManagers);
+
+    // Any manager not assigned to a senior manager is also a root
+    managers.forEach(manager => {
+        if(!assignedManagers.has(manager.id)) {
             roots.push(manager);
         }
     });
     
-    // The final tree is all senior managers plus any managers who didn't have a senior manager
-    return [...seniorManagers, ...roots];
+    // If there are no managers at all, members might become roots (edge case)
+    if (roots.length === 0 && members.length > 0 && map.size === members.length) {
+       roots.push(...members);
+    }
+
+    return roots;
 
   }, [employees]);
 
