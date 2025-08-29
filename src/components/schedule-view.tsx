@@ -417,15 +417,15 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
         const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
 
-        if (holiday) {
+        if (shift?.isHolidayOff) {
+            row.push('HOLIDAY OFF');
+        } else if (holiday) {
           row.push('HOLIDAY OFF');
         } else if (leaveEntry) {
           row.push(leaveEntry.type);
         } else if (shift) {
           if (shift.isDayOff) {
             row.push('OFF');
-          } else if (shift.isHolidayOff) {
-            row.push('HOLIDAY OFF');
           } else {
             // This is a placeholder as the sample shows "SKE" for shifts
             row.push('SKE'); 
@@ -452,25 +452,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
     const ws = XLSX.utils.aoa_to_sheet(data);
     
-    // Merging cells
-    ws['!merges'] = [
-        XLSX.utils.decode_range("A1:A2"),
-        XLSX.utils.decode_range("B1:B2"),
-        XLSX.utils.decode_range("C1:C2"),
-        XLSX.utils.decode_range("A4:J4"),
-        // Legend Merges
-        XLSX.utils.decode_range("F9:G9"),
-        XLSX.utils.decode_range("F10:G10"),
-        XLSX.utils.decode_range("F11:G11"),
-        XLSX.utils.decode_range("I9:J9"),
-        XLSX.utils.decode_range("I10:J10"),
-        XLSX.utils.decode_range("I11:J11"),
-        // Others Merges
-        XLSX.utils.decode_range("L13:N13"),
-        XLSX.utils.decode_range("L14:N14"),
-        XLSX.utils.decode_range("L15:N15"),
-    ];
-
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
 
@@ -840,7 +821,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
+                         <DropdownMenuGroup>
                             <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Manage Leave Types</span>
@@ -966,5 +947,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
 
 
