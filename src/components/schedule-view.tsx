@@ -391,15 +391,19 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const groupEmployees = employees.filter(e => e.group === reportGroup);
 
     const data: (string | number)[][] = [];
+    const merges: XLSX.Range[] = [];
 
     // Header Rows
     const monthName = format(dateRange.from, 'MMMM').toUpperCase();
-    const headerRow1 = ['POST PRODUCTION', 'Section/Unit', 'Designation', ...Array(displayedDays.length - 1).fill(''), monthName];
-    const headerRow2 = ['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION', '', '', ...displayedDays.map(d => format(d, 'd'))];
-    const dayNameHeader = ['', '', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
-
+    const headerRow1 = ['POST PRODUCTION', 'Section/Unit', 'Designation', monthName];
+    merges.push({ s: { r: 0, c: 3 }, e: { r: 0, c: 3 + displayedDays.length -1 } }); // Merge month name
     data.push(headerRow1);
+
+    const headerRow2 = ['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION', '', '', ...displayedDays.map(d => format(d, 'd'))];
+    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }); // Merge division name
     data.push(headerRow2);
+
+    const dayNameHeader = ['', '', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
     data.push(dayNameHeader);
 
     // Employee Data Rows
@@ -433,8 +437,28 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       });
       data.push(row);
     });
+
+    // Legend section
+    data.push([]); // Empty row as spacer
+    const legendHeader = ["LEGEND:", ""];
+    data.push(legendHeader);
+    data.push(["", "SKE - Scheduled"]);
+    data.push(["", "OFF - Day Off"]);
+    data.push(["", "HOL OFF - Holiday"]);
+    data.push(["", "VL - Vacation Leave"]);
+    data.push(["", "SL - Sick Leave"]);
+    data.push(["", "OFFSET - Offset"]);
+    
+    data.push([]); // Empty row as spacer
+    const othersHeader = ["OTHERS:", ""];
+    data.push(othersHeader);
+    data.push(["", "BL - Birthday Leave"]);
+    data.push(["", "ML - Maternity Leave"]);
+    data.push(["", "PL - Paternity Leave"]);
+
     
     const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!merges'] = merges;
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
@@ -937,4 +961,5 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
 
