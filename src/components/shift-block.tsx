@@ -98,7 +98,7 @@ export function ShiftBlock({ item, onClick, interactive, context, employee: empl
   if (!shift.label) return null;
 
   if (shift.isDayOff || shift.isHolidayOff) {
-    const backgroundColor = shift.color || '#6b7280';
+    const backgroundColor = '#6b7280';
     return (
        <div
         onClick={onClick}
