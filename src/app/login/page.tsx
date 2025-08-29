@@ -11,20 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { employees as defaultEmployees } from '@/lib/data';
 import type { Employee } from '@/types';
 import { LayoutGrid } from 'lucide-react';
-
-// Helper function to get initial state from localStorage or defaults
-const getInitialEmployees = (): Employee[] => {
-    if (typeof window === 'undefined') {
-        return defaultEmployees;
-    }
-    try {
-        const item = window.localStorage.getItem('employees');
-        return item ? JSON.parse(item) : defaultEmployees;
-    } catch (error) {
-        console.error('Error reading employees from localStorage:', error);
-        return defaultEmployees;
-    }
-};
+import { getInitialState } from '@/lib/utils';
 
 
 export default function LoginPage() {
@@ -37,7 +24,7 @@ export default function LoginPage() {
   
   useEffect(() => {
     // Load employees from localStorage on component mount
-    setEmployees(getInitialEmployees());
+    setEmployees(getInitialState('employees', defaultEmployees));
   }, []);
 
 
