@@ -68,7 +68,7 @@ type ShiftEditorProps = {
 };
 
 const roleColors: { [key: string]: string } = {
-  Manager: 'hsl(var(--chart-2))',
+  Manager: 'hsl(var(--chart-1))',
   Chef: 'hsl(var(--chart-1))',
   Barista: 'hsl(var(--chart-5))',
   Cashier: 'hsl(var(--chart-3))',
