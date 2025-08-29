@@ -393,17 +393,21 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const data: (string | number)[][] = [];
 
     // Header Rows
-    data.push(['POST PRODUCTION', 'Section/Unit', 'Designation']);
+    data.push(['POST PRODUCTION', '', '']);
+    data.push(['Section/Unit', '', '']);
+    data.push(['Designation', '', '']);
     data.push([reportGroup.toUpperCase()]);
     
     // Empty row
     data.push([]);
     
     const monthName = format(dateRange.from, 'MMMM').toUpperCase();
-    data.push(['', '', '', '', '', '', monthName]);
+    data.push(['', '', '', monthName]);
     
-    const dateHeader = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
-    data.push(dateHeader);
+    const dayNumberHeader = ['', '', ...displayedDays.map(d => format(d, 'd'))];
+    const dayNameHeader = ['', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
+    data.push(dayNumberHeader);
+    data.push(dayNameHeader);
 
     // Employee Data Rows
     groupEmployees.forEach(emp => {
@@ -419,7 +423,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
         if (shift?.isHolidayOff) {
             row.push('HOL OFF');
-        } else if (holiday) {
+        } else if (holiday && (!shift || shift.isDayOff)) { // Holiday counts if they are not working
           row.push('HOL OFF');
         } else if (leaveEntry) {
           row.push(leaveEntry.type);
@@ -427,7 +431,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
           if (shift.isDayOff) {
             row.push('OFF');
           } else {
-            // This is a placeholder as the sample shows "SKE" for shifts
             row.push('SKE'); 
           }
         } else {
@@ -450,9 +453,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     data.push(['', '', '', '', '', '', '', '', '', '', '3', 'Ees who opted not to report to work citing "hazard" of COVID-19']);
 
 
-    const ws = XLSX.utils.aoa_to_sheet(data, {
-        cellStyles: false,
-    });
+    const ws = XLSX.utils.aoa_to_sheet(data);
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
