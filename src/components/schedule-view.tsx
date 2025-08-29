@@ -394,7 +394,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
     // Header Rows
     data.push(['POST PRODUCTION', 'Section/Unit', 'Designation']);
-    data.push(['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION']);
+    data.push([reportGroup.toUpperCase()]);
     
     // Empty row
     data.push([]);
@@ -418,12 +418,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
 
         if (holiday) {
-          row.push('HOL OFF');
+          row.push('HOLIDAY OFF');
         } else if (leaveEntry) {
           row.push(leaveEntry.type);
         } else if (shift) {
-          if (shift.isDayOff || shift.isHolidayOff) {
+          if (shift.isDayOff) {
             row.push('OFF');
+          } else if (shift.isHolidayOff) {
+            row.push('HOLIDAY OFF');
           } else {
             // This is a placeholder as the sample shows "SKE" for shifts
             row.push('SKE'); 
@@ -455,9 +457,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         XLSX.utils.decode_range("A1:A2"),
         XLSX.utils.decode_range("B1:B2"),
         XLSX.utils.decode_range("C1:C2"),
-        XLSX.utils.decode_range("D1:J1"),
         XLSX.utils.decode_range("A3:J3"),
-        XLSX.utils.decode_range("G4:J4"),
         // Legend Merges
         XLSX.utils.decode_range("F9:G9"),
         XLSX.utils.decode_range("F10:G10"),
@@ -963,3 +963,4 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
