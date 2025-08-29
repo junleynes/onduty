@@ -1,6 +1,6 @@
 
 'use client';
-import { CalendarDays, Users, Calendar, Shield, type LucideIcon, GitMerge, Gift, PartyPopper } from 'lucide-react';
+import { CalendarDays, Users, Calendar, Shield, type LucideIcon, GitMerge, Gift, PartyPopper, Clock } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
 import type { NavItem } from '@/app/page';
@@ -19,6 +19,7 @@ const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: Luci
         { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
         { view: 'schedule', label: 'Schedule', icon: CalendarDays },
         { view: 'team', label: 'Team', icon: Users },
+        { view: 'onduty', label: 'On Duty', icon: Clock },
         { view: 'org-chart', label: 'Org Chart', icon: GitMerge },
         { view: 'celebrations', label: 'Celebrations', icon: Gift },
         { view: 'holidays', label: 'Holidays', icon: PartyPopper },
@@ -27,6 +28,7 @@ const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: Luci
         { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
         { view: 'schedule', label: 'Schedule', icon: CalendarDays },
         { view: 'team', label: 'Team', icon: Users },
+        { view: 'onduty', label: 'On Duty', icon: Clock },
         { view: 'org-chart', label: 'Org Chart', icon: GitMerge },
         { view: 'celebrations', label: 'Celebrations', icon: Gift },
         { view: 'holidays', label: 'Holidays', icon: PartyPopper },

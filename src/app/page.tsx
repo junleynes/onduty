@@ -29,9 +29,10 @@ import { NoteViewer } from '@/components/note-viewer';
 import { NoteEditor } from '@/components/note-editor';
 import { HolidayEditor } from '@/components/holiday-editor';
 import HolidaysView from '@/components/holidays-view';
+import OndutyView from '@/components/onduty-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty';
 
 
 function AppContent() {
@@ -112,7 +113,7 @@ function AppContent() {
             // Check for birthday
             if (employee.birthDate) {
                 const birthDate = new Date(employee.birthDate);
-                if (getMonth(birthDate) === getMonth(today) && getDate(birthDate) === getDate(today)) {
+                if (getMonth(birthDate) === getMonth(today) && getDate(birthDate) === getMonth(today)) {
                     if (!notifiedToday.includes(`${employee.id}-birthday`)) {
                         celebrationsToNotify.push({ employee, type: 'birthday' });
                     }
@@ -121,7 +122,7 @@ function AppContent() {
             // Check for anniversary
             if (employee.startDate) {
                 const startDate = new Date(employee.startDate);
-                if (getYear(startDate) !== getYear(today) && getMonth(startDate) === getMonth(today) && getDate(startDate) === getDate(today)) {
+                if (getYear(startDate) !== getYear(today) && getMonth(startDate) === getMonth(today) && getDate(startDate) === getMonth(today)) {
                      if (!notifiedToday.includes(`${employee.id}-anniversary`)) {
                         celebrationsToNotify.push({ employee, type: 'anniversary' });
                     }
@@ -354,6 +355,8 @@ function AppContent() {
         const teamEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
         return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
       }
+      case 'onduty':
+        return <OndutyView employees={employees} shifts={shifts} />;
        case 'org-chart':
         return <OrgChartView employees={employees} />;
       case 'celebrations':
