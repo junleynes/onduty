@@ -26,10 +26,12 @@ import { GroupEditor } from '@/components/group-editor';
 import OrgChartView from '@/components/org-chart-view';
 import CelebrationsView from '@/components/celebrations-view';
 import { NoteViewer } from '@/components/note-viewer';
+import { NoteEditor } from '@/components/note-editor';
 import { HolidayEditor } from '@/components/holiday-editor';
+import HolidaysView from '@/components/holidays-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays';
 
 
 function AppContent() {
@@ -56,6 +58,9 @@ function AppContent() {
 
   const [isNoteViewerOpen, setIsNoteViewerOpen] = useState(false);
   const [viewingNote, setViewingNote] = useState<Note | Holiday | null>(null);
+  const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Partial<Note> | null>(null);
+
 
   const { notifications, setNotifications, addNotification, addNotificationForUser } = useNotifications();
 
@@ -274,6 +279,34 @@ function AppContent() {
     addNotification({ message: 'The schedule has been published.' });
     toast({ title: "Schedule Published!", description: "All shifts are now marked as published." });
   };
+  
+  const handleEditNote = (note: Partial<Note>) => {
+    setEditingNote(note);
+    setIsNoteEditorOpen(true);
+  };
+  
+  const handleSaveNote = (savedNote: Note | Partial<Note>) => {
+    if (currentUser?.role === 'member') return;
+    if (savedNote.id) {
+        setNotes(notes.map(n => n.id === savedNote.id ? savedNote as Note : n));
+        toast({ title: 'Note Updated' });
+    } else {
+        const newNoteWithId = { ...savedNote, id: `note-${Date.now()}` } as Note;
+        setNotes([...notes, newNoteWithId]);
+        toast({ title: 'Note Added' });
+    }
+    setIsNoteEditorOpen(false);
+    setEditingNote(null);
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    if (currentUser?.role === 'member') return;
+    setNotes(notes.filter(n => n.id !== noteId));
+    setIsNoteEditorOpen(false);
+    setEditingNote(null);
+    toast({ title: 'Note Deleted', variant: 'destructive' });
+  };
+
 
 
   const currentView = useMemo(() => {
@@ -312,6 +345,7 @@ function AppContent() {
               setViewingNote(note);
               setIsNoteViewerOpen(true);
             }}
+            onEditNote={handleEditNote}
             onManageHolidays={() => setIsHolidayEditorOpen(true)}
           />
         );
@@ -324,6 +358,12 @@ function AppContent() {
         return <OrgChartView employees={employees} />;
       case 'celebrations':
         return <CelebrationsView employees={employees} />;
+      case 'holidays':
+        return <HolidaysView 
+                  holidays={holidays} 
+                  isManager={currentUser.role === 'manager' || currentUser.role === 'admin'}
+                  onManageHolidays={() => setIsHolidayEditorOpen(true)}
+                />;
       case 'my-schedule':
         return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
       case 'admin':
@@ -409,6 +449,13 @@ function AppContent() {
         holidays={holidays}
         setHolidays={setHolidays}
     />
+    <NoteEditor
+        isOpen={isNoteEditorOpen}
+        setIsOpen={setIsNoteEditorOpen}
+        note={editingNote}
+        onSave={handleSaveNote}
+        onDelete={handleDeleteNote}
+    />
     {viewingNote && (
         <NoteViewer
             isOpen={isNoteViewerOpen}
@@ -416,17 +463,10 @@ function AppContent() {
             note={viewingNote}
             isManager={currentUser.role === 'manager' || currentUser.role === 'admin'}
             onEdit={(note) => {
-                if ('description' in note) { // It's a regular note
-                    // This logic would be part of the ScheduleView component in a more direct implementation
-                    // but since we are calling it from here, we need to handle it.
-                    // We find the schedule view's internal note editor trigger.
-                    const scheduleViewComponent = (currentView as React.ReactElement<any, string | React.JSXElementConstructor<any>>);
-                    if (scheduleViewComponent.props.onEditNote) {
-                       setIsNoteViewerOpen(false); // Close viewer
-                       scheduleViewComponent.props.onEditNote(note); // Open editor
-                    }
+                if ('description' in note) {
+                    setIsNoteViewerOpen(false);
+                    handleEditNote(note);
                 }
-                // Holidays are not editable from here.
             }}
         />
     )}

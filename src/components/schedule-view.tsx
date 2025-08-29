@@ -24,7 +24,6 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
-import { NoteEditor } from './note-editor';
 
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -44,10 +43,11 @@ type ScheduleViewProps = {
   onPublish: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
   onViewNote: (note: Note | Holiday | Partial<Note>) => void;
+  onEditNote: (note: Partial<Note>) => void;
   onManageHolidays: () => void;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setHolidays, currentUser, onPublish, addNotification, onViewNote, onManageHolidays }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -66,9 +66,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
   
-  const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
-  const [editingNote, setEditingNote] = useState<Partial<Note> | null>(null);
-
   const [isLeaveTypeEditorOpen, setIsLeaveTypeEditorOpen] = useState(false);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(initialLeaveTypes);
 
@@ -152,17 +149,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   
   const handleNoteCellClick = (date: Date) => {
     const existingNote = notes.find(n => isSameDay(n.date, date));
-    const noteToShow = existingNote || { date };
+    const holiday = holidays.find(h => isSameDay(h.date, day));
 
-    if (!isReadOnly) {
-        if (existingNote) {
-            onViewNote(existingNote);
-        } else {
-            setEditingNote({ date });
-            setIsNoteEditorOpen(true);
-        }
-    } else if (existingNote) {
+    if (existingNote) {
         onViewNote(existingNote);
+    } else if (holiday) {
+        onViewNote(holiday);
+    } else if (!isReadOnly) {
+        onEditNote({ date });
     }
   };
 
@@ -238,29 +232,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     setEditingLeave(null);
     toast({ title: "Leave Deleted", variant: "destructive" });
   };
-  
-  const handleSaveNote = (savedNote: Note | Partial<Note>) => {
-    if (isReadOnly) return;
-    if (savedNote.id) {
-        setNotes(notes.map(n => n.id === savedNote.id ? savedNote as Note : n));
-        toast({ title: 'Note Updated' });
-    } else {
-        const newNoteWithId = { ...savedNote, id: `note-${Date.now()}` } as Note;
-        setNotes([...notes, newNoteWithId]);
-        toast({ title: 'Note Added' });
-    }
-    setIsNoteEditorOpen(false);
-    setEditingNote(null);
-  };
-
-  const handleDeleteNote = (noteId: string) => {
-    if (isReadOnly) return;
-    setNotes(notes.filter(n => n.id !== noteId));
-    setIsNoteEditorOpen(false);
-    setEditingNote(null);
-    toast({ title: 'Note Deleted', variant: 'destructive' });
-  };
-
 
   const navigateDate = (direction: 'prev' | 'next') => {
       let daysToAdd = 0;
@@ -555,7 +526,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         </div>
         {days.map(day => {
             const note = notes.find(n => isSameDay(n.date, day));
-            const holiday = holidays.find(h => isSameDay(h.date, day));
+            const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
 
             return (
                 <div 
@@ -563,28 +534,20 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs flex flex-col items-center justify-center cursor-pointer hover:bg-accent",
                       viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50'
                     )}
+                    onClick={() => handleNoteCellClick(day)}
                 >
                     {holiday && (
-                        <div
-                            className="w-full text-center p-1 rounded-sm bg-red-500 text-white"
-                            onClick={() => onViewNote(holiday)}
-                        >
+                        <div className="w-full text-center p-1 rounded-sm bg-red-500 text-white">
                             <p className="font-bold truncate">{holiday.title}</p>
                         </div>
                     )}
                     {note && (
-                        <div
-                            className="cursor-pointer text-center mt-1"
-                            onClick={() => handleNoteCellClick(day)}
-                        >
+                        <div className="cursor-pointer text-center mt-1">
                             <p className="font-bold truncate">{note.title}</p>
                         </div>
                     )}
                     {!note && !holiday && !isReadOnly && (
-                        <div 
-                           className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                           onClick={() => handleNoteCellClick(day)}
-                        >
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
                             <PlusCircle className="h-5 w-5 text-muted-foreground" />
                         </div>
                     )}
@@ -838,13 +801,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         employees={employees}
         leaveTypes={leaveTypes}
       />
-      <NoteEditor
-        isOpen={isNoteEditorOpen}
-        setIsOpen={setIsNoteEditorOpen}
-        note={editingNote}
-        onSave={handleSaveNote}
-        onDelete={handleDeleteNote}
-      />
        <LeaveTypeEditor
         isOpen={isLeaveTypeEditorOpen}
         setIsOpen={setIsLeaveTypeEditorOpen}
@@ -867,5 +823,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
