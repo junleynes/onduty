@@ -31,7 +31,7 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
           <p className="font-bold text-lg">{getFullName(node)}</p>
           <p className="text-muted-foreground">{node.position}</p>
           <Badge variant={node.role === 'admin' ? 'destructive' : node.role === 'manager' ? 'default' : 'secondary'} className="mt-2 capitalize">
-            {node.role}
+            {node.position === 'Senior Manager' ? 'Senior Manager' : node.role}
           </Badge>
         </CardContent>
       </Card>
@@ -56,41 +56,53 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
 
 export default function OrgChartView({ employees }: OrgChartViewProps) {
   const tree = useMemo(() => {
-    const tree: TreeNode[] = [];
     const map = new Map<string, TreeNode>();
-
     employees.forEach(emp => {
-      map.set(emp.id, { ...emp, children: [] });
+      if (emp.role !== 'admin') { // Exclude admins
+        map.set(emp.id, { ...emp, children: [] });
+      }
     });
 
-    const admins: TreeNode[] = [];
+    const seniorManagers: TreeNode[] = [];
     const managers: TreeNode[] = [];
     const members: TreeNode[] = [];
+    const roots: TreeNode[] = [];
 
     map.forEach(node => {
-        if (node.role === 'admin') admins.push(node);
-        else if (node.role === 'manager') managers.push(node);
-        else members.push(node);
+        if (node.position === 'Senior Manager') {
+            seniorManagers.push(node);
+        } else if (node.role === 'manager') {
+            managers.push(node);
+        } else {
+            members.push(node);
+        }
     });
 
     members.forEach(member => {
-        // Find a manager in the same group
-        const manager = managers.find(m => m.group === member.group);
+        // Find a manager in the same group (can be senior or regular)
+        const manager = managers.find(m => m.group === member.group) || seniorManagers.find(sm => sm.group === member.group);
         if (manager) {
             manager.children.push(member);
         } else {
-            // If no manager in group, attach to any admin (fallback)
-             const admin = admins[0];
-             if(admin) admin.children.push(member);
+            // If no manager in group, attach to any senior manager as a fallback
+             const fallbackManager = seniorManagers[0];
+             if(fallbackManager) fallbackManager.children.push(member);
         }
     });
     
     managers.forEach(manager => {
-        // Attach all managers to all admins
-        admins.forEach(admin => admin.children.push(manager));
+        const seniorManager = seniorManagers.find(sm => sm.group === manager.group);
+        if (seniorManager) {
+            seniorManager.children.push(manager);
+        } else {
+            // This manager has no senior manager in their group, so they are a root
+            roots.push(manager);
+        }
     });
+    
+    // The final tree is all senior managers plus any managers who didn't have a senior manager
+    return [...seniorManagers, ...roots];
 
-    return admins;
   }, [employees]);
 
   return (
@@ -101,13 +113,13 @@ export default function OrgChartView({ employees }: OrgChartViewProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full h-[70vh] p-4">
-             <div className="flex justify-center">
+             <div className="flex justify-center gap-16 items-start">
                 {tree.map(rootNode => (
                     <EmployeeNode key={rootNode.id} node={rootNode} />
                 ))}
              </div>
              {tree.length === 0 && (
-                <p className="text-center text-muted-foreground">No employees found to build the chart.</p>
+                <p className="text-center text-muted-foreground">No managers or members found to build the chart.</p>
              )}
         </ScrollArea>
       </CardContent>
