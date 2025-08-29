@@ -31,9 +31,6 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
           </Avatar>
           <p className="font-bold text-sm">{getFullName(node)}</p>
           <p className="text-muted-foreground text-xs">{node.position}</p>
-          <Badge variant={node.role === 'admin' ? 'destructive' : node.role === 'manager' ? 'default' : 'secondary'} className="mt-1 capitalize text-xs">
-            {node.position === 'Senior Manager' ? 'Senior Manager' : node.role}
-          </Badge>
         </CardContent>
       </Card>
       {hasChildren && (
