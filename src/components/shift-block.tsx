@@ -16,7 +16,7 @@ const blockVariants = cva(
       type: {
         shift: 'text-black',
         leave: 'border-transparent',
-        dayOff: 'bg-gray-400/80 border-gray-500 text-center',
+        dayOff: 'text-center',
       },
       interactive: {
         true: 'cursor-pointer',
@@ -98,10 +98,12 @@ export function ShiftBlock({ item, onClick, interactive, context, employee: empl
   if (!shift.label) return null;
 
   if (shift.isDayOff || shift.isHolidayOff) {
+    const backgroundColor = shift.color || '#6b7280';
     return (
        <div
         onClick={onClick}
         className={cn(blockVariants({ type: 'dayOff', interactive, context }))}
+        style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
         <p className="font-bold text-xs truncate whitespace-pre-wrap">{shift.label}</p>
          {context === 'week' && <p className="text-xs truncate whitespace-pre-wrap">All day</p>}

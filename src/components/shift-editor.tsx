@@ -162,12 +162,12 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         finalValues.label = 'OFF';
         finalValues.startTime = '';
         finalValues.endTime = '';
-        finalValues.color = 'transparent';
+        finalValues.color = '#6b7280';
     } else if (values.isHolidayOff) {
         finalValues.label = 'HOL-OFF';
         finalValues.startTime = '';
         finalValues.endTime = '';
-        finalValues.color = 'transparent';
+        finalValues.color = '#6b7280';
     } else if (finalValues.color === 'default' || !finalValues.color) {
         const employee = employees.find(e => e.id === values.employeeId);
         finalValues.color = employee ? roleColors[employee.position] : shiftColorOptions[1].value;
