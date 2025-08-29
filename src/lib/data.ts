@@ -1,13 +1,16 @@
 
 import type { Employee, Shift, Leave } from '@/types';
-import db from './db.json';
+import initialDb from './db.json';
 
-export const employees: Employee[] = db.employees;
-export const shifts: Shift[] = db.shifts;
-export const leave: Leave[] = db.leave;
-export const initialGroups: string[] = db.groups;
-export const initialShiftTemplates = db.shiftTemplates;
-export const initialLeaveTypes = db.leaveTypes;
+// While transitioning to SQLite, we keep the JSON as a fallback for initial data.
+// In a full SQLite implementation, these would be queries to the database.
+
+export const employees: Employee[] = initialDb.employees;
+export const shifts: Shift[] = initialDb.shifts;
+export const leave: Leave[] = initialDb.leave;
+export const initialGroups: string[] = initialDb.groups;
+export const initialShiftTemplates = initialDb.shiftTemplates;
+export const initialLeaveTypes = initialDb.leaveTypes;
 
 export const weekDays: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

@@ -266,7 +266,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, currentUser, groups, shiftsForView, addNotification]);
+  }, [activeView, employees, shifts, leave, currentUser, groups, shiftsForView, addNotification, router, toast]);
 
   if (!currentUser) {
       return null;
