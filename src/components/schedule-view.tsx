@@ -552,7 +552,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     {note ? (
                         <div>
                             <p className="font-bold truncate">{note.title}</p>
-                            <p className="text-muted-foreground truncate">{note.description}</p>
                         </div>
                     ) : (
                         !isReadOnly && (
@@ -834,3 +833,5 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       />
     </div>
   );
+
+    
