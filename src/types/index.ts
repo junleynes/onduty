@@ -16,6 +16,7 @@ export type Employee = {
   role: UserRole;
   group?: string;
   avatar?: string;
+  signature?: string;
 };
 
 export type Shift = {

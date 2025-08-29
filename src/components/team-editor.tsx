@@ -20,6 +20,9 @@ import type { Employee, UserRole } from '@/types';
 import { employees as initialEmployees } from '@/lib/data';
 import { DatePicker } from './ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { getInitials, getFullName, getBackgroundColor } from '@/lib/utils';
+import Image from 'next/image';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
@@ -36,6 +39,7 @@ const employeeSchema = z.object({
   role: z.custom<UserRole>().optional(),
   group: z.string().optional(),
   avatar: z.string().optional(),
+  signature: z.string().optional(),
 });
 
 
@@ -52,6 +56,8 @@ type TeamEditorProps = {
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups }: TeamEditorProps) {
     const [positions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
@@ -75,12 +81,13 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       role: 'member',
       group: '',
       avatar: '',
+      signature: '',
     }
   });
 
   useEffect(() => {
     if(isOpen) {
-        form.reset(employee?.id ? {
+        const defaultValues = employee?.id ? {
             ...employee,
             password: '',
             birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
@@ -100,9 +107,30 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             role: 'member',
             group: '',
             avatar: '',
-        });
+            signature: '',
+        };
+        form.reset(defaultValues);
+        setAvatarPreview(employee?.avatar || null);
+        setSignaturePreview(employee?.signature || null);
     }
   }, [employee, form, isOpen]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'avatar' | 'signature') => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              const base64String = reader.result as string;
+              form.setValue(fieldName, base64String);
+              if (fieldName === 'avatar') {
+                  setAvatarPreview(base64String);
+              } else {
+                  setSignaturePreview(base64String);
+              }
+          };
+          reader.readAsDataURL(file);
+      }
+  };
 
   const onSubmit = (values: z.infer<typeof employeeSchema>) => {
     if (isPasswordResetMode) {
@@ -370,6 +398,39 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                 </FormItem>
                                 )}
                             />
+                            </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <FormItem>
+                                    <FormLabel>Profile Picture</FormLabel>
+                                    <div className="flex items-center gap-4">
+                                        <Avatar className="h-20 w-20">
+                                            <AvatarImage src={avatarPreview || undefined} data-ai-hint="profile avatar" />
+                                            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(form.getValues())) }}>
+                                                {getInitials(getFullName(form.getValues()))}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <FormControl>
+                                            <Input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'avatar')} className="max-w-xs" />
+                                        </FormControl>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                                <FormItem>
+                                    <FormLabel>Digital Signature</FormLabel>
+                                     <div className="flex items-center gap-4">
+                                        <div className="h-20 w-32 border rounded-md flex items-center justify-center bg-gray-100">
+                                            {signaturePreview ? (
+                                                <Image src={signaturePreview} alt="Signature Preview" width={128} height={80} className="object-contain h-full w-full" />
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">No Signature</span>
+                                            )}
+                                        </div>
+                                        <FormControl>
+                                            <Input type="file" accept="image/*" onChange={(e) => handleFileChange(e, 'signature')} className="max-w-xs" />
+                                        </FormControl>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
                             </div>
                         </>
                     )}
