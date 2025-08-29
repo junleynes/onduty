@@ -81,6 +81,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
               startDate: parseDate(row['Start Date']),
               group: row['Group'] || row['Department'] || '',
               email: row['Email'] || '',
+              phone: row['Phone'] || '',
               employeeNumber: row['Employee Number'] || '',
               password: row['Password'] || 'password', // Default password if not provided
               role: ['admin', 'manager', 'member'].includes(role) ? role : 'member',
@@ -111,7 +112,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
         <DialogHeader>
           <DialogTitle>Import Members from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Employee Number, Password, Role.
+            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Phone, Employee Number, Password, Role.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
