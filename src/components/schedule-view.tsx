@@ -457,7 +457,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         XLSX.utils.decode_range("A1:A2"),
         XLSX.utils.decode_range("B1:B2"),
         XLSX.utils.decode_range("C1:C2"),
-        XLSX.utils.decode_range("A3:J3"),
+        XLSX.utils.decode_range("A4:J4"),
         // Legend Merges
         XLSX.utils.decode_range("F9:G9"),
         XLSX.utils.decode_range("F10:G10"),
@@ -466,9 +466,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         XLSX.utils.decode_range("I10:J10"),
         XLSX.utils.decode_range("I11:J11"),
         // Others Merges
-        XLSX.utils.decode_range("K13:M13"),
-        XLSX.utils.decode_range("K14:M14"),
-        XLSX.utils.decode_range("K15:M15"),
+        XLSX.utils.decode_range("L13:N13"),
+        XLSX.utils.decode_range("L14:N14"),
+        XLSX.utils.decode_range("L15:N15"),
     ];
 
     const wb = XLSX.utils.book_new();
@@ -838,7 +838,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                                 <Upload className="mr-2 h-4 w-4" />
                                 <span>Import Templates</span>
                             </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Manage Leave Types</span>
                             </DropdownMenuItem>
@@ -963,4 +966,5 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
 
