@@ -30,9 +30,9 @@ function isHoliday(note: Note | Holiday): note is Holiday {
 export function NoteViewer({ isOpen, setIsOpen, note, isManager, onEdit }: NoteViewerProps) {
   if (!note) return null;
 
-  const formattedDate = note.date ? format(note.date, 'EEEE, MMMM d') : '';
+  const formattedDate = note.date ? format(new Date(note.date), 'EEEE, MMMM d, yyyy') : '';
   const isNoteHoliday = isHoliday(note);
-  const description = isNoteHoliday ? `This is a company holiday.` : note.description;
+  const description = isNoteHoliday ? '' : note.description;
 
   const handleEditClick = () => {
     if (isNoteHoliday) return; // Holidays are not editable here
