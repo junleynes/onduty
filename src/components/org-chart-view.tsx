@@ -21,7 +21,7 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
   const hasChildren = node.children && node.children.length > 0;
   return (
     <div className="flex flex-col items-center text-center relative">
-      <Card className="min-w-48 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
+      <Card className="min-w-40 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
         <CardContent className="p-3 flex flex-col items-center">
           <Avatar className="w-12 h-12 mb-2 border-2 border-primary">
             <AvatarImage src={node.avatar} data-ai-hint="profile avatar" />
@@ -40,18 +40,11 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
         <>
           {/* Vertical line from parent */}
           <div className="w-px h-6 bg-border" />
-          {/* Horizontal line connecting children */}
-          <div
-            className="absolute h-px bg-border"
-            style={{
-              top: `calc(100% + 1rem)`, // Position below parent card
-              left: '50%',
-              right: '50%',
-              width: `calc(${node.children.length > 1 ? '100% - 12rem' : '0px'})`, // Full width minus one card width
-              transform: `translateX(calc(-50% + ${node.children.length > 1 ? '6rem' : '0px'}))` // Adjust for card width
-            }}
-          />
           <div className="flex justify-center gap-4 pt-6 relative">
+            {/* Horizontal line connecting children - rendered before children to be in background */}
+            {node.children.length > 1 && (
+                 <div className="absolute top-6 h-px bg-border left-16 right-16" />
+            )}
             {node.children.map((child) => (
               <div key={child.id} className="flex flex-col items-center relative">
                  {/* Vertical line to child */}
