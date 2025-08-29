@@ -180,21 +180,51 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                   }
 
                   dates.forEach(({ colIndex, date }) => {
-                      const cellValue = employeeRow[colIndex]?.trim().toUpperCase();
+                      const cellValue = employeeRow[colIndex]?.trim();
                       if (!cellValue) return;
 
-                      if (cellValue === 'OFF') {
-                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'OFF', color: 'transparent', isDayOff: true });
+                      const upperCellValue = cellValue.toUpperCase();
+
+                      if (upperCellValue === 'OFF') {
+                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'OFF', color: 'transparent', isDayOff: true, status: 'draft' });
                           return;
                       }
-                      if (cellValue === 'HOL-OFF') {
-                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'HOL-OFF', color: 'transparent', isHolidayOff: true });
+                      if (upperCellValue === 'HOL-OFF') {
+                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'HOL-OFF', color: 'transparent', isHolidayOff: true, status: 'draft' });
                           return;
                       }
 
-                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL'].includes(cellValue)) {
-                          importedLeave.push({ id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, type: cellValue, isAllDay: true });
+                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL'].includes(upperCellValue)) {
+                          importedLeave.push({ id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, type: upperCellValue, isAllDay: true });
                           return;
+                      }
+
+                      // Handle "6am - 10am / 0.5 OFFSET" format
+                      if (cellValue.includes('/')) {
+                        const parts = cellValue.split('/').map(p => p.trim());
+                        const timePart = parts[0];
+                        const leavePart = parts[1];
+                        
+                        const timeMatch = timePart.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i);
+                        const leaveTypeMatch = leavePart.match(/[a-zA-Z]+/);
+
+                        if(timeMatch && leaveTypeMatch) {
+                            const startTime = convertTo24Hour(timeMatch[1]);
+                            const endTime = convertTo24Hour(timeMatch[2]);
+                            const leaveType = leaveTypeMatch[0].toUpperCase();
+                             if (!startTime || !endTime) return;
+
+                            importedLeave.push({
+                                id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`,
+                                employeeId: employee.id,
+                                date,
+                                type: leaveType,
+                                isAllDay: false,
+                                startTime,
+                                endTime,
+                            });
+                            return;
+                        }
                       }
                       
                       const timeMatch = cellValue.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i);
@@ -211,7 +241,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                               startTime,
                               endTime,
                               label: matchedTemplate ? matchedTemplate.label : 'Shift',
-                              color: matchedTemplate ? matchedTemplate.color : '#9b59b6'
+                              color: matchedTemplate ? matchedTemplate.color : '#9b59b6',
+                              status: 'draft'
                           });
                       }
                   });
@@ -265,3 +296,4 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
     </Dialog>
   );
 }
+

@@ -130,9 +130,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   
   const orderedEmployees = useMemo(() => {
     const employeeMap = new Map(employees.map(e => [e.id, e]));
-    const baseEmployees = viewEmployeeOrder 
-      ? viewEmployeeOrder.map(id => employeeMap.get(id)).filter((e): e is Employee => !!e)
-      : employees;
+    let baseEmployees = employees;
+
+    if (viewEmployeeOrder) {
+      const orderedSet = new Set(viewEmployeeOrder);
+      const ordered = viewEmployeeOrder.map(id => employeeMap.get(id)).filter((e): e is Employee => !!e);
+      const unordered = employees.filter(e => !orderedSet.has(e.id));
+      baseEmployees = [...ordered, ...unordered];
+    }
       
     // Make sure unassigned is always at the top/bottom depending on preference. Here it's first.
     return [
@@ -782,5 +787,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
 
 
