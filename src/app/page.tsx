@@ -21,9 +21,10 @@ import { TeamEditor } from '@/components/team-editor';
 import { MemberImporter } from '@/components/member-importer';
 import { useToast } from '@/hooks/use-toast';
 import { GroupEditor } from '@/components/group-editor';
+import OrgChartView from '@/components/org-chart-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart';
 
 
 function AppContent() {
@@ -238,6 +239,8 @@ function AppContent() {
         const teamEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
         return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
       }
+       case 'org-chart':
+        return <OrgChartView employees={employees} />;
       case 'my-schedule':
         return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
       case 'admin':

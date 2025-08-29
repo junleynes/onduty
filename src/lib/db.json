@@ -19,9 +19,7 @@
   "leave": [],
   "groups": [
     "Administration",
-    "Cashiers",
-    "Chefs",
-    "Baristas"
+    "MAMS Support"
   ],
   "shiftTemplates": [
     { "name": "Morning Shift (06:00-14:00)", "label": "Morning Shift", "startTime": "06:00", "endTime": "14:00", "color": "hsl(var(--chart-2))" },
