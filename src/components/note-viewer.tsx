@@ -11,24 +11,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import type { Note } from '@/types';
+import type { Note, Holiday } from '@/types';
 import { format } from 'date-fns';
 import { Pencil } from 'lucide-react';
 
 type NoteViewerProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  note: Note;
+  note: Note | Holiday;
   isManager: boolean;
   onEdit: (note: Note) => void;
 };
+
+function isHoliday(note: Note | Holiday): note is Holiday {
+    return !('description' in note);
+}
 
 export function NoteViewer({ isOpen, setIsOpen, note, isManager, onEdit }: NoteViewerProps) {
   if (!note) return null;
 
   const formattedDate = note.date ? format(note.date, 'EEEE, MMMM d') : '';
+  const isNoteHoliday = isHoliday(note);
+  const description = isNoteHoliday ? `This is a company holiday.` : note.description;
 
   const handleEditClick = () => {
+    if (isNoteHoliday) return; // Holidays are not editable here
     setIsOpen(false);
     onEdit(note);
   };
@@ -41,11 +48,11 @@ export function NoteViewer({ isOpen, setIsOpen, note, isManager, onEdit }: NoteV
           <DialogDescription>{formattedDate}</DialogDescription>
         </DialogHeader>
         <div className="py-4 whitespace-pre-wrap">
-            <p>{note.description}</p>
+            <p>{description}</p>
         </div>
         <DialogFooter className="sm:justify-between">
             <div>
-                 {isManager && (
+                 {isManager && !isNoteHoliday && (
                     <Button type="button" onClick={handleEditClick}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit Note

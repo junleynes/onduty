@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { UserRole, Employee, Shift, Leave, Notification, Note } from '@/types';
+import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes } from '@/lib/data';
+import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes, initialHolidays } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
@@ -26,6 +26,7 @@ import { GroupEditor } from '@/components/group-editor';
 import OrgChartView from '@/components/org-chart-view';
 import CelebrationsView from '@/components/celebrations-view';
 import { NoteViewer } from '@/components/note-viewer';
+import { HolidayEditor } from '@/components/holiday-editor';
 
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations';
@@ -40,6 +41,7 @@ function AppContent() {
   const [leave, setLeave] = useState<Leave[]>(() => getInitialState('leave', initialLeave));
   const [groups, setGroups] = useState<string[]>(() => getInitialState('groups', initialGroups));
   const [notes, setNotes] = useState<Note[]>(() => getInitialState('notes', initialNotes));
+  const [holidays, setHolidays] = useState<Holiday[]>(() => getInitialState('holidays', initialHolidays));
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [activeView, setActiveView] = useState<NavItem>('schedule');
@@ -47,12 +49,13 @@ function AppContent() {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
+  const [isHolidayEditorOpen, setIsHolidayEditorOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
 
   const [isNoteViewerOpen, setIsNoteViewerOpen] = useState(false);
-  const [viewingNote, setViewingNote] = useState<Note | null>(null);
+  const [viewingNote, setViewingNote] = useState<Note | Holiday | null>(null);
 
   const { notifications, setNotifications, addNotification, addNotificationForUser } = useNotifications();
 
@@ -63,6 +66,7 @@ function AppContent() {
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notifications', JSON.stringify(notifications)); }, [notifications]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notes', JSON.stringify(notes)); }, [notes]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('holidays', JSON.stringify(holidays)); }, [holidays]);
 
 
   useEffect(() => {
@@ -299,6 +303,8 @@ function AppContent() {
             setLeave={setLeave}
             notes={notes}
             setNotes={setNotes}
+            holidays={holidays}
+            setHolidays={setHolidays}
             currentUser={currentUser}
             onPublish={handlePublish}
             addNotification={addNotification}
@@ -306,6 +312,7 @@ function AppContent() {
               setViewingNote(note);
               setIsNoteViewerOpen(true);
             }}
+            onManageHolidays={() => setIsHolidayEditorOpen(true)}
           />
         );
       }
@@ -345,7 +352,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, currentUser, groups, shiftsForView, addNotification, router, toast]);
+  }, [activeView, employees, shifts, leave, notes, holidays, currentUser, groups, shiftsForView, addNotification, router, toast]);
 
   if (!currentUser) {
       return null;
@@ -396,6 +403,12 @@ function AppContent() {
         groups={groups}
         setGroups={setGroups}
     />
+     <HolidayEditor
+        isOpen={isHolidayEditorOpen}
+        setIsOpen={setIsHolidayEditorOpen}
+        holidays={holidays}
+        setHolidays={setHolidays}
+    />
     {viewingNote && (
         <NoteViewer
             isOpen={isNoteViewerOpen}
@@ -403,14 +416,17 @@ function AppContent() {
             note={viewingNote}
             isManager={currentUser.role === 'manager' || currentUser.role === 'admin'}
             onEdit={(note) => {
-                // This logic would be part of the ScheduleView component in a more direct implementation
-                // but since we are calling it from here, we need to handle it.
-                // We find the schedule view's internal note editor trigger.
-                const scheduleViewComponent = (currentView as React.ReactElement<any, string | React.JSXElementConstructor<any>>);
-                if (scheduleViewComponent.props.onEditNote) {
-                   setIsNoteViewerOpen(false); // Close viewer
-                   scheduleViewComponent.props.onEditNote(note); // Open editor
+                if ('description' in note) { // It's a regular note
+                    // This logic would be part of the ScheduleView component in a more direct implementation
+                    // but since we are calling it from here, we need to handle it.
+                    // We find the schedule view's internal note editor trigger.
+                    const scheduleViewComponent = (currentView as React.ReactElement<any, string | React.JSXElementConstructor<any>>);
+                    if (scheduleViewComponent.props.onEditNote) {
+                       setIsNoteViewerOpen(false); // Close viewer
+                       scheduleViewComponent.props.onEditNote(note); // Open editor
+                    }
                 }
+                // Holidays are not editable from here.
             }}
         />
     )}

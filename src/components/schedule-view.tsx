@@ -5,10 +5,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Employee, Shift, Leave, Notification, Note } from '@/types';
+import type { Employee, Shift, Leave, Notification, Note, Holiday } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -38,13 +38,16 @@ type ScheduleViewProps = {
   setLeave: React.Dispatch<React.SetStateAction<Leave[]>>;
   notes: Note[];
   setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
+  holidays: Holiday[];
+  setHolidays: React.Dispatch<React.SetStateAction<Holiday[]>>;
   currentUser: Employee | null;
   onPublish: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
-  onViewNote: (note: Note | Partial<Note>) => void;
+  onViewNote: (note: Note | Holiday | Partial<Note>) => void;
+  onManageHolidays: () => void;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, currentUser, onPublish, addNotification, onViewNote }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setHolidays, currentUser, onPublish, addNotification, onViewNote, onManageHolidays }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -552,26 +555,38 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         </div>
         {days.map(day => {
             const note = notes.find(n => isSameDay(n.date, day));
+            const holiday = holidays.find(h => isSameDay(h.date, day));
+
             return (
                 <div 
                     key={`note-${day.toISOString()}`}
-                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs flex items-center justify-center cursor-pointer hover:bg-accent",
+                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs flex flex-col items-center justify-center cursor-pointer hover:bg-accent",
                       viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50'
                     )}
-                    onClick={() => handleNoteCellClick(day)}
                 >
-                    {note ? (
+                    {holiday && (
                         <div
-                            className="cursor-pointer text-center"
+                            className="w-full text-center p-1 rounded-sm bg-red-500 text-white"
+                            onClick={() => onViewNote(holiday)}
+                        >
+                            <p className="font-bold truncate">{holiday.title}</p>
+                        </div>
+                    )}
+                    {note && (
+                        <div
+                            className="cursor-pointer text-center mt-1"
+                            onClick={() => handleNoteCellClick(day)}
                         >
                             <p className="font-bold truncate">{note.title}</p>
                         </div>
-                    ) : (
-                        !isReadOnly && (
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
-                                <PlusCircle className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                        )
+                    )}
+                    {!note && !holiday && !isReadOnly && (
+                        <div 
+                           className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                           onClick={() => handleNoteCellClick(day)}
+                        >
+                            <PlusCircle className="h-5 w-5 text-muted-foreground" />
+                        </div>
                     )}
                 </div>
             )
@@ -732,6 +747,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
+                            <DropdownMenuItem onClick={onManageHolidays}>
+                                <PartyPopper className="mr-2 h-4 w-4" />
+                                <span>Manage Holidays</span>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
                                 <Upload className="mr-2 h-4 w-4" />
                                 <span>Import Schedule</span>
@@ -848,4 +867,5 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 

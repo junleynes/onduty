@@ -59,3 +59,9 @@ export type Note = {
     title: string;
     description: string;
 };
+
+export type Holiday = {
+    id: string;
+    date: Date;
+    title: string;
+};

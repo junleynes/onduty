@@ -109,6 +109,10 @@
   "shifts": [],
   "leave": [],
   "notes": [],
+  "holidays": [
+    { "id": "hol-1", "date": "2024-01-01T00:00:00.000Z", "title": "New Year's Day" },
+    { "id": "hol-2", "date": "2024-12-25T00:00:00.000Z", "title": "Christmas Day" }
+  ],
   "groups": [
     "Administration",
     "MAMS Support"
