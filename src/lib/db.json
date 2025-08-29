@@ -108,6 +108,7 @@
   ],
   "shifts": [],
   "leave": [],
+  "notes": [],
   "groups": [
     "Administration",
     "MAMS Support"
@@ -132,7 +133,6 @@
     { "type": "SL", "color": "#f97316" },
     { "type": "BL", "color": "#14b8a6" },
     { "type": "PL", "color": "#8b5cf6" },
-    { "type": "ML", "color": "#ec4899" },
-    { "type": "AVL", "color": "#6b7280" }
+    { "type": "ML", "color": "#ec4899" }
   ]
 }

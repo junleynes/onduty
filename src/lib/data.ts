@@ -1,5 +1,5 @@
 
-import type { Employee, Shift, Leave } from '@/types';
+import type { Employee, Shift, Leave, Note } from '@/types';
 import initialDb from './db.json';
 
 // While transitioning to SQLite, we keep the JSON as a fallback for initial data.
@@ -11,6 +11,7 @@ export const leave: Leave[] = initialDb.leave;
 export const initialGroups: string[] = initialDb.groups;
 export const initialShiftTemplates = initialDb.shiftTemplates;
 export const initialLeaveTypes = initialDb.leaveTypes;
+export const initialNotes: Note[] = initialDb.notes;
 
 export const weekDays: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 

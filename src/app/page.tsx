@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { UserRole, Employee, Shift, Leave, Notification } from '@/types';
+import type { UserRole, Employee, Shift, Leave, Notification, Note } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups } from '@/lib/data';
+import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
@@ -38,6 +38,7 @@ function AppContent() {
   const [shifts, setShifts] = useState<Shift[]>(() => getInitialState('shifts', initialShifts));
   const [leave, setLeave] = useState<Leave[]>(() => getInitialState('leave', initialLeave));
   const [groups, setGroups] = useState<string[]>(() => getInitialState('groups', initialGroups));
+  const [notes, setNotes] = useState<Note[]>(() => getInitialState('notes', initialNotes));
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [activeView, setActiveView] = useState<NavItem>('schedule');
@@ -57,6 +58,7 @@ function AppContent() {
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('leave', JSON.stringify(leave)); }, [leave]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notifications', JSON.stringify(notifications)); }, [notifications]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notes', JSON.stringify(notes)); }, [notes]);
 
 
   useEffect(() => {
@@ -291,6 +293,8 @@ function AppContent() {
             setShifts={setShifts}
             leave={leave}
             setLeave={setLeave}
+            notes={notes}
+            setNotes={setNotes}
             currentUser={currentUser}
             onPublish={handlePublish}
             addNotification={addNotification}
@@ -333,7 +337,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, currentUser, groups, shiftsForView, addNotification, router, toast]);
+  }, [activeView, employees, shifts, leave, notes, currentUser, groups, shiftsForView, addNotification, router, toast]);
 
   if (!currentUser) {
       return null;

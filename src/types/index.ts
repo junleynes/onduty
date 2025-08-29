@@ -52,3 +52,10 @@ export type Notification = {
   employeeId?: string; // Optional: for user-specific notifications
   link?: string; // Optional: for linking to a specific page
 };
+
+export type Note = {
+    id: string;
+    date: Date;
+    title: string;
+    description: string;
+};

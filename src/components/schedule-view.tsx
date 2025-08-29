@@ -4,10 +4,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Employee, Shift, Leave, Notification } from '@/types';
+import type { Employee, Shift, Leave, Notification, Note } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -23,6 +23,7 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
+import { NoteEditor } from './note-editor';
 
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -34,12 +35,14 @@ type ScheduleViewProps = {
   setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
   leave: Leave[];
   setLeave: React.Dispatch<React.SetStateAction<Leave[]>>;
+  notes: Note[];
+  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
   currentUser: Employee | null;
   onPublish: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, currentUser, onPublish, addNotification }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -58,6 +61,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
   
+  const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<Partial<Note> | null>(null);
+
   const [isLeaveTypeEditorOpen, setIsLeaveTypeEditorOpen] = useState(false);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(initialLeaveTypes);
 
@@ -114,7 +120,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       baseEmployees = [...ordered, ...unordered];
     }
       
-    // Make sure unassigned is always at the top/bottom depending on preference. Here it's first.
     return [
       { id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', role: 'member', position: 'Special', avatar: '' } as Employee,
       ...baseEmployees
@@ -138,6 +143,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     if (isReadOnly) return;
     setEditingShift({ employeeId, date, status: 'draft' });
     setIsShiftEditorOpen(true);
+  };
+  
+  const handleNoteCellClick = (date: Date) => {
+    if (isReadOnly) return;
+    const existingNote = notes.find(n => isSameDay(n.date, date));
+    setEditingNote(existingNote || { date });
+    setIsNoteEditorOpen(true);
   };
 
   const handleEditItemClick = (item: Shift | Leave) => {
@@ -210,6 +222,28 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     setIsLeaveEditorOpen(false);
     setEditingLeave(null);
     toast({ title: "Leave Deleted", variant: "destructive" });
+  };
+  
+  const handleSaveNote = (savedNote: Note | Partial<Note>) => {
+    if (isReadOnly) return;
+    if (savedNote.id) {
+        setNotes(notes.map(n => n.id === savedNote.id ? savedNote as Note : n));
+        toast({ title: 'Note Updated' });
+    } else {
+        const newNoteWithId = { ...savedNote, id: `note-${Date.now()}` } as Note;
+        setNotes([...notes, newNoteWithId]);
+        toast({ title: 'Note Added' });
+    }
+    setIsNoteEditorOpen(false);
+    setEditingNote(null);
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    if (isReadOnly) return;
+    setNotes(notes.filter(n => n.id !== noteId));
+    setIsNoteEditorOpen(false);
+    setEditingNote(null);
+    toast({ title: 'Note Deleted', variant: 'destructive' });
   };
 
 
@@ -498,6 +532,40 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         })}
      </div>
   );
+  
+  const renderNotesRow = (days: Date[]) => (
+    <div className="contents">
+        <div className="sticky left-0 z-20 p-2 bg-card border-b border-r flex items-center justify-center">
+            <p className="font-semibold text-sm">Notes</p>
+        </div>
+        {days.map(day => {
+            const note = notes.find(n => isSameDay(n.date, day));
+            return (
+                <div 
+                    key={`note-${day.toISOString()}`}
+                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[52px] bg-background/30 relative text-xs",
+                      viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50',
+                      !isReadOnly && 'cursor-pointer hover:bg-accent'
+                    )}
+                    onClick={() => !isReadOnly && handleNoteCellClick(day)}
+                >
+                    {note ? (
+                        <div>
+                            <p className="font-bold truncate">{note.title}</p>
+                            <p className="text-muted-foreground truncate">{note.description}</p>
+                        </div>
+                    ) : (
+                        !isReadOnly && (
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                                <PlusCircle className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                        )
+                    )}
+                </div>
+            )
+        })}
+    </div>
+  )
 
   const renderEmployeeRow = (employee: Employee, days: Date[]) => (
     <div 
@@ -705,6 +773,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                   {weeksOfMonth.map((week, index) => (
                       <div key={index} className="grid" style={{ gridTemplateColumns: `minmax(180px, 1.5fr) repeat(7, minmax(140px, 1fr))` }}>
                           {renderGridHeader(week)}
+                          {renderNotesRow(week)}
                           {orderedEmployees.map((employee) => renderEmployeeRow(employee, week))}
                       </div>
                   ))}
@@ -712,6 +781,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             ) : (
                 <div className="grid" style={{ gridTemplateColumns: `minmax(180px, 1.5fr) repeat(${displayedDays.length}, minmax(140px, 1fr))` }}>
                   {renderGridHeader(displayedDays)}
+                  {renderNotesRow(displayedDays)}
                   {orderedEmployees.map((employee) => renderEmployeeRow(employee, displayedDays))}
                 </div>
             )}
@@ -737,6 +807,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         employees={employees}
         leaveTypes={leaveTypes}
       />
+      <NoteEditor
+        isOpen={isNoteEditorOpen}
+        setIsOpen={setIsNoteEditorOpen}
+        note={editingNote}
+        onSave={handleSaveNote}
+        onDelete={handleDeleteNote}
+      />
        <LeaveTypeEditor
         isOpen={isLeaveTypeEditorOpen}
         setIsOpen={setIsLeaveTypeEditorOpen}
@@ -757,12 +834,3 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       />
     </div>
   );
-
-    
-
-
-    
-
-
-
-
