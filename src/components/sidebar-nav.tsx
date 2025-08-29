@@ -1,7 +1,26 @@
 
+
 'use client';
-import { CalendarDays, Users, Calendar, Shield, type LucideIcon, GitMerge, Gift, PartyPopper, Clock, ClipboardCheck } from 'lucide-react';
-import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
+import { 
+    CalendarDays, 
+    Users, 
+    Calendar, 
+    Shield, 
+    type LucideIcon, 
+    GitMerge, 
+    Gift, 
+    PartyPopper, 
+    Clock, 
+    ClipboardCheck, 
+    LayoutGrid,
+    List,
+    Contact,
+    MessageSquare,
+    Headphones,
+    ClipboardList,
+    PlusCircle
+} from 'lucide-react';
+import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
 import type { NavItem } from '@/app/page';
 
@@ -11,53 +30,100 @@ interface SidebarNavProps {
   onNavigate: (view: NavItem) => void;
 }
 
-const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: LucideIcon }[] } = {
-    admin: [
-        { view: 'admin', label: 'Admin Panel', icon: Shield },
-    ],
+type NavGroup = {
+    label: string;
+    items: {
+        view: NavItem;
+        label: string;
+        icon: LucideIcon;
+        iconColor: string;
+    }[];
+};
+
+const navConfig: { [key in UserRole]: NavGroup[] } = {
+    admin: [{
+        label: 'Admin',
+        items: [
+            { view: 'admin', label: 'Admin Panel', icon: Shield, iconColor: 'bg-red-500' },
+        ]
+    }],
     manager: [
-        { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
-        { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck },
-        { view: 'schedule', label: 'Schedule', icon: CalendarDays },
-        { view: 'team', label: 'Team', icon: Users },
-        { view: 'onduty', label: 'On Duty', icon: Clock },
-        { view: 'org-chart', label: 'Org Chart', icon: GitMerge },
-        { view: 'celebrations', label: 'Celebrations', icon: Gift },
-        { view: 'holidays', label: 'Holidays', icon: PartyPopper },
+        {
+            label: 'General',
+            items: [
+                { view: 'my-schedule', label: 'My Schedule', icon: Calendar, iconColor: 'bg-blue-500' },
+                { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
+            ]
+        },
+        {
+            label: 'Operations',
+            items: [
+                { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
+                { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
+            ]
+        },
+        {
+            label: 'People',
+            items: [
+                { view: 'team', label: 'Team', icon: Users, iconColor: 'bg-sky-500' },
+                { view: 'org-chart', label: 'Org Chart', icon: GitMerge, iconColor: 'bg-purple-500' },
+                { view: 'celebrations', label: 'Celebrations', icon: Gift, iconColor: 'bg-pink-500' },
+                { view: 'holidays', label: 'Holidays', icon: PartyPopper, iconColor: 'bg-yellow-500' },
+            ]
+        },
     ],
     member: [
-        { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
-        { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck },
-        { view: 'schedule', label: 'Schedule', icon: CalendarDays },
-        { view: 'team', label: 'Team', icon: Users },
-        { view: 'onduty', label: 'On Duty', icon: Clock },
-        { view: 'org-chart', label: 'Org Chart', icon: GitMerge },
-        { view: 'celebrations', label: 'Celebrations', icon: Gift },
-        { view: 'holidays', label: 'Holidays', icon: PartyPopper },
-    ],
+         {
+            label: 'General',
+            items: [
+                { view: 'my-schedule', label: 'My Schedule', icon: Calendar, iconColor: 'bg-blue-500' },
+                { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
+            ]
+        },
+        {
+            label: 'Operations',
+            items: [
+                { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
+                { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
+            ]
+        },
+        {
+            label: 'People',
+            items: [
+                { view: 'team', label: 'Team', icon: Users, iconColor: 'bg-sky-500' },
+                { view: 'org-chart', label: 'Org Chart', icon: GitMerge, iconColor: 'bg-purple-500' },
+                { view: 'celebrations', label: 'Celebrations', icon: Gift, iconColor: 'bg-pink-500' },
+                { view: 'holidays', label: 'Holidays', icon: PartyPopper, iconColor: 'bg-yellow-500' },
+            ]
+        },
+    ]
 };
 
 export default function SidebarNav({ role, activeView, onNavigate }: SidebarNavProps) {
-  const navItems = navConfig[role] || navConfig.member;
+  const navGroups = navConfig[role] || navConfig.member;
 
   return (
     <div className="flex flex-col h-full text-sidebar-foreground">
-      <SidebarHeader>
-         <h2 className="text-lg font-semibold text-sidebar-foreground tracking-tight px-2 group-data-[collapsible=icon]:hidden">Navigation</h2>
-      </SidebarHeader>
-      <SidebarMenu className="flex-1">
-        {navItems.map(({ view, label, icon: Icon }) => (
-          <SidebarMenuItem key={view}>
-            <SidebarMenuButton
-              onClick={() => onNavigate(view)}
-              isActive={activeView === view}
-              className="justify-start"
-              tooltip={label}
-            >
-              <Icon className="size-4 text-primary" />
-              <span className="group-data-[collapsible=icon]:hidden">{label}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+      <SidebarMenu className="flex-1 px-2">
+        {navGroups.map((group) => (
+            <SidebarGroup key={group.label}>
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                {group.items.map(({ view, label, icon: Icon, iconColor }) => (
+                <SidebarMenuItem key={view}>
+                    <SidebarMenuButton
+                    onClick={() => onNavigate(view)}
+                    isActive={activeView === view}
+                    className="justify-start gap-3"
+                    tooltip={label}
+                    >
+                    <div className={`p-1.5 rounded-md text-white ${iconColor}`}>
+                        <Icon className="size-4" />
+                    </div>
+                    <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                ))}
+            </SidebarGroup>
         ))}
       </SidebarMenu>
     </div>
