@@ -17,16 +17,17 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X } from 'lucide-react';
+import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X, PlusCircle, ClipboardCheck } from 'lucide-react';
 import { getFullName } from '@/lib/utils';
-import type { Employee, Shift } from '@/types';
+import type { Employee, Shift, Task } from '@/types';
 import { Checkbox } from './ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
-import { Card } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { DatePicker } from './ui/date-picker';
+import { Textarea } from './ui/textarea';
 
 
 const shiftSchema = z.object({
@@ -65,6 +66,8 @@ type ShiftEditorProps = {
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
   setShiftTemplates: React.Dispatch<React.SetStateAction<ShiftTemplate[]>>;
+  tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
 };
 
 const roleColors: { [key: string]: string } = {
@@ -88,9 +91,12 @@ const shiftColorOptions = [
 ];
 
 
-export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees, shiftTemplates, setShiftTemplates }: ShiftEditorProps) {
+export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees, shiftTemplates, setShiftTemplates, tasks, setTasks }: ShiftEditorProps) {
   const { toast } = useToast();
   const [editingTemplate, setEditingTemplate] = useState<ShiftTemplate | null>(null);
+  const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
   const [activeTab, setActiveTab] = useState('details');
 
   const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
@@ -129,6 +135,17 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
     }
   }, [shift, form, employees, editingTemplate]);
 
+  useEffect(() => {
+    if (editingTask) {
+        setTaskTitle(editingTask.title || '');
+        setTaskDescription(editingTask.description || '');
+    } else {
+        setTaskTitle('');
+        setTaskDescription('');
+    }
+  }, [editingTask]);
+
+
   const handleEditTemplate = (template: ShiftTemplate) => {
     setEditingTemplate(template);
     form.setValue('label', template.label);
@@ -137,6 +154,35 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
     form.setValue('color', template.color);
     setActiveTab('details');
   };
+  
+  const tasksForShift = shift?.id ? tasks.filter(t => t.shiftId === shift.id) : [];
+
+  const handleSaveTask = () => {
+    if (!taskTitle || !shift?.id) return;
+    const taskData = {
+        title: taskTitle,
+        description: taskDescription,
+    };
+    if (editingTask?.id) {
+        setTasks(tasks.map(t => t.id === editingTask.id ? { ...t, ...taskData } : t));
+        toast({ title: "Task Updated" });
+    } else {
+        const newTask: Task = {
+            id: `task-${Date.now()}`,
+            shiftId: shift.id,
+            status: 'pending',
+            ...taskData
+        };
+        setTasks([...tasks, newTask]);
+        toast({ title: "Task Added" });
+    }
+    setEditingTask(null);
+  }
+
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(tasks.filter(t => t.id !== taskId));
+    toast({ title: "Task Deleted", variant: 'destructive' });
+  }
 
   const onSubmit = (values: z.infer<typeof shiftSchema>) => {
     if (editingTemplate) {
@@ -252,8 +298,9 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
           </DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="tasks" disabled={!shift?.id || isDayOff || isHolidayOff}>Tasks</TabsTrigger>
                 <TabsTrigger value="templates" disabled={!!editingTemplate}>Templates</TabsTrigger>
             </TabsList>
             <TabsContent value="details">
@@ -446,6 +493,46 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                         </DialogFooter>
                     </form>
                 </Form>
+            </TabsContent>
+            <TabsContent value="tasks">
+                <div className="space-y-4 py-4">
+                    <Card>
+                        <CardContent className="p-4 space-y-2">
+                             <h4 className="font-semibold">{editingTask ? 'Edit Task' : 'Add New Task'}</h4>
+                             <Input placeholder="Task Title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
+                             <Textarea placeholder="Task Description (optional)" value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} />
+                             <div className="flex justify-end gap-2">
+                                 {editingTask && <Button variant="ghost" onClick={() => setEditingTask(null)}>Cancel Edit</Button>}
+                                 <Button onClick={handleSaveTask} disabled={!taskTitle}>{editingTask ? 'Save Changes' : 'Add Task'}</Button>
+                             </div>
+                        </CardContent>
+                    </Card>
+                    <h4 className="font-semibold pt-4">Assigned Tasks</h4>
+                    <ScrollArea className="h-48">
+                        <div className="space-y-2 pr-4">
+                            {tasksForShift.length > 0 ? tasksForShift.map(task => (
+                                <Card key={task.id} className="p-3 group">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold">{task.title}</p>
+                                            <p className="text-sm text-muted-foreground">{task.description}</p>
+                                        </div>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingTask(task)}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteTask(task.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">No tasks assigned to this shift yet.</p>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </div>
             </TabsContent>
             <TabsContent value="templates">
                 <ScrollArea className="h-96">

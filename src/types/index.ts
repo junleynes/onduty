@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'admin' | 'manager' | 'member';
 
 export type Employee = {
@@ -65,4 +66,13 @@ export type Holiday = {
     id: string;
     date: Date;
     title: string;
+};
+
+export type Task = {
+  id: string;
+  shiftId: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'completed';
+  completedAt?: Date;
 };

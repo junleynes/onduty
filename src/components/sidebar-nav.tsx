@@ -1,6 +1,6 @@
 
 'use client';
-import { CalendarDays, Users, Calendar, Shield, type LucideIcon, GitMerge, Gift, PartyPopper, Clock } from 'lucide-react';
+import { CalendarDays, Users, Calendar, Shield, type LucideIcon, GitMerge, Gift, PartyPopper, Clock, ClipboardCheck } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
 import type { NavItem } from '@/app/page';
@@ -17,6 +17,7 @@ const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: Luci
     ],
     manager: [
         { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
+        { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck },
         { view: 'schedule', label: 'Schedule', icon: CalendarDays },
         { view: 'team', label: 'Team', icon: Users },
         { view: 'onduty', label: 'On Duty', icon: Clock },
@@ -26,6 +27,7 @@ const navConfig: { [key in UserRole]: { view: NavItem; label: string; icon: Luci
     ],
     member: [
         { view: 'my-schedule', label: 'My Schedule', icon: Calendar },
+        { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck },
         { view: 'schedule', label: 'Schedule', icon: CalendarDays },
         { view: 'team', label: 'Team', icon: Users },
         { view: 'onduty', label: 'On Duty', icon: Clock },

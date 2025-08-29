@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Employee, Shift, Leave, Notification, Note, Holiday } from '@/types';
+import type { Employee, Shift, Leave, Notification, Note, Holiday, Task } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper } from 'lucide-react';
@@ -39,6 +39,8 @@ type ScheduleViewProps = {
   setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
   holidays: Holiday[];
   setHolidays: React.Dispatch<React.SetStateAction<Holiday[]>>;
+  tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   currentUser: Employee | null;
   onPublish: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
@@ -47,7 +49,7 @@ type ScheduleViewProps = {
   onManageHolidays: () => void;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -791,6 +793,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         employees={employees}
         shiftTemplates={shiftTemplates}
         setShiftTemplates={setShiftTemplates}
+        tasks={tasks}
+        setTasks={setTasks}
       />
       <LeaveEditor
         isOpen={isLeaveEditorOpen}
@@ -823,6 +827,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
 
