@@ -594,14 +594,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
   return (
     <div className="flex flex-col gap-4 h-full">
-       <header className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-4">
+       <header className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border-b">
+        <div className="flex items-center gap-4 w-full md:w-auto">
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 id="date"
                 variant={'outline'}
-                className={cn('w-[260px] justify-start text-left font-normal text-sm')}
+                className={cn('w-full md:w-[260px] justify-start text-left font-normal text-sm')}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
@@ -630,9 +630,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-center">
            <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-full md:w-[120px]">
               <SelectValue placeholder="View" />
             </SelectTrigger>
             <SelectContent>
@@ -645,7 +645,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button>
+                  <Button className="w-full md:w-auto">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add
                   </Button>
@@ -655,17 +655,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                   <DropdownMenuItem onClick={handleAddLeaveClick}>Add Time Off</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={handleSaveDraft}>
+              <Button onClick={handleSaveDraft} className="w-full md:w-auto">
                     <Save className="mr-2 h-4 w-4" />
                     Save Draft
                 </Button>
-                <Button onClick={onPublish}>
+                <Button onClick={onPublish} className="w-full md:w-auto">
                     <Send className="mr-2 h-4 w-4" />
                     Publish
                 </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button>
+                        <Button className="w-full md:w-auto">
                             Actions
                             <ChevronsUpDown className="ml-2 h-4 w-4" />
                         </Button>

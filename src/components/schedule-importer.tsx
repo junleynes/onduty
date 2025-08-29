@@ -65,11 +65,13 @@ const findEmployeeByName = (name: string, allEmployees: Employee[]): Employee | 
 };
 
 const convertTo24Hour = (time: string): string => {
+    if (!time || typeof time !== 'string') return '';
     let tempTime = time.toLowerCase().replace(/\s/g, '');
+    
     const isPm = tempTime.includes('pm') || tempTime.includes('p');
     const isAm = tempTime.includes('am') || tempTime.includes('a');
     
-    tempTime = tempTime.replace('pm', '').replace('p', '').replace('am', '').replace('a', '');
+    tempTime = tempTime.replace(/pm|p|am|a/g, '');
     
     let [h, m] = tempTime.split(':');
     if (!m) m = '00';
@@ -139,7 +141,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
 
           scheduleBlocks.forEach((block, blockIndex) => {
               const headerRow = block[0];
-              if (!headerRow || !headerRow[0] || headerRow[0].trim().toLowerCase() !== 'employees') {
+              if (!headerRow || !headerRow[0] || !headerRow[0].trim().toLowerCase().includes('employee')) {
                   console.warn(`Block ${blockIndex + 1} is missing a valid header row. Skipping.`);
                   return;
               }
