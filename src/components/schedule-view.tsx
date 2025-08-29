@@ -418,9 +418,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
 
         if (shift?.isHolidayOff) {
-            row.push('HOLIDAY OFF');
+            row.push('HOL OFF');
         } else if (holiday) {
-          row.push('HOLIDAY OFF');
+          row.push('HOL OFF');
         } else if (leaveEntry) {
           row.push(leaveEntry.type);
         } else if (shift) {
@@ -450,7 +450,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     data.push(['', '', '', '', '', '', '', '', '', '', '3', 'Ees who opted not to report to work citing "hazard" of COVID-19']);
 
 
-    const ws = XLSX.utils.aoa_to_sheet(data);
+    const ws = XLSX.utils.aoa_to_sheet(data, {
+        cellStyles: false,
+    });
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
@@ -822,18 +824,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                          <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
-                                <Settings className="mr-2 h-4 w-4" />
-                                <span>Manage Leave Types</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={onManageHolidays}>
-                                <PartyPopper className="mr-2 h-4 w-4" />
-                                <span>Manage Holidays</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                           <DropdownMenuItem onClick={handleCopyPreviousWeek} disabled={viewMode !== 'week'}>
+                            <DropdownMenuItem onClick={handleCopyPreviousWeek} disabled={viewMode !== 'week'}>
                                 <Copy className="mr-2 h-4 w-4" />
                                 <span>Copy Previous Week</span>
                             </DropdownMenuItem>
@@ -844,6 +835,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                             <DropdownMenuItem onClick={handleLoadTemplate} disabled={!weekTemplate || viewMode !== 'week'}>
                                 <Upload className="mr-2 h-4 w-4" />
                                 <span>Load Template</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                         <DropdownMenuSeparator />
+                         <DropdownMenuGroup>
+                            <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Manage Leave Types</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onManageHolidays}>
+                                <PartyPopper className="mr-2 h-4 w-4" />
+                                <span>Manage Holidays</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                          <DropdownMenuSeparator />
@@ -950,3 +952,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
 
+
+
+    
