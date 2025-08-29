@@ -24,6 +24,7 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
+import * as XLSX from 'xlsx';
 
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -366,6 +367,111 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     toast({ title: "Draft Saved", description: "Your schedule changes have been saved." });
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
+
+  const handleDownloadMAMSReport = () => {
+    if (viewMode !== 'week') {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid View',
+        description: 'MAMS report can only be generated from the week view.',
+      });
+      return;
+    }
+
+    const mamsEmployees = employees.filter(e => e.group === 'MAMS Support');
+    const employeeMap = new Map(mamsEmployees.map(e => [e.id, e]));
+
+    const data: (string | number)[][] = [];
+
+    // Header Rows
+    data.push(['POST PRODUCTION', 'Section/Unit', 'Designation']);
+    data.push(['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION']);
+    
+    // Empty row
+    data.push([]);
+    
+    const monthName = format(dateRange.from, 'MMMM').toUpperCase();
+    data.push(['', '', '', '', '', '', monthName]);
+    
+    const dateHeader = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
+    data.push(dateHeader);
+
+    // Employee Data Rows
+    mamsEmployees.forEach(emp => {
+      const row = [
+        `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
+        emp.group,
+        emp.position,
+      ];
+      displayedDays.forEach(day => {
+        const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
+        const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
+        const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+
+        if (holiday) {
+          row.push('HOL OFF');
+        } else if (leaveEntry) {
+          row.push(leaveEntry.type);
+        } else if (shift) {
+          if (shift.isDayOff || shift.isHolidayOff) {
+            row.push('OFF');
+          } else {
+            // This is a placeholder as the sample shows "SKE" for shifts
+            row.push('SKE'); 
+          }
+        } else {
+          row.push(''); // No shift or leave
+        }
+      });
+      data.push(row);
+    });
+
+    // Add legend and other static content
+    data.push([]); // Spacer
+    data.push(['', '', '', '', 'Legend']);
+    data.push(['', '', '', '', 'WFH', 'Work From Home', '', 'SL', 'Sick Leave']);
+    data.push(['', '', '', '', 'SKE', 'Skeletal Workforce at GNC', '', 'ML', 'Maternity Leave']);
+    data.push(['', '', '', '', 'VL', 'Vacation Leave', '', 'OFF', 'Restday']);
+    data.push([]);
+    data.push(['', '', '', '', '', '', '', '', '', '', 'OTHERS']);
+    data.push(['', '', '', '', '', '', '', '', '', '', '1', 'advised to take leave; tried to report to work but cannot due to community quarantine']);
+    data.push(['', '', '', '', '', '', '', '', '', '', '2', 'services are currently not needed because of scaled down operations']);
+    data.push(['', '', '', '', '', '', '', '', '', '', '3', 'Ees who opted not to report to work citing "hazard" of COVID-19']);
+
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // Merging cells
+    ws['!merges'] = [
+        XLSX.utils.decode_range("A1:A2"),
+        XLSX.utils.decode_range("B1:B2"),
+        XLSX.utils.decode_range("C1:C2"),
+        XLSX.utils.decode_range("D1:J1"),
+        XLSX.utils.decode_range("A3:J3"),
+        XLSX.utils.decode_range("G4:J4"),
+        // Legend Merges
+        XLSX.utils.decode_range("F8:G8"),
+        XLSX.utils.decode_range("F9:G9"),
+        XLSX.utils.decode_range("F10:G10"),
+        XLSX.utils.decode_range("I8:J8"),
+        XLSX.utils.decode_range("I9:J9"),
+        XLSX.utils.decode_range("I10:J10"),
+        // Others Merges
+        XLSX.utils.decode_range("L12:M12"),
+        XLSX.utils.decode_range("L13:M13"),
+        XLSX_utils.decode_range("L14:M14"),
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'MAMS Attendance Sheet');
+
+    // Trigger download
+    XLSX.writeFile(wb, 'MAMS_Attendance_Sheet.xlsx');
+    
+    toast({ title: "Report Downloaded", description: "The MAMS attendance sheet has been generated." });
+  };
+
+
 
   // Shift/Item Drag and Drop Handlers
   const handleShiftDragStart = (e: React.DragEvent<HTMLDivElement>, item: Shift | Leave) => {
@@ -712,6 +818,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
+                            <DropdownMenuItem onClick={handleDownloadMAMSReport} disabled={viewMode !== 'week'}>
+                                <Download className="mr-2 h-4 w-4" />
+                                <span>Download MAMS Report</span>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
                                 <Upload className="mr-2 h-4 w-4" />
                                 <span>Import Schedule</span>
@@ -827,6 +937,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
 
