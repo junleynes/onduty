@@ -10,6 +10,8 @@ import { employees as initialEmployees, shifts as initialShifts, leave as initia
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
+import { isSameDay, getMonth, getDate, getYear, format } from 'date-fns';
+
 
 // Views
 import ScheduleView from '@/components/schedule-view';
@@ -47,7 +49,7 @@ function AppContent() {
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
 
-  const { notifications, setNotifications, addNotification } = useNotifications();
+  const { notifications, setNotifications, addNotification, addNotificationForUser } = useNotifications();
 
   // Persist state to localStorage on change
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
@@ -80,6 +82,65 @@ function AppContent() {
   }, [router, employees]);
   
   const role: UserRole = currentUser?.role || 'member';
+  
+  // Effect for sending celebration notifications
+    useEffect(() => {
+        if (!employees.length || !currentUser) return;
+
+        const today = new Date();
+        const storageKey = `celebrations-notified-${format(today, 'yyyy-MM-dd')}`;
+        const notifiedToday: string[] = getInitialState(storageKey, []);
+
+        const celebrationsToNotify: { employee: Employee; type: 'birthday' | 'anniversary' }[] = [];
+
+        employees.forEach(employee => {
+            // Check for birthday
+            if (employee.birthDate) {
+                const birthDate = new Date(employee.birthDate);
+                if (getMonth(birthDate) === getMonth(today) && getDate(birthDate) === getDate(today)) {
+                    if (!notifiedToday.includes(`${employee.id}-birthday`)) {
+                        celebrationsToNotify.push({ employee, type: 'birthday' });
+                    }
+                }
+            }
+            // Check for anniversary
+            if (employee.startDate) {
+                const startDate = new Date(employee.startDate);
+                if (getYear(startDate) !== getYear(today) && getMonth(startDate) === getMonth(today) && getDate(startDate) === getDate(today)) {
+                     if (!notifiedToday.includes(`${employee.id}-anniversary`)) {
+                        celebrationsToNotify.push({ employee, type: 'anniversary' });
+                    }
+                }
+            }
+        });
+
+        if (celebrationsToNotify.length > 0) {
+            const newNotified = [...notifiedToday];
+            let notificationsAdded = false;
+
+            celebrationsToNotify.forEach(({ employee, type }) => {
+                const employeeGroup = employee.group;
+                if (!employeeGroup) return;
+
+                const membersInGroup = employees.filter(e => e.group === employeeGroup);
+                const message = type === 'birthday'
+                    ? `It's ${employee.firstName} ${employee.lastName}'s birthday today! Wish them well.`
+                    : `It's ${employee.firstName} ${employee.lastName}'s work anniversary today!`;
+                
+                membersInGroup.forEach(member => {
+                    addNotificationForUser({ message, employeeId: member.id, link: '/celebrations' });
+                });
+                newNotified.push(`${employee.id}-${type}`);
+                notificationsAdded = true;
+            });
+            
+            if (notificationsAdded) {
+                 if (typeof window !== 'undefined') {
+                    localStorage.setItem(storageKey, JSON.stringify(newNotified));
+                }
+            }
+        }
+    }, [employees, addNotificationForUser, currentUser]);
 
   const shiftsForView = useMemo(() => {
     if (currentUser?.role === 'member') {
@@ -278,6 +339,7 @@ function AppContent() {
       return null;
   }
 
+  const userNotifications = notifications.filter(n => !n.employeeId || n.employeeId === currentUser.id);
 
   return (
     <>
@@ -291,8 +353,9 @@ function AppContent() {
           onLogout={handleLogout} 
           onEditProfile={handleOpenProfileEditor} 
           onResetPassword={handleOpenPasswordEditor}
-          notifications={notifications}
+          notifications={userNotifications}
           setNotifications={setNotifications}
+          onNavigate={handleNavigate}
         />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {currentView}

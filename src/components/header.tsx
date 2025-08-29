@@ -17,6 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import type { NavItem } from '@/app/page';
 
 type HeaderProps = {
   currentUser: Employee | null;
@@ -25,14 +26,19 @@ type HeaderProps = {
   onResetPassword: () => void;
   notifications: Notification[];
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
+  onNavigate: (view: NavItem) => void;
 };
 
-export default function Header({ currentUser, onLogout, onEditProfile, onResetPassword, notifications, setNotifications }: HeaderProps) {
+export default function Header({ currentUser, onLogout, onEditProfile, onResetPassword, notifications, setNotifications, onNavigate }: HeaderProps) {
   const { isMobile } = useSidebar();
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const markAsRead = (id: string) => {
+  const markAsRead = (id: string, link?: string) => {
     setNotifications(current => current.map(n => n.id === id ? {...n, isRead: true} : n));
+    if (link) {
+      const navItem = link.startsWith('/') ? link.substring(1) : link;
+      onNavigate(navItem as NavItem);
+    }
   };
   
   const markAllAsRead = () => {
@@ -65,7 +71,7 @@ export default function Header({ currentUser, onLogout, onEditProfile, onResetPa
                         <>
                         <DropdownMenuGroup className="max-h-80 overflow-y-auto">
                         {notifications.map(notification => (
-                            <DropdownMenuItem key={notification.id} onSelect={(e) => e.preventDefault()} onClick={() => markAsRead(notification.id)} className={cn(!notification.isRead && 'bg-accent/50')}>
+                            <DropdownMenuItem key={notification.id} onSelect={(e) => e.preventDefault()} onClick={() => markAsRead(notification.id, notification.link)} className={cn(!notification.isRead && 'bg-accent/50', notification.link && 'cursor-pointer')}>
                                <div className="flex flex-col w-full">
                                     <p className="text-sm">{notification.message}</p>
                                     <p className="text-xs text-muted-foreground mt-1">

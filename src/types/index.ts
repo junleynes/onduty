@@ -50,4 +50,5 @@ export type Notification = {
   timestamp: Date;
   isRead: boolean;
   employeeId?: string; // Optional: for user-specific notifications
+  link?: string; // Optional: for linking to a specific page
 };
