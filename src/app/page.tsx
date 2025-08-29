@@ -137,25 +137,43 @@ function AppContent() {
   };
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
+    // Check if adding a new user or editing an existing one
     if (employeeData.id) {
-      setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
-      toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
+        // This is a direct edit of an existing user
+        setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
+        toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
     } else {
-      const newEmployee: Employee = {
-        ...employeeData,
-        id: `emp-${Date.now()}`,
-        avatar: employeeData.avatar || '',
-        position: employeeData.position || '',
-        role: employeeData.role || 'member',
-        phone: employeeData.phone || '',
-      } as Employee;
-      setEmployees([...employees, newEmployee]);
-      toast({ title: 'User Added' });
+        // This is a new user submission, check for email duplication
+        const existingEmployeeByEmail = employees.find(emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase());
+
+        if (existingEmployeeByEmail) {
+            // Email exists, overwrite the existing user's data
+            setEmployees(employees.map(emp =>
+                emp.id === existingEmployeeByEmail.id
+                    ? { ...emp, ...employeeData, id: emp.id } as Employee // Ensure ID is preserved
+                    : emp
+            ));
+            toast({ title: 'User Updated', description: 'An existing user with this email was updated.' });
+        } else {
+            // Email is new, create a new user
+            const newEmployee: Employee = {
+                ...employeeData,
+                id: `emp-${Date.now()}`,
+                avatar: employeeData.avatar || '',
+                position: employeeData.position || '',
+                role: employeeData.role || 'member',
+                phone: employeeData.phone || '',
+            } as Employee;
+            setEmployees([...employees, newEmployee]);
+            toast({ title: 'User Added' });
+        }
     }
-     if (currentUser?.id === employeeData.id) {
+
+    // Update current user if their own data was changed
+    if (currentUser?.id === employeeData.id) {
         const updatedUser = employees.find(e => e.id === employeeData.id);
         if (updatedUser) {
-            const finalUser = {...updatedUser, ...employeeData};
+            const finalUser = { ...updatedUser, ...employeeData };
             setCurrentUser(finalUser as Employee);
             localStorage.setItem('currentUser', JSON.stringify(finalUser));
         }
