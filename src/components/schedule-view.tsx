@@ -368,12 +368,12 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
 
-  const handleDownloadMAMSReport = () => {
+  const handleDownloadAttendanceSheet = () => {
     if (viewMode !== 'week') {
       toast({
         variant: 'destructive',
         title: 'Invalid View',
-        description: 'MAMS report can only be generated from the week view.',
+        description: 'Attendance Sheet can only be generated from the week view.',
       });
       return;
     }
@@ -459,7 +459,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         // Others Merges
         XLSX.utils.decode_range("L12:M12"),
         XLSX.utils.decode_range("L13:M13"),
-        XLSX_utils.decode_range("L14:M14"),
+        XLSX.utils.decode_range("L14:M14"),
     ];
 
     const wb = XLSX.utils.book_new();
@@ -468,7 +468,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Trigger download
     XLSX.writeFile(wb, 'MAMS_Attendance_Sheet.xlsx');
     
-    toast({ title: "Report Downloaded", description: "The MAMS attendance sheet has been generated." });
+    toast({ title: "Report Downloaded", description: "The attendance sheet has been generated." });
   };
 
 
@@ -818,9 +818,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={handleDownloadMAMSReport} disabled={viewMode !== 'week'}>
+                            <DropdownMenuItem onClick={handleDownloadAttendanceSheet} disabled={viewMode !== 'week'}>
                                 <Download className="mr-2 h-4 w-4" />
-                                <span>Download MAMS Report</span>
+                                <span>Download Attendance Sheet</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
                                 <Upload className="mr-2 h-4 w-4" />
@@ -945,3 +945,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
 
+
+
+    
