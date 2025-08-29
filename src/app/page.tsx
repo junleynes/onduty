@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { GroupEditor } from '@/components/group-editor';
 import OrgChartView from '@/components/org-chart-view';
 import CelebrationsView from '@/components/celebrations-view';
+import { NoteViewer } from '@/components/note-viewer';
 
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations';
@@ -49,6 +50,9 @@ function AppContent() {
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
+
+  const [isNoteViewerOpen, setIsNoteViewerOpen] = useState(false);
+  const [viewingNote, setViewingNote] = useState<Note | null>(null);
 
   const { notifications, setNotifications, addNotification, addNotificationForUser } = useNotifications();
 
@@ -298,6 +302,10 @@ function AppContent() {
             currentUser={currentUser}
             onPublish={handlePublish}
             addNotification={addNotification}
+            onViewNote={(note) => {
+              setViewingNote(note);
+              setIsNoteViewerOpen(true);
+            }}
           />
         );
       }
@@ -388,6 +396,24 @@ function AppContent() {
         groups={groups}
         setGroups={setGroups}
     />
+    {viewingNote && (
+        <NoteViewer
+            isOpen={isNoteViewerOpen}
+            setIsOpen={setIsNoteViewerOpen}
+            note={viewingNote}
+            isManager={currentUser.role === 'manager' || currentUser.role === 'admin'}
+            onEdit={(note) => {
+                // This logic would be part of the ScheduleView component in a more direct implementation
+                // but since we are calling it from here, we need to handle it.
+                // We find the schedule view's internal note editor trigger.
+                const scheduleViewComponent = (currentView as React.ReactElement<any, string | React.JSXElementConstructor<any>>);
+                if (scheduleViewComponent.props.onEditNote) {
+                   setIsNoteViewerOpen(false); // Close viewer
+                   scheduleViewComponent.props.onEditNote(note); // Open editor
+                }
+            }}
+        />
+    )}
     </>
   );
 }

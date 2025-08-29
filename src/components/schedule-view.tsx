@@ -41,9 +41,10 @@ type ScheduleViewProps = {
   currentUser: Employee | null;
   onPublish: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
+  onViewNote: (note: Note | Partial<Note>) => void;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, currentUser, onPublish, addNotification }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, currentUser, onPublish, addNotification, onViewNote }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -147,11 +148,21 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   };
   
   const handleNoteCellClick = (date: Date) => {
-    if (isReadOnly) return;
     const existingNote = notes.find(n => isSameDay(n.date, date));
-    setEditingNote(existingNote || { date });
-    setIsNoteEditorOpen(true);
+    const noteToShow = existingNote || { date };
+
+    if (!isReadOnly) {
+        if (existingNote) {
+            onViewNote(existingNote);
+        } else {
+            setEditingNote({ date });
+            setIsNoteEditorOpen(true);
+        }
+    } else if (existingNote) {
+        onViewNote(existingNote);
+    }
   };
+
 
   const handleEditItemClick = (item: Shift | Leave) => {
     if (isReadOnly) return;
@@ -544,16 +555,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             return (
                 <div 
                     key={`note-${day.toISOString()}`}
-                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs",
-                      viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50',
-                      !isReadOnly && 'cursor-pointer hover:bg-accent'
+                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs flex items-center justify-center cursor-pointer hover:bg-accent",
+                      viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50'
                     )}
-                    onClick={() => !isReadOnly && handleNoteCellClick(day)}
+                    onClick={() => handleNoteCellClick(day)}
                 >
                     {note ? (
                         <div
-                            onClick={() => !isReadOnly && handleNoteCellClick(day)}
-                            className="cursor-pointer"
+                            className="cursor-pointer text-center"
                         >
                             <p className="font-bold truncate">{note.title}</p>
                         </div>
@@ -839,3 +848,4 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
