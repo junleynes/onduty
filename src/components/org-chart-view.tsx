@@ -21,16 +21,16 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
   const hasChildren = node.children && node.children.length > 0;
   return (
     <div className="flex flex-col items-center text-center relative">
-      <Card className="min-w-56 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
-        <CardContent className="p-4 flex flex-col items-center">
-          <Avatar className="w-16 h-16 mb-2 border-2 border-primary">
+      <Card className="min-w-48 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
+        <CardContent className="p-3 flex flex-col items-center">
+          <Avatar className="w-12 h-12 mb-2 border-2 border-primary">
             <AvatarImage src={node.avatar} data-ai-hint="profile avatar" />
-            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(node)) }} className="text-xl">
+            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(node)) }} className="text-lg">
               {getInitials(getFullName(node))}
             </AvatarFallback>
           </Avatar>
-          <p className="font-bold text-lg">{getFullName(node)}</p>
-          <p className="text-muted-foreground">{node.position}</p>
+          <p className="font-bold text-base">{getFullName(node)}</p>
+          <p className="text-muted-foreground text-sm">{node.position}</p>
           <Badge variant={node.role === 'admin' ? 'destructive' : node.role === 'manager' ? 'default' : 'secondary'} className="mt-2 capitalize">
             {node.position === 'Senior Manager' ? 'Senior Manager' : node.role}
           </Badge>
@@ -39,23 +39,23 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
       {hasChildren && (
         <>
           {/* Vertical line from parent */}
-          <div className="w-px h-8 bg-border" />
+          <div className="w-px h-6 bg-border" />
           {/* Horizontal line connecting children */}
           <div
             className="absolute h-px bg-border"
             style={{
-              top: `calc(100% + 1.5rem)`, // Position below parent card
+              top: `calc(100% + 1rem)`, // Position below parent card
               left: '50%',
               right: '50%',
-              width: `calc(${node.children.length > 1 ? '100% - 14rem' : '0px'})`, // Full width minus one card width
-              transform: `translateX(calc(-50% + ${node.children.length > 1 ? '7rem' : '0px'}))` // Adjust for card width
+              width: `calc(${node.children.length > 1 ? '100% - 12rem' : '0px'})`, // Full width minus one card width
+              transform: `translateX(calc(-50% + ${node.children.length > 1 ? '6rem' : '0px'}))` // Adjust for card width
             }}
           />
-          <div className="flex justify-center gap-8 pt-8 relative">
+          <div className="flex justify-center gap-4 pt-6 relative">
             {node.children.map((child) => (
               <div key={child.id} className="flex flex-col items-center relative">
                  {/* Vertical line to child */}
-                 <div className="absolute -top-8 w-px h-8 bg-border" />
+                 <div className="absolute -top-6 w-px h-6 bg-border" />
                 <EmployeeNode node={child} />
               </div>
             ))}
