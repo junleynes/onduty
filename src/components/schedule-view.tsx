@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -543,14 +544,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             return (
                 <div 
                     key={`note-${day.toISOString()}`}
-                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[52px] bg-background/30 relative text-xs",
+                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs",
                       viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50',
                       !isReadOnly && 'cursor-pointer hover:bg-accent'
                     )}
                     onClick={() => !isReadOnly && handleNoteCellClick(day)}
                 >
                     {note ? (
-                        <div>
+                        <div
+                            onClick={() => !isReadOnly && handleNoteCellClick(day)}
+                            className="cursor-pointer"
+                        >
                             <p className="font-bold truncate">{note.title}</p>
                         </div>
                     ) : (
