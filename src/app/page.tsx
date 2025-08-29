@@ -6,7 +6,7 @@ import type { UserRole, Employee, Shift, Leave, Notification } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave } from '@/lib/data';
+import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
@@ -33,7 +33,7 @@ function AppContent() {
   const [employees, setEmployees] = useState<Employee[]>(() => getInitialState('employees', initialEmployees));
   const [shifts, setShifts] = useState<Shift[]>(() => getInitialState('shifts', initialShifts));
   const [leave, setLeave] = useState<Leave[]>(() => getInitialState('leave', initialLeave));
-  const [groups, setGroups] = useState<string[]>(() => getInitialState('groups', ['Administration', 'Cashiers', 'Chefs', 'Baristas']));
+  const [groups, setGroups] = useState<string[]>(() => getInitialState('groups', initialGroups));
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [activeView, setActiveView] = useState<NavItem>('schedule');

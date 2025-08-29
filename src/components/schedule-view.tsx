@@ -22,6 +22,7 @@ import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 
 
 type ViewMode = 'day' | 'week' | 'month';
@@ -37,32 +38,6 @@ type ScheduleViewProps = {
   onPublish: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
 }
-
-const initialShiftTemplates: ShiftTemplate[] = [
-    { name: 'Morning Shift (06:00-14:00)', label: 'Morning Shift', startTime: '06:00', endTime: '14:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Late Morning Shift (07:00-15:00)', label: 'Late Morning Shift', startTime: '07:00', endTime: '15:00', color: 'hsl(var(--chart-2))' },
-    { name: 'Afternoon Shift (14:00-22:00)', label: 'Afternoon Shift', startTime: '14:00', endTime: '22:00', color: '#3498db' },
-    { name: 'Early-Afternoon Shift (12:00-20:00)', label: 'Early-Afternoon Shift', startTime: '12:00', endTime: '20:00', color: '#3498db' },
-    { name: 'Night Shift (22:00-06:00)', label: 'Night Shift', startTime: '22:00', endTime: '06:00', color: '#e91e63' },
-    { name: 'Early Mid Shift (08:00-16:00)', label: 'Early Mid Shift', startTime: '08:00', endTime: '16:00', color: '#ffffff' },
-    { name: 'Mid Shift (10:00-18:00)', label: 'Mid Shift', startTime: '10:00', endTime: '18:00', color: '#ffffff' },
-    { name: 'Manager Shift (10:00-19:00)', label: 'Manager Shift', startTime: '10:00', endTime: '19:00', color: 'hsl(var(--chart-1))' },
-    { name: 'Manager Shift (11:00-20:00)', label: 'Manager Shift', startTime: '11:00', endTime: '20:00', color: 'hsl(var(--chart-1))' },
-    { name: 'Manager Shift (12:00-21:00)', label: 'Manager Shift', startTime: '12:00', endTime: '21:00', color: 'hsl(var(--chart-1))' },
-    { name: 'Probationary Shift (09:00-18:00)', label: 'Probationary Shift', startTime: '09:00', endTime: '18:00', color: 'hsl(var(--chart-1))' },
-];
-
-const initialLeaveTypes: LeaveTypeOption[] = [
-    { type: 'VL', color: '#6b7280' }, // gray
-    { type: 'EL', color: '#ef4444' }, // red
-    { type: 'OFFSET', color: '#6b7280' }, // gray
-    { type: 'SL', color: '#f97316' }, // orange
-    { type: 'BL', color: '#14b8a6' }, // teal
-    { type: 'PL', color: '#8b5cf6' }, // purple
-    { type: 'ML', color: '#ec4899' }, // pink
-    { type: 'AVL', color: '#6b7280' }, // gray
-];
-
 
 export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, currentUser, onPublish, addNotification }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
@@ -787,6 +762,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
 
 
 

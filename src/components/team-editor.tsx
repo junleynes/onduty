@@ -51,7 +51,7 @@ type TeamEditorProps = {
 };
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups }: TeamEditorProps) {
-    const [positions, setPositions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
+    const [positions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
 
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
@@ -126,7 +126,10 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     onSave(dataToSave);
     
     // Add new values to lists if they don't exist
-    if (values.position && !positions.includes(values.position)) setPositions(prev => [...prev, values.position!]);
+    if (values.position && !positions.includes(values.position)) {
+      // The state for positions is local and doesn't need to be bubbled up.
+      // This might be something to refactor if positions need to be managed globally.
+    }
     if (values.group && !groups.includes(values.group)) setGroups(prev => [...prev, values.group!]);
 
     setIsOpen(false);
