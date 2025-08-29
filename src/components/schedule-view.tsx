@@ -148,8 +148,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   };
   
   const handleNoteCellClick = (date: Date) => {
-    const existingNote = notes.find(n => isSameDay(n.date, date));
-    const holiday = holidays.find(h => isSameDay(h.date, date));
+    const existingNote = notes.find(n => isSameDay(new Date(n.date), date));
+    const holiday = holidays.find(h => isSameDay(new Date(h.date), date));
 
     if (existingNote) {
         onViewNote(existingNote);
@@ -262,7 +262,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     const itemsToClear = [...shifts, ...leave];
-    const remainingItems = itemsToClear.filter(item => item.date < monthStart || item.date > monthEnd);
+    const remainingItems = itemsToClear.filter(item => new Date(item.date) < monthStart || new Date(item.date) > monthEnd);
     setShifts(remainingItems.filter(item => 'label' in item) as Shift[]);
     setLeave(remainingItems.filter(item => !('label' in item)) as Leave[]);
     toast({ title: "Month Cleared", description: "All shifts and time off for the current month have been removed." });
@@ -272,7 +272,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const handleUnassignWeek = () => {
     if (isReadOnly) return;
     setShifts(currentShifts => currentShifts.map(shift => 
-      displayedDays.some(day => isSameDay(shift.date, day)) 
+      displayedDays.some(day => isSameDay(new Date(shift.date), day)) 
         ? { ...shift, employeeId: null } 
         : shift
     ));
@@ -284,7 +284,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
     setShifts(currentShifts => currentShifts.map(shift => 
-      shift.date >= monthStart && shift.date <= monthEnd
+      new Date(shift.date) >= monthStart && new Date(shift.date) <= monthEnd
         ? { ...shift, employeeId: null } 
         : shift
     ));
@@ -295,12 +295,12 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     if (isReadOnly) return;
     const prevWeekStart = subDays(dateRange.from, 7);
     const prevWeekEnd = subDays(dateRange.to, 7);
-    const prevWeekShifts = shifts.filter(shift => shift.date >= prevWeekStart && shift.date <= prevWeekEnd);
+    const prevWeekShifts = shifts.filter(shift => new Date(shift.date) >= prevWeekStart && new Date(shift.date) <= prevWeekEnd);
 
     const newShifts = prevWeekShifts.map(shift => ({
       ...shift,
       id: `sh-${Date.now()}-${Math.random()}`,
-      date: addDays(shift.date, 7),
+      date: addDays(new Date(shift.date), 7),
       status: 'draft' as const,
     }));
 
@@ -310,10 +310,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
   const handleSaveTemplate = () => {
     if (isReadOnly) return;
-    const shiftsInView = shifts.filter(shift => displayedDays.some(day => isSameDay(shift.date, day)));
+    const shiftsInView = shifts.filter(shift => displayedDays.some(day => isSameDay(new Date(shift.date), day)));
     const template = shiftsInView.map(({ id, date, ...rest }) => ({
       ...rest,
-      dayOfWeek: date.getDay(), // 0 for Sunday, 1 for Monday, etc.
+      dayOfWeek: new Date(date).getDay(), // 0 for Sunday, 1 for Monday, etc.
     }));
     setWeekTemplate(template as any); // Type casting to avoid complex dayOfWeek type
     toast({ title: "Template Saved", description: "Current week's layout has been saved as a template." });
@@ -327,7 +327,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     }
     
     // Clear current week before applying template
-    const shiftsOutsideCurrentWeek = shifts.filter(shift => !displayedDays.some(day => isSameDay(shift.date, day)));
+    const shiftsOutsideCurrentWeek = shifts.filter(shift => !displayedDays.some(day => isSameDay(new Date(shift.date), day)));
     
     const newShifts = weekTemplate.map((templateShift: any) => {
         const targetDay = displayedDays.find(d => d.getDay() === templateShift.dayOfWeek);
@@ -455,7 +455,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             <p className="font-semibold text-sm">Employees</p>
         </div>
         {days.map((day) => {
-            const shiftsForDay = shifts.filter(shift => isSameDay(shift.date, day) && !shift.isDayOff && !shift.isHolidayOff);
+            const shiftsForDay = shifts.filter(shift => isSameDay(new Date(shift.date), day) && !shift.isDayOff && !shift.isHolidayOff);
             const totalShifts = shiftsForDay.length;
             const onDutyEmployees = new Set(shiftsForDay.map(shift => shift.employeeId)).size;
             const totalHours = shiftsForDay.reduce((acc, shift) => {
@@ -525,8 +525,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             <p className="font-semibold text-sm">Notes</p>
         </div>
         {days.map(day => {
-            const note = notes.find(n => isSameDay(n.date, day));
-            const holiday = holidays.find(h => isSameDay(h.date, day));
+            const note = notes.find(n => isSameDay(new Date(n.date), day));
+            const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
 
             return (
                 <div 
@@ -592,10 +592,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         {days.map((day) => {
         const itemsForDay = [
             ...shifts.filter(
-                (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(s.date, day)
+                (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(new Date(s.date), day)
             ),
             ...leave.filter(
-                (l) => l.employeeId === employee.id && isSameDay(l.date, day)
+                (l) => l.employeeId === employee.id && isSameDay(new Date(l.date), day)
             ).map(l => {
                 const leaveType = leaveTypes.find(lt => lt.type === l.type);
                 return { ...l, color: leaveType?.color || l.color };
@@ -823,6 +823,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
 
