@@ -6,7 +6,7 @@
       "employeeNumber": "001",
       "firstName": "Super",
       "lastName": "Admin",
-      "email": "admin@shiftmaster.local",
+      "email": "admin@onduty.local",
       "phone": "123-456-7890",
       "password": "password",
       "position": "System Administrator",
@@ -110,10 +110,7 @@
   "leave": [],
   "notes": [],
   "tasks": [],
-  "holidays": [
-    { "id": "hol-1", "date": "2025-01-01T00:00:00.000Z", "title": "New Year's Day" },
-    { "id": "hol-2", "date": "2025-12-25T00:00:00.000Z", "title": "Christmas Day" }
-  ],
+  "holidays": [],
   "groups": [
     "Administration",
     "MAMS Support"
