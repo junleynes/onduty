@@ -43,18 +43,24 @@ export const getInitialState = <T>(key: string, defaultValue: T): T => {
     }
     try {
         const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item, (k, v) => {
-            // Revive dates from string format
-            if (['date', 'birthDate', 'startDate', 'timestamp'].includes(k) && v) {
-                const date = new Date(v);
-                if (!isNaN(date.getTime())) {
-                    return date;
+        // A more robust date reviver that handles UTC dates correctly
+        const dateReviver = (k: string, v: any) => {
+            if (['date', 'birthDate', 'startDate', 'timestamp'].includes(k) && typeof v === 'string') {
+                // Regex to check for ISO 8601 date format (YYYY-MM-DDTHH:mm:ss.sssZ)
+                const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/;
+                if (isoDateRegex.test(v)) {
+                    const date = new Date(v);
+                    if (!isNaN(date.getTime())) {
+                        return date;
+                    }
                 }
             }
             return v;
-        }) : defaultValue;
+        };
+        return item ? JSON.parse(item, dateReviver) : defaultValue;
     } catch (error) {
         console.error(`Error reading from localStorage for key "${key}":`, error);
         return defaultValue;
     }
 };
+

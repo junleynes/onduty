@@ -149,7 +149,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   
   const handleNoteCellClick = (date: Date) => {
     const existingNote = notes.find(n => isSameDay(n.date, date));
-    const holiday = holidays.find(h => isSameDay(h.date, day));
+    const holiday = holidays.find(h => isSameDay(h.date, date));
 
     if (existingNote) {
         onViewNote(existingNote);
@@ -526,7 +526,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         </div>
         {days.map(day => {
             const note = notes.find(n => isSameDay(n.date, day));
-            const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+            const holiday = holidays.find(h => isSameDay(h.date, day));
 
             return (
                 <div 
@@ -823,6 +823,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
 
