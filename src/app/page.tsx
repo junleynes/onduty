@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task } from '@/types';
+import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes, initialHolidays, initialTasks } from '@/lib/data';
+import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes, initialHolidays, initialTasks, communicationAllowances as initialAllowance } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
@@ -31,9 +31,10 @@ import { HolidayEditor } from '@/components/holiday-editor';
 import HolidaysView from '@/components/holidays-view';
 import OndutyView from '@/components/onduty-view';
 import MyTasksView from '@/components/my-tasks-view';
+import AllowanceView from '@/components/allowance-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance';
 
 
 function AppContent() {
@@ -47,6 +48,7 @@ function AppContent() {
   const [notes, setNotes] = useState<Note[]>(() => getInitialState('notes', initialNotes));
   const [holidays, setHolidays] = useState<Holiday[]>(() => getInitialState('holidays', initialHolidays));
   const [tasks, setTasks] = useState<Task[]>(() => getInitialState('tasks', initialTasks));
+  const [allowances, setAllowances] = useState<CommunicationAllowance[]>(() => getInitialState('communicationAllowances', initialAllowance));
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [activeView, setActiveView] = useState<NavItem>('schedule');
@@ -76,6 +78,7 @@ function AppContent() {
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notes', JSON.stringify(notes)); }, [notes]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('holidays', JSON.stringify(holidays)); }, [holidays]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('tasks', JSON.stringify(tasks)); }, [tasks]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('communicationAllowances', JSON.stringify(allowances)); }, [allowances]);
 
 
   useEffect(() => {
@@ -372,6 +375,13 @@ function AppContent() {
                   isManager={currentUser.role === 'manager' || currentUser.role === 'admin'}
                   onManageHolidays={() => setIsHolidayEditorOpen(true)}
                 />;
+      case 'allowance':
+        return <AllowanceView 
+                  employees={employees} 
+                  allowances={allowances} 
+                  setAllowances={setAllowances} 
+                  currentUser={currentUser} 
+               />;
       case 'my-schedule':
         return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
       case 'my-tasks':
@@ -402,7 +412,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, currentUser, groups, shiftsForView, addNotification, router, toast]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, currentUser, groups, shiftsForView, addNotification, router, toast]);
 
   if (!currentUser) {
       return null;

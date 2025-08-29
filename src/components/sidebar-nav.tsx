@@ -18,7 +18,8 @@ import {
     MessageSquare,
     Headphones,
     ClipboardList,
-    PlusCircle
+    PlusCircle,
+    Smartphone
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
@@ -60,6 +61,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             items: [
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
+                { view: 'allowance', label: 'Allowance', icon: Smartphone, iconColor: 'bg-teal-500' },
             ]
         },
         {
@@ -85,6 +87,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             items: [
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
+                 { view: 'allowance', label: 'Allowance', icon: Smartphone, iconColor: 'bg-teal-500' },
             ]
         },
         {

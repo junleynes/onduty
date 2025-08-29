@@ -12,7 +12,9 @@
       "position": "System Administrator",
       "role": "admin",
       "group": "Administration",
-      "avatar": ""
+      "avatar": "",
+      "loadAllocation": 800,
+      "loadLimitPercentage": 150
     }
   ],
   "shifts": [],
@@ -20,6 +22,7 @@
   "notes": [],
   "tasks": [],
   "holidays": [],
+  "communicationAllowances": [],
   "groups": [
     "Administration",
     "MAMS Support"

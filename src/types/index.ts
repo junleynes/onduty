@@ -18,6 +18,8 @@ export type Employee = {
   group?: string;
   avatar?: string;
   signature?: string;
+  loadAllocation?: number;
+  loadLimitPercentage?: number;
 };
 
 export type Shift = {
@@ -75,4 +77,12 @@ export type Task = {
   description: string;
   status: 'pending' | 'completed';
   completedAt?: Date;
+};
+
+export type CommunicationAllowance = {
+  id: string;
+  employeeId: string;
+  year: number;
+  month: number; // 0-11
+  balance: number;
 };

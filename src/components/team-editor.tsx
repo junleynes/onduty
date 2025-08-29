@@ -40,6 +40,8 @@ const employeeSchema = z.object({
   group: z.string().optional(),
   avatar: z.string().optional(),
   signature: z.string().optional(),
+  loadAllocation: z.coerce.number().optional(),
+  loadLimitPercentage: z.coerce.number().optional(),
 });
 
 
@@ -82,6 +84,8 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       group: '',
       avatar: '',
       signature: '',
+      loadAllocation: 500,
+      loadLimitPercentage: 150,
     }
   });
 
@@ -108,6 +112,8 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             group: '',
             avatar: '',
             signature: '',
+            loadAllocation: 500,
+            loadLimitPercentage: 150,
         };
         form.reset(defaultValues);
         setAvatarPreview(employee?.avatar || null);
@@ -398,6 +404,34 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                 </FormItem>
                                 )}
                             />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="loadAllocation"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Load Allocation</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="loadLimitPercentage"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Load Limit (%)</FormLabel>
+                                        <FormControl>
+                                            <Input type="number" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
                             </div>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <FormItem>
