@@ -6,7 +6,7 @@ import type { Employee, Shift } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
-import { isSameDay, parse } from 'date-fns';
+import { isSameDay, parse, subDays } from 'date-fns';
 import { Clock, Phone, Mail, ExternalLink } from 'lucide-react';
 import { Button } from './ui/button';
 import Link from 'next/link';
@@ -30,20 +30,24 @@ export default function OndutyView({ employees, shifts }: OndutyViewProps) {
   }, []);
 
   const publishedShifts = shifts.filter(s => s.status === 'published' && !s.isDayOff && !s.isHolidayOff);
-
   const activeShifts: ActiveShift[] = [];
+
+  const today = currentTime;
+  const yesterday = subDays(today, 1);
+  const relevantDays = [today, yesterday];
 
   publishedShifts.forEach(shift => {
     if (!shift.employeeId) return;
 
-    const today = currentTime;
     const shiftDate = new Date(shift.date);
-    if (!isSameDay(shiftDate, today)) return;
+    
+    // Only consider shifts from today or yesterday to catch overnight shifts
+    if (!relevantDays.some(relevantDay => isSameDay(shiftDate, relevantDay))) return;
 
     const startTime = parse(shift.startTime, 'HH:mm', shiftDate);
     let endTime = parse(shift.endTime, 'HH:mm', shiftDate);
 
-    // Handle overnight shifts
+    // Handle overnight shifts by adding a day to the end time
     if (endTime < startTime) {
       endTime = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
     }
@@ -55,6 +59,7 @@ export default function OndutyView({ employees, shifts }: OndutyViewProps) {
       }
     }
   });
+
 
   const groupedActiveShifts = activeShifts.reduce((acc, { employee, shift }) => {
     const groupName = employee.group || 'Unassigned';
