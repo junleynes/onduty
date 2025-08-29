@@ -11,7 +11,7 @@ import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { cn, getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
+import { cn, getInitials, getBackgroundColor, getFullName, getInitialState } from '@/lib/utils';
 import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
@@ -395,15 +395,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Header Rows
     const monthName = format(dateRange.from, 'MMMM').toUpperCase();
     const headerRow1 = ['POST PRODUCTION', 'Section/Unit', 'Designation', monthName];
-    // D1 to J1 merge for the month name.
-    if (displayedDays.length > 0) {
-        merges.push({ s: { r: 0, c: 3 }, e: { r: 0, c: 3 + displayedDays.length - 1 } });
-    }
     data.push(headerRow1);
 
     const headerRow2 = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
     data.push(headerRow2);
-
+    
     data.push(['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION']); // Row 3
     
     data.push([]); // Row 4 is empty
@@ -444,7 +440,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     });
     
     const ws = XLSX.utils.aoa_to_sheet(data);
-    ws['!merges'] = merges;
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
@@ -829,9 +824,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                                 <span>Load Template</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                         <DropdownMenuSeparator />
-                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                             <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Manage Leave Types</span>
                             </DropdownMenuItem>
@@ -930,3 +925,4 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
