@@ -710,10 +710,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={onManageHolidays}>
-                                <PartyPopper className="mr-2 h-4 w-4" />
-                                <span>Manage Holidays</span>
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setIsImporterOpen(true)}>
                                 <Upload className="mr-2 h-4 w-4" />
                                 <span>Import Schedule</span>
@@ -725,6 +721,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                              <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Manage Leave Types</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onManageHolidays}>
+                                <PartyPopper className="mr-2 h-4 w-4" />
+                                <span>Manage Holidays</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
@@ -823,6 +823,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
 
