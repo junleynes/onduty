@@ -719,25 +719,23 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       </header>
     
       <div className="flex-1 overflow-auto p-4">
-        <Card className="h-full">
-          <CardContent className="p-0 h-full overflow-auto">
+        <div className="relative h-full overflow-auto shadow-md rounded-lg">
             {viewMode === 'month' ? (
                 <div className="space-y-4">
                   {weeksOfMonth.map((week, index) => (
-                      <div key={index} className="grid" style={{ gridTemplateColumns: `200px repeat(7, minmax(140px, 1fr))` }}>
+                      <div key={index} className="grid" style={{ gridTemplateColumns: `minmax(180px, 1.5fr) repeat(7, minmax(140px, 1fr))` }}>
                           {renderGridHeader(week)}
                           {orderedEmployees.map((employee) => renderEmployeeRow(employee, week))}
                       </div>
                   ))}
                 </div>
             ) : (
-                <div className="grid" style={{ gridTemplateColumns: `200px repeat(${displayedDays.length}, minmax(140px, 1fr))` }}>
+                <div className="grid" style={{ gridTemplateColumns: `minmax(180px, 1.5fr) repeat(${displayedDays.length}, minmax(140px, 1fr))` }}>
                   {renderGridHeader(displayedDays)}
                   {orderedEmployees.map((employee) => renderEmployeeRow(employee, displayedDays))}
                 </div>
             )}
-          </CardContent>
-        </Card>
+        </div>
       </div>
 
       <ShiftEditor
@@ -784,3 +782,4 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
