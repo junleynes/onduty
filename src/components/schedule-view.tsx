@@ -393,26 +393,20 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const data: (string | number)[][] = [];
 
     // Header Rows
-    data.push(['POST PRODUCTION', '', '']);
-    data.push(['Section/Unit', '', '']);
-    data.push(['Designation', '', '']);
-    data.push([reportGroup.toUpperCase()]);
-    
-    // Empty row
-    data.push([]);
-    
     const monthName = format(dateRange.from, 'MMMM').toUpperCase();
-    data.push(['', '', '', monthName]);
-    
-    const dayNumberHeader = ['', '', ...displayedDays.map(d => format(d, 'd'))];
-    const dayNameHeader = ['', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
-    data.push(dayNumberHeader);
+    const headerRow1 = ['POST PRODUCTION', 'Section/Unit', 'Designation', ...Array(displayedDays.length - 1).fill(''), monthName];
+    const headerRow2 = ['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION', '', '', ...displayedDays.map(d => format(d, 'd'))];
+    const dayNameHeader = ['', '', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
+
+    data.push(headerRow1);
+    data.push(headerRow2);
     data.push(dayNameHeader);
 
     // Employee Data Rows
     groupEmployees.forEach(emp => {
+      const empName = `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase();
       const row = [
-        `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
+        empName,
         emp.group,
         emp.position,
       ];
@@ -426,7 +420,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         } else if (holiday && (!shift || shift.isDayOff)) { // Holiday counts if they are not working
           row.push('HOL OFF');
         } else if (leaveEntry) {
-          row.push(leaveEntry.type);
+          row.push(leaveEntry.type.toUpperCase());
         } else if (shift) {
           if (shift.isDayOff) {
             row.push('OFF');
@@ -439,20 +433,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       });
       data.push(row);
     });
-
-    // Add legend and other static content
-    data.push([]); // Spacer
-    data.push(['', '', '', '', 'Legend']);
-    data.push(['', '', '', '', 'WFH', 'Work From Home', '', 'SL', 'Sick Leave']);
-    data.push(['', '', '', '', 'SKE', 'Skeletal Workforce at GNC', '', 'ML', 'Maternity Leave']);
-    data.push(['', '', '', '', 'VL', 'Vacation Leave', '', 'OFF', 'Restday']);
-    data.push([]);
-    data.push(['', '', '', '', '', '', '', '', '', '', 'OTHERS']);
-    data.push(['', '', '', '', '', '', '', '', '', '', '1', 'advised to take leave; tried to report to work but cannot due to community quarantine']);
-    data.push(['', '', '', '', '', '', '', '', '', '', '2', 'services are currently not needed because of scaled down operations']);
-    data.push(['', '', '', '', '', '', '', '', '', '', '3', 'Ees who opted not to report to work citing "hazard" of COVID-19']);
-
-
+    
     const ws = XLSX.utils.aoa_to_sheet(data);
     
     const wb = XLSX.utils.book_new();
@@ -956,3 +937,4 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
     
+
