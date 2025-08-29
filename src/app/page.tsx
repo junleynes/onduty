@@ -29,10 +29,9 @@ import { NoteViewer } from '@/components/note-viewer';
 import { NoteEditor } from '@/components/note-editor';
 import { HolidayEditor } from '@/components/holiday-editor';
 import HolidaysView from '@/components/holidays-view';
-import OndutyView from '@/components/onduty-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays';
 
 
 function AppContent() {
@@ -365,8 +364,6 @@ function AppContent() {
                   isManager={currentUser.role === 'manager' || currentUser.role === 'admin'}
                   onManageHolidays={() => setIsHolidayEditorOpen(true)}
                 />;
-       case 'onduty':
-        return <OndutyView shifts={shiftsForView} employees={employees} />;
       case 'my-schedule':
         return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
       case 'admin':
