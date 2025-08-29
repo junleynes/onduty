@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -399,10 +398,15 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     merges.push({ s: { r: 0, c: 3 }, e: { r: 0, c: 3 + displayedDays.length -1 } }); // Merge month name
     data.push(headerRow1);
 
-    const headerRow2 = ['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION', '', '', ...displayedDays.map(d => format(d, 'd'))];
-    merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }); // Merge division name
+    const headerRow2 = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
     data.push(headerRow2);
 
+    const headerRow3 = ['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION'];
+    data.push(headerRow3)
+    
+    // Empty Row 4
+    data.push([]);
+    
     const dayNameHeader = ['', '', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
     data.push(dayNameHeader);
 
@@ -944,22 +948,3 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-    
-
-
