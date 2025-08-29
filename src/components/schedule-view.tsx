@@ -390,21 +390,22 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const groupEmployees = employees.filter(e => e.group === reportGroup);
 
     const data: (string | number)[][] = [];
-    const merges: XLSX.Range[] = [];
 
     // Header Rows
     const monthName = format(dateRange.from, 'MMMM').toUpperCase();
     const headerRow1 = ['POST PRODUCTION', 'Section/Unit', 'Designation', monthName];
     data.push(headerRow1);
 
-    const headerRow2 = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
+    const headerRow2 = ['', '', ''];
     data.push(headerRow2);
     
-    data.push(['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION']); // Row 3
+    data.push([`TECHNICAL AND MEDIA SERVER SUPPORT DIVISION`]); // Row 3
     
     data.push([]); // Row 4 is empty
     
+    const dateNumberHeader = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
     const dayNameHeader = ['', '', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
+    data.push(dateNumberHeader);
     data.push(dayNameHeader);
 
     // Employee Data Rows
@@ -440,6 +441,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     });
     
     const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    const merges = [
+        // Merge D1 to J1 for the month name
+        { s: { r: 0, c: 3 }, e: { r: 0, c: 9 } } 
+    ];
+    ws['!merges'] = merges;
+
     
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
@@ -925,4 +933,5 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
