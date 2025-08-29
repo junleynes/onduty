@@ -84,6 +84,7 @@ const shiftColorOptions = [
     { label: 'Pink', value: '#e91e63' },
     { label: 'Yellow', value: '#f1c40f' },
     { label: 'White', value: '#ffffff' },
+    { label: 'Dark Grayish Blue', value: '#6b7280' },
 ];
 
 
