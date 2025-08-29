@@ -69,12 +69,12 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
   
   const [isLeaveTypeEditorOpen, setIsLeaveTypeEditorOpen] = useState(false);
-  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(initialLeaveTypes);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(() => getInitialState('leaveTypes', initialLeaveTypes));
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
   
-  const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(initialShiftTemplates);
+  const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(() => getInitialState('shiftTemplates', initialShiftTemplates));
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
   const { toast } = useToast();
 
@@ -395,17 +395,18 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Header Rows
     const monthName = format(dateRange.from, 'MMMM').toUpperCase();
     const headerRow1 = ['POST PRODUCTION', 'Section/Unit', 'Designation', monthName];
-    merges.push({ s: { r: 0, c: 3 }, e: { r: 0, c: 3 + displayedDays.length -1 } }); // Merge month name
+    // D1 to J1 merge for the month name.
+    if (displayedDays.length > 0) {
+        merges.push({ s: { r: 0, c: 3 }, e: { r: 0, c: 3 + displayedDays.length - 1 } });
+    }
     data.push(headerRow1);
 
     const headerRow2 = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
     data.push(headerRow2);
 
-    const headerRow3 = ['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION'];
-    data.push(headerRow3)
+    data.push(['TECHNICAL AND MEDIA SERVER SUPPORT DIVISION']); // Row 3
     
-    // Empty Row 4
-    data.push([]);
+    data.push([]); // Row 4 is empty
     
     const dayNameHeader = ['', '', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
     data.push(dayNameHeader);
@@ -441,25 +442,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       });
       data.push(row);
     });
-
-    // Legend section
-    data.push([]); // Empty row as spacer
-    const legendHeader = ["LEGEND:", ""];
-    data.push(legendHeader);
-    data.push(["", "SKE - Scheduled"]);
-    data.push(["", "OFF - Day Off"]);
-    data.push(["", "HOL OFF - Holiday"]);
-    data.push(["", "VL - Vacation Leave"]);
-    data.push(["", "SL - Sick Leave"]);
-    data.push(["", "OFFSET - Offset"]);
-    
-    data.push([]); // Empty row as spacer
-    const othersHeader = ["OTHERS:", ""];
-    data.push(othersHeader);
-    data.push(["", "BL - Birthday Leave"]);
-    data.push(["", "ML - Maternity Leave"]);
-    data.push(["", "PL - Paternity Leave"]);
-
     
     const ws = XLSX.utils.aoa_to_sheet(data);
     ws['!merges'] = merges;
