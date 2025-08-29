@@ -22,9 +22,10 @@ import { MemberImporter } from '@/components/member-importer';
 import { useToast } from '@/hooks/use-toast';
 import { GroupEditor } from '@/components/group-editor';
 import OrgChartView from '@/components/org-chart-view';
+import CelebrationsView from '@/components/celebrations-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations';
 
 
 function AppContent() {
@@ -241,6 +242,8 @@ function AppContent() {
       }
        case 'org-chart':
         return <OrgChartView employees={employees} />;
+      case 'celebrations':
+        return <CelebrationsView employees={employees} />;
       case 'my-schedule':
         return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
       case 'admin':
