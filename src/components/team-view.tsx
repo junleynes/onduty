@@ -82,7 +82,7 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
                                     </Avatar>
                                     <div>
                                         <p className="font-medium">{getFullName(employee)}</p>
-                                        <p className="text-sm text-muted-foreground">#{employee.employeeNumber}</p>
+                                        <p className="text-sm text-muted-foreground">{employee.phone}</p>
                                     </div>
                                     </div>
                                 </TableCell>
