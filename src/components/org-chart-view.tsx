@@ -21,17 +21,17 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
   const hasChildren = node.children && node.children.length > 0;
   return (
     <div className="flex flex-col items-center text-center relative">
-      <Card className="min-w-40 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
-        <CardContent className="p-3 flex flex-col items-center">
-          <Avatar className="w-12 h-12 mb-2 border-2 border-primary">
+      <Card className="min-w-28 text-center shadow-md hover:shadow-lg transition-shadow z-10 bg-card">
+        <CardContent className="p-2 flex flex-col items-center">
+          <Avatar className="w-10 h-10 mb-1 border-2 border-primary">
             <AvatarImage src={node.avatar} data-ai-hint="profile avatar" />
-            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(node)) }} className="text-lg">
+            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(node)) }} className="text-base">
               {getInitials(getFullName(node))}
             </AvatarFallback>
           </Avatar>
-          <p className="font-bold text-base">{getFullName(node)}</p>
-          <p className="text-muted-foreground text-sm">{node.position}</p>
-          <Badge variant={node.role === 'admin' ? 'destructive' : node.role === 'manager' ? 'default' : 'secondary'} className="mt-2 capitalize">
+          <p className="font-bold text-sm">{getFullName(node)}</p>
+          <p className="text-muted-foreground text-xs">{node.position}</p>
+          <Badge variant={node.role === 'admin' ? 'destructive' : node.role === 'manager' ? 'default' : 'secondary'} className="mt-1 capitalize text-xs">
             {node.position === 'Senior Manager' ? 'Senior Manager' : node.role}
           </Badge>
         </CardContent>
@@ -39,16 +39,16 @@ const EmployeeNode = ({ node }: { node: TreeNode }) => {
       {hasChildren && (
         <>
           {/* Vertical line from parent */}
-          <div className="w-px h-6 bg-border" />
-          <div className="flex justify-center gap-4 pt-6 relative">
+          <div className="w-px h-4 bg-border" />
+          <div className="flex justify-center gap-2 pt-4 relative">
             {/* Horizontal line connecting children - rendered before children to be in background */}
             {node.children.length > 1 && (
-                 <div className="absolute top-6 h-px bg-border left-16 right-16" />
+                 <div className="absolute top-4 h-px bg-border left-10 right-10" />
             )}
             {node.children.map((child) => (
               <div key={child.id} className="flex flex-col items-center relative">
                  {/* Vertical line to child */}
-                 <div className="absolute -top-6 w-px h-6 bg-border" />
+                 <div className="absolute -top-4 w-px h-4 bg-border" />
                 <EmployeeNode node={child} />
               </div>
             ))}
@@ -135,7 +135,7 @@ export default function OrgChartView({ employees }: OrgChartViewProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full h-[70vh] p-4">
-             <div className="flex justify-center gap-16 items-start">
+             <div className="flex justify-center gap-10 items-start">
                 {tree.map(rootNode => (
                     <EmployeeNode key={rootNode.id} node={rootNode} />
                 ))}
