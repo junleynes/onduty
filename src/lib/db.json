@@ -14,7 +14,38 @@
       "group": "Administration",
       "avatar": "",
       "loadAllocation": 800,
-      "loadLimitPercentage": 150
+      "loadLimitPercentage": 150,
+      "reportsTo": null
+    },
+    {
+      "id": "emp-sr-manager-01",
+      "employeeNumber": "002",
+      "firstName": "Senior",
+      "lastName": "Manager",
+      "email": "sr.manager@onduty.local",
+      "phone": "123-456-7891",
+      "password": "P@ssw0rd",
+      "position": "Senior Manager",
+      "role": "manager",
+      "group": "MAMS Support",
+      "avatar": "",
+      "loadAllocation": 700,
+      "reportsTo": null
+    },
+    {
+      "id": "emp-manager-01",
+      "employeeNumber": "003",
+      "firstName": "Manager",
+      "lastName": "One",
+      "email": "manager.one@onduty.local",
+      "phone": "123-456-7892",
+      "password": "P@ssw0rd",
+      "position": "Manager",
+      "role": "manager",
+      "group": "MAMS Support",
+      "avatar": "",
+      "loadAllocation": 600,
+      "reportsTo": "emp-sr-manager-01"
     }
   ],
   "shifts": [],

@@ -41,6 +41,7 @@ const employeeSchema = z.object({
   avatar: z.string().optional(),
   signature: z.string().optional(),
   loadAllocation: z.coerce.number().optional(),
+  reportsTo: z.string().optional().nullable(),
 });
 
 
@@ -59,6 +60,13 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     const [positions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+    const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+
+    useEffect(() => {
+        // In a real app, you'd fetch this or get it from props.
+        // For now, using the initial data and assuming it's up-to-date.
+        setAllEmployees(initialEmployees);
+    }, []);
 
   const form = useForm<z.infer<typeof employeeSchema>>({
     resolver: zodResolver(employeeSchema),
@@ -84,6 +92,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       avatar: '',
       signature: '',
       loadAllocation: 500,
+      reportsTo: null,
     }
   });
 
@@ -111,6 +120,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             avatar: '',
             signature: '',
             loadAllocation: 500,
+            reportsTo: null,
         };
         form.reset(defaultValues);
         setAvatarPreview(employee?.avatar || null);
@@ -344,6 +354,34 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     )}
                                 />
                             </div>
+                            
+                            <FormField
+                                control={form.control}
+                                name="reportsTo"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Reports To</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a manager" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        <SelectItem value="">None</SelectItem>
+                                        {allEmployees
+                                            .filter(e => e.role === 'manager' && e.id !== employee?.id)
+                                            .map(manager => (
+                                            <SelectItem key={manager.id} value={manager.id}>
+                                                {getFullName(manager)}
+                                            </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
                              <FormField
                                 control={form.control}

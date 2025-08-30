@@ -109,48 +109,37 @@ export default function OrgChartView({ employees, currentUser }: OrgChartViewPro
   const treesByGroup = useMemo(() => {
     const groupedEmployees: Record<string, Employee[]> = {};
     employees.forEach(emp => {
-      if (emp.role !== 'admin') {
-        const group = emp.group || 'Unassigned';
-        if (!groupedEmployees[group]) {
-          groupedEmployees[group] = [];
+        if (emp.role !== 'admin') {
+            const group = emp.group || 'Unassigned';
+            if (!groupedEmployees[group]) {
+                groupedEmployees[group] = [];
+            }
+            groupedEmployees[group].push(emp);
         }
-        groupedEmployees[group].push(emp);
-      }
     });
 
     return Object.entries(groupedEmployees).map(([groupName, groupMembers]) => {
-      const map = new Map<string, TreeNode>();
-      groupMembers.forEach(emp => map.set(emp.id, { ...emp, children: [] }));
+        const nodes = new Map<string, TreeNode>();
+        groupMembers.forEach(emp => nodes.set(emp.id, { ...emp, children: [] }));
 
-      const roots: TreeNode[] = [];
-      map.forEach(node => {
-        // Simplified hierarchy: managers are roots, members are their children.
-        if (node.role === 'manager') {
-            roots.push(node);
-        }
-      });
-      
-      const managers = roots;
-      const members = groupMembers.filter(e => e.role === 'member');
-      const assignedMembers = new Set<string>();
+        const roots: TreeNode[] = [];
+        nodes.forEach(node => {
+            if (node.reportsTo && nodes.has(node.reportsTo)) {
+                nodes.get(node.reportsTo)!.children.push(node);
+            } else {
+                roots.push(node);
+            }
+        });
 
-      members.forEach(member => {
-         const manager = managers.find(m => m.id !== member.id);
-         if (manager) {
-             manager.children.push(map.get(member.id)!);
-             assignedMembers.add(member.id);
-         }
-      });
-      
-      // If there are no managers, all members are roots
-      if (roots.length === 0) {
-        roots.push(...members.map(m => map.get(m.id)!));
-      }
+        // Sort children for consistent order if needed
+        nodes.forEach(node => {
+            node.children.sort((a, b) => a.lastName.localeCompare(b.lastName));
+        });
 
-      return { groupName, tree: roots };
+        return { groupName, tree: roots };
     });
+}, [employees]);
 
-  }, [employees]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -195,7 +184,7 @@ export default function OrgChartView({ employees, currentUser }: OrgChartViewPro
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-center text-muted-foreground">No managers assigned to this group.</p>
+                            <p className="text-center text-muted-foreground">No members found in this group.</p>
                         )}
                     </div>
                 ))}

@@ -19,6 +19,7 @@ export type Employee = {
   avatar?: string;
   signature?: string;
   loadAllocation?: number;
+  reportsTo?: string | null;
 };
 
 export type Shift = {
