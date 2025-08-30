@@ -480,7 +480,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     ];
 
     // Table Header
-    const header = ["NAME OF PERSONNEL", "SECTION/ UNIT", "DESIGNATION"];
+    const header = ["NAME OF PERSONNEL", "POSITION"];
     displayedDays.forEach(day => header.push(format(day, 'E\ndd')));
     header.push("COMMENTS");
     XLSX.utils.sheet_add_aoa(ws, [header], { origin: 'A6' });
@@ -497,7 +497,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     groupEmployees.forEach(emp => {
       const row = [
         `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
-        emp.group,
         emp.position
       ];
       
@@ -539,7 +538,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     });
 
     ws['!cols'] = [
-      { wch: 30 }, { wch: 20 }, { wch: 20 }, ...Array(7).fill({ wch: 10 }), { wch: 40 }
+      { wch: 30 }, { wch: 20 }, ...Array(7).fill({ wch: 10 }), { wch: 40 }
     ];
     ws['!rows'] = Array(currentRowIdx).fill({ hpt: 20 });
     XLSX.utils.book_append_sheet(wb, ws, "Attendance Sheet");
@@ -558,14 +557,12 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const wsName = wb.SheetNames[0];
     const ws = wb.Sheets[wsName];
 
-    // Find and replace placeholders
+    // Find and replace placeholders in headers
     const placeholderMap: { [key: string]: string | number } = {
         '{{group}}': currentUser.group || '',
         '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
         '{{month}}': format(currentDate, 'MMMM').toUpperCase(),
     };
-
-    // Add day placeholders
     displayedDays.forEach((day, index) => {
         placeholderMap[`{{day_${index + 1}}}`] = format(day, 'd');
     });
@@ -573,7 +570,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     let dataStartRow = -1;
     let dataStartCol = -1;
 
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
     for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
             const cell_address = { c: C, r: R };
@@ -598,12 +595,19 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     }
     
     const groupEmployees = employees.filter(e => e.group === currentUser.group);
-    
-    // Write data to sheet cell by cell to preserve formatting
+
+    // Get style from the template row
+    const templateRowStyles: any[] = [];
+    const numColsToCopy = 10; // Name, Position, 7 days, Comments
+    for (let C = 0; C < numColsToCopy; ++C) {
+        const templateCellRef = XLSX.utils.encode_cell({ r: dataStartRow, c: dataStartCol + C });
+        templateRowStyles.push(ws[templateCellRef]?.s || {});
+    }
+
+    // Write data using the cloned styles
     groupEmployees.forEach((emp, rowIndex) => {
         const rowData = [
             `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
-            emp.group,
             emp.position
         ];
         
@@ -636,21 +640,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         rowData.forEach((cellValue, colIndex) => {
             const cellAddress = { r: dataStartRow + rowIndex, c: dataStartCol + colIndex };
             const cellRef = XLSX.utils.encode_cell(cellAddress);
-            
-            // Get existing cell to preserve style or create a new one
-            const cell = ws[cellRef] || {};
-            
-            // Update only the value
-            cell.v = cellValue;
-            if (typeof cellValue === 'string') {
-              cell.t = 's';
-            } else if (typeof cellValue === 'number') {
-              cell.t = 'n';
-            } else {
-              delete cell.t;
-            }
-            
-            ws[cellRef] = cell;
+            ws[cellRef] = {
+                v: cellValue,
+                t: 's',
+                s: templateRowStyles[colIndex] || {}
+            };
         });
     });
 
@@ -1278,3 +1272,4 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     
 
     
+
