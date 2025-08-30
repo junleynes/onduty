@@ -209,7 +209,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
               const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
               const willReceive = balance !== undefined ? balance <= limit : true;
               
-              const canEdit = employee.id === currentUser.id;
+              const canEdit = isManager;
 
               return (
                 <TableRow key={employee.id}>
