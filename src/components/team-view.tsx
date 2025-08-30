@@ -1,24 +1,15 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import type { Employee } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Pencil } from 'lucide-react';
+import { MoreHorizontal, Pencil, Mail, Phone } from 'lucide-react';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
-const roleColors: { [key: string]: 'default' | 'secondary' | 'destructive' | 'outline' } = {
-  Manager: 'default',
-  Chef: 'destructive',
-  Barista: 'secondary',
-  Cashier: 'outline',
-};
 
 type TeamViewProps = {
     employees: Employee[];
@@ -29,7 +20,7 @@ type TeamViewProps = {
 export default function TeamView({ employees, currentUser, onEditMember }: TeamViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
-  const groupedEmployees = useMemo(() => {
+  const groupedEmployees = React.useMemo(() => {
     return employees.reduce((acc, employee) => {
       const group = employee.group || 'Unassigned';
       if (!acc[group]) {
@@ -52,76 +43,66 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
           </div>
         </CardHeader>
         <CardContent>
-          <Accordion type="multiple" defaultValue={Object.keys(groupedEmployees)} className="w-full">
+          <Accordion type="multiple" defaultValue={Object.keys(groupedEmployees)} className="w-full space-y-4">
             {Object.entries(groupedEmployees).map(([group, members]) => (
-                <AccordionItem key={group} value={group}>
-                    <AccordionTrigger className="text-lg font-semibold">
-                        {group} ({members.length})
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        <Table>
-                            <TableHeader>
-                            <TableRow>
-                                <TableHead>Employee</TableHead>
-                                <TableHead>Position</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead>Contact</TableHead>
-                                {!isReadOnly && <TableHead className="text-right">Actions</TableHead>}
-                            </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                            {members.map(employee => (
-                                <TableRow key={employee.id}>
-                                <TableCell>
-                                    <div className="flex items-center gap-4">
-                                    <Avatar>
-                                        <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                                        <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }}>
-                                        {getInitials(getFullName(employee))}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="font-medium">{getFullName(employee)}</p>
-                                        <p className="text-sm text-muted-foreground">#{employee.employeeNumber}</p>
-                                    </div>
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={roleColors[employee.position] || 'default'}>{employee.position}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                    <span className="capitalize">{employee.role}</span>
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex flex-col">
-                                        <a href={`mailto:${employee.email}`} className="text-sm text-primary hover:underline">{employee.email}</a>
-                                        <a href={`tel:${employee.phone}`} className="text-sm text-muted-foreground hover:underline">{employee.phone}</a>
-                                    </div>
-                                </TableCell>
-                                {!isReadOnly && (
-                                    <TableCell className="text-right">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                <span className="sr-only">More Actions</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => onEditMember(employee)}>
-                                                <Pencil className="mr-2 h-4 w-4" />
-                                                <span>Edit</span>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                    </TableCell>
-                                )}
-                                </TableRow>
-                            ))}
-                            </TableBody>
-                        </Table>
-                    </AccordionContent>
-                </AccordionItem>
+                <Card key={group} className="overflow-hidden">
+                    <AccordionItem value={group} className="border-b-0">
+                        <AccordionTrigger className="text-lg font-semibold bg-muted/50 px-6 py-4">
+                            {group} ({members.length})
+                        </AccordionTrigger>
+                        <AccordionContent className="p-6">
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {members.map(employee => (
+                                    <Card key={employee.id} className="shadow-md">
+                                        <CardContent className="p-4 flex flex-col gap-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <Avatar className="h-16 w-16 border-2 border-primary">
+                                                    <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                                                    <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xl">
+                                                        {getInitials(getFullName(employee))}
+                                                    </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                    <p className="font-bold text-lg">{getFullName(employee)}</p>
+                                                    <p className="text-muted-foreground">{employee.position}</p>
+                                                    </div>
+                                                </div>
+                                                {!isReadOnly && (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                <span className="sr-only">More Actions</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => onEditMember(employee)}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                <span>Edit</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <Mail className="h-4 w-4 text-muted-foreground" /> 
+                                                    <a href={`mailto:${employee.email}`} className="text-primary hover:underline">{employee.email}</a>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Phone className="h-4 w-4 text-muted-foreground" /> 
+                                                    <a href={`tel:${employee.phone}`} className="hover:underline">{employee.phone}</a>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Card>
             ))}
           </Accordion>
         </CardContent>
