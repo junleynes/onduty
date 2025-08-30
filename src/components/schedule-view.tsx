@@ -416,309 +416,105 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
 
-  const generateDefaultAttendanceSheet = async (): Promise<string> => {
+  const generateAttendanceSheetExcel = async (): Promise<string> => {
     if (viewMode !== 'week') {
       toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
       return '';
     }
     if (!currentUser?.group) {
-      toast({ variant: 'destructive', title: 'Missing User Info', description: 'Your profile must have a Group assigned to generate reports.' });
-      return '';
+        toast({ variant: 'destructive', title: 'Missing User Info', description: 'Your profile must have a Group assigned to generate reports.' });
+        return '';
     }
-    
-    const wb = XLSX.utils.book_new();
-    const ws_data: any[][] = [];
 
-    // Basic styling objects
-    const boldCenter = { font: { bold: true }, alignment: { horizontal: 'center' as const, vertical: 'center' as const } };
-    const center = { alignment: { horizontal: 'center' as const, vertical: 'center' as const } };
-    const yellowFill = { fill: { fgColor: { rgb: "FFFF00" } } };
-    const blueFill = { fill: { fgColor: { rgb: "ADD8E6" } } };
-    const lightBlueFill = { fill: { fgColor: { rgb: "DDEBF7" } } };
-    const borderAll = { top: { style: "thin" as const }, bottom: { style: "thin" as const }, left: { style: "thin" as const }, right: { style: "thin" as const } };
-    const redText = { font: { color: { rgb: "FF0000" } } };
+    if (!attendanceTemplate) {
+        toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
+        return '';
+    }
 
-    // Merged Headers
-    ws_data[0] = [{ v: "POST PRODUCTION", s: { ...boldCenter, ...yellowFill, ...borderAll } }];
-    ws_data[1] = [{ v: "ATTENDANCE SHEET", s: { ...boldCenter, ...yellowFill, ...borderAll } }];
-    ws_data[2] = [{ v: currentUser.group.toUpperCase(), s: { ...boldCenter, ...blueFill, ...borderAll } }];
-    ws_data[3] = [{ v: `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`, s: { ...boldCenter, ...lightBlueFill, ...borderAll } }];
+    // Create a copy of the workbook to avoid modifying the original template object
+    const wb = XLSX.read(attendanceTemplate, { type: 'binary', cellStyles: true });
+    const wsName = wb.SheetNames[0];
+    const ws = wb.Sheets[wsName];
 
-    // Legend
-    const legend = {
-        'WFH': 'WORK FROM HOME', 'SKE': 'SKELETAL WORKFORCE', 'VL': 'VACATION LEAVE', 'SL': 'SICK LEAVE',
-        'BL': 'BIRTHDAY LEAVE', 'EL': 'EMERGENCY LEAVE', 'FL': 'FAMILY LEAVE', 'ML': 'MATERNITY/PATERNITY LEAVE',
-        'PL': 'PRIVILEGE LEAVE', 'SPL': 'SOLO PARENT LEAVE', 'HOL OFF': 'HOLIDAY', 'OFF': 'DAY OFF', 'OB': 'OFFICIAL BUSINESS'
+    // Simple placeholders
+    const simplePlaceholders: { [key: string]: string } = {
+        '{{group}}': currentUser.group || '',
+        '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
+        '{{month}}': format(currentDate, 'MMMM').toUpperCase(),
     };
-    let legendRow = 5;
-    XLSX.utils.sheet_add_aoa(ws_data, [['LEGEND:']], { origin: `I${legendRow}` });
-    ws_data[legendRow-1][8].s = { font: { bold: true }};
-
-    Object.entries(legend).forEach(([key, value]) => {
-        legendRow++;
-        XLSX.utils.sheet_add_aoa(ws_data, [[key, value]], { origin: `I${legendRow}` });
-        ws_data[legendRow-1][8].s = { ...center, fill: { fgColor: { rgb: "DDEBF7" } }, ...borderAll };
-        ws_data[legendRow-1][9].s = { ...borderAll };
-    });
     
-    // OTHERS
-    let othersRow = legendRow + 2;
-    XLSX.utils.sheet_add_aoa(ws_data, [['OTHERS:']], { origin: `I${othersRow}` });
-    ws_data[othersRow-1][8].s = { font: { bold: true }};
-    othersRow++;
-    XLSX.utils.sheet_add_aoa(ws_data, [['COMMENTS/REMARKS']], { origin: `I${othersRow}` });
-    ws_data[othersRow-1][8].s = { ...center, fill: { fgColor: { rgb: "FFFF00" } }, ...borderAll };
+    displayedDays.forEach((day, index) => {
+        simplePlaceholders[`{{day_${index + 1}}}`] = format(day, 'd');
+    });
 
+    let dataStartCellRef: string | null = null;
+    let dataStartCoords = { r: -1, c: -1 };
 
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
-      { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 7 } },
-      { s: { r: othersRow-2, c: 8 }, e: { r: othersRow-2, c: 9 } }
-    ];
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
 
-    // Table Header
-    const header = ["NAME OF PERSONNEL", "POSITION"];
-    displayedDays.forEach(day => header.push(format(day, 'E\ndd')));
-    header.push("COMMENTS");
-    XLSX.utils.sheet_add_aoa(ws, [header], { origin: 'A6' });
+    for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cell_address = { c: C, r: R };
+            const cell_ref = XLSX.utils.encode_cell(cell_address);
+            const cell = ws[cell_ref];
 
-    // Style header
-    for (let c = 0; c < header.length; c++) {
-      const cellRef = XLSX.utils.encode_cell({ r: 5, c });
-      ws[cellRef].s = { ...boldCenter, ...blueFill, ...borderAll, alignment: { ...boldCenter.alignment, wrapText: true } };
+            if (cell && typeof cell.v === 'string') {
+                const trimmedValue = cell.v.trim();
+                if (simplePlaceholders[trimmedValue]) {
+                    cell.v = simplePlaceholders[trimmedValue];
+                } else if (trimmedValue === '{{data_start}}') {
+                    dataStartCellRef = cell_ref;
+                    dataStartCoords = { r: R, c: C };
+                }
+            }
+        }
     }
 
-    // Populate data
-    let currentRowIdx = 6;
+    if (!dataStartCellRef) {
+        toast({ variant: 'destructive', title: 'Template Error', description: 'The template must contain the {{data_start}} placeholder.' });
+        return '';
+    }
+
     const groupEmployees = employees.filter(e => e.group === currentUser.group);
-    groupEmployees.forEach(emp => {
-      const row = [
-        `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
-        emp.position
-      ];
-      
-      displayedDays.forEach(day => {
-        const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
-        const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
-        const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-
-        let cellValue = '';
-        if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
-          cellValue = 'HOL OFF';
-        } else if (leaveEntry) {
-          cellValue = leaveEntry.type.toUpperCase();
-        } else if (shift) {
-          if (shift.isDayOff) {
-            cellValue = 'OFF';
-          } else {
-            const shiftLabel = shift.label?.trim().toUpperCase();
-            if (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') {
-              cellValue = 'WFH';
-            } else {
-              cellValue = 'SKE';
+    const dataToInsert = groupEmployees.map(emp => {
+        const row = [
+            `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
+            emp.group,
+            emp.position
+        ];
+        
+        displayedDays.forEach(day => {
+            const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
+            const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
+            const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+            
+            let cellValue = '';
+            if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+                cellValue = 'HOL OFF';
+            } else if (leaveEntry) {
+                cellValue = leaveEntry.type.toUpperCase();
+            } else if (shift) {
+                if (shift.isDayOff) cellValue = 'OFF';
+                else {
+                    const shiftLabel = shift.label?.trim().toUpperCase();
+                    cellValue = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
+                }
             }
-          }
-        }
-        row.push(cellValue);
-      });
-      row.push(''); // Comments column
-      XLSX.utils.sheet_add_aoa(ws, [row], { origin: `A${currentRowIdx + 1}` });
-
-      for(let c=0; c<row.length; c++) {
-           const cellRef = XLSX.utils.encode_cell({ r: currentRowIdx, c });
-           if(!ws[cellRef]) ws[cellRef] = {v: ''};
-           ws[cellRef].s = { ...center, ...borderAll };
-           if(ws[cellRef].v === 'HOL OFF') ws[cellRef].s.font = { ...redText.font };
-           if(c === header.length - 1) ws[cellRef].s.fill = lightBlueFill.fill; // Comments column
-      }
-      currentRowIdx++;
+            row.push(cellValue);
+        });
+        return row;
     });
 
-    ws['!cols'] = [
-      { wch: 30 }, { wch: 20 }, ...Array(7).fill({ wch: 10 }), { wch: 40 }
-    ];
-    ws['!rows'] = Array(currentRowIdx).fill({ hpt: 20 });
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance Sheet");
+    // Clear the placeholder itself
+    ws[dataStartCellRef].v = '';
 
-    const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+    XLSX.utils.sheet_add_aoa(ws, dataToInsert, { origin: dataStartCoords });
+
+    const newWb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(newWb, ws, wsName);
+    const excelBase64 = XLSX.write(newWb, { bookType: 'xlsx', type: 'base64' });
     return excelBase64;
-  }
-  
-  const generateExcelFromTemplate = async (templateData: any): Promise<string> => {
-      if (viewMode !== 'week') {
-          toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
-          return '';
-      }
-
-      // Create a copy of the workbook to avoid modifying the original template object
-      const wb = XLSX.read(templateData, { type: 'binary', cellStyles: true });
-      const wsName = wb.SheetNames[0];
-      const ws = wb.Sheets[wsName];
-
-      const placeholderMap: { [key: string]: string | number } = {
-          '{{group}}': currentUser.group || '',
-          '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
-          '{{month}}': format(currentDate, 'MMMM').toUpperCase(),
-      };
-      displayedDays.forEach((day, index) => {
-          placeholderMap[`{{day_${index + 1}}}`] = format(day, 'd');
-      });
-
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      const employeePlaceholders: { placeholder: string, r: number, c: number }[] = [];
-
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-          for (let C = range.s.c; C <= range.e.c; ++C) {
-              const cell_address = { c: C, r: R };
-              const cell_ref = XLSX.utils.encode_cell(cell_address);
-              const cell = ws[cell_ref];
-
-              if (cell && typeof cell.v === 'string') {
-                  const trimmedValue = cell.v.trim();
-                  if (placeholderMap[trimmedValue]) {
-                      cell.v = placeholderMap[trimmedValue];
-                  } else if (/\{\{employee_\d+\}\}/.test(trimmedValue)) {
-                      employeePlaceholders.push({ placeholder: trimmedValue, r: R, c: C });
-                  }
-              }
-          }
-      }
-
-      if (employeePlaceholders.length === 0) {
-          toast({ variant: 'destructive', title: 'Template Error', description: 'Could not find any {{employee_...}} placeholders.' });
-          return '';
-      }
-      
-      const groupEmployees = employees.filter(e => e.group === currentUser.group);
-
-      for (const { placeholder, r, c } of employeePlaceholders) {
-        const match = placeholder.match(/\{\{employee_(\d+)\}\}/);
-        if (!match) continue;
-
-        const index = parseInt(match[1], 10) - 1;
-        const employee = groupEmployees[index];
-        
-        let nameFilled = false;
-        if (employee) {
-            ws[XLSX.utils.encode_cell({r, c})].v = `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase();
-            nameFilled = true;
-        } else {
-             ws[XLSX.utils.encode_cell({r, c})].v = ''; // Clear name if no employee
-        }
-
-        // Iterate through the entire row to find other placeholders
-        for (let C = c + 1; C <= range.e.c; ++C) {
-            const currentCellRef = XLSX.utils.encode_cell({r, c: C});
-            const cell = ws[currentCellRef];
-            if (!cell || typeof cell.v !== 'string') continue;
-
-            const trimmedValue = cell.v.trim();
-            
-            if (trimmedValue === `{{position_${index + 1}}}`) {
-                ws[currentCellRef].v = nameFilled ? employee.position : '';
-            }
-        }
-        
-        // Fill schedule data
-        if(nameFilled) {
-             // Find the first day column by searching for 'Mon' or a similar pattern, assuming it's after name/pos/group
-            let dayStartCol = -1;
-            for(let C = 0; C <= range.e.c; ++C) {
-                 const headerCell = ws[XLSX.utils.encode_cell({r: r-1, c: C})]; // Assuming header is right above
-                 if(headerCell && typeof headerCell.v === 'string' && /mon|tue|wed|thu|fri|sat|sun/i.test(headerCell.v)){
-                     dayStartCol = C;
-                     break;
-                 }
-            }
-            // A fallback if header isn't found, search for day placeholders
-            if (dayStartCol === -1) {
-                for (let C = c + 1; C <= range.e.c; ++C) {
-                    const dataCell = ws[XLSX.utils.encode_cell({r, c: C})];
-                    if (dataCell && typeof dataCell.v === 'string' && /\{\{day_\d+_data\}\}/.test(dataCell.v)) {
-                         dayStartCol = C;
-                         break;
-                    }
-                }
-            }
-
-
-            if (dayStartCol !== -1) {
-                displayedDays.forEach((day, dayIndex) => {
-                    const dataCellRef = XLSX.utils.encode_cell({r, c: dayStartCol + dayIndex});
-                    if (!ws[dataCellRef]) ws[dataCellRef] = {t: 's', v: ''};
-
-                    const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-                    const leaveEntry = leave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
-                    const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-          
-                    let cellValue = '';
-                     if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
-                        cellValue = 'HOL OFF';
-                    } else if (leaveEntry) {
-                        cellValue = leaveEntry.type.toUpperCase();
-                    } else if (shift) {
-                        if (shift.isDayOff) {
-                            cellValue = 'OFF';
-                        } else {
-                            const shiftLabel = shift.label?.trim().toUpperCase();
-                            cellValue = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
-                        }
-                    }
-                    ws[dataCellRef].v = cellValue;
-                });
-            }
-        } else {
-             // Clear the entire row if no employee
-            for(let C = c; C <= range.e.c; ++C) {
-                const cellToClearRef = XLSX.utils.encode_cell({r,c:C});
-                if(ws[cellToClearRef]) {
-                    ws[cellToClearRef].v = '';
-                }
-            }
-        }
-    }
-
-
-      const newWb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(newWb, ws, wsName);
-      const excelBase64 = XLSX.write(newWb, { bookType: 'xlsx', type: 'base64' });
-      return excelBase64;
-  }
-
-  const generateAttendanceSheetExcel = async (): Promise<string> => {
-      if (attendanceTemplate) {
-          try {
-              return await generateExcelFromTemplate(attendanceTemplate);
-          } catch(e) {
-              console.error("Failed to generate from template", e);
-              toast({ variant: 'destructive', title: 'Template Error', description: 'Could not generate report from the uploaded template. Falling back to default.' });
-              return await generateDefaultAttendanceSheet();
-          }
-      } else {
-          return await generateDefaultAttendanceSheet();
-      }
-  }
-
-
-  const handleDownloadAttendanceSheet = async () => {
-    const excelBase64 = await generateAttendanceSheetExcel();
-    if (!excelBase64) return;
-
-    const reportGroup = currentUser.group || 'Team';
-    const fileName = `${reportGroup} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`;
-    
-    const link = document.createElement('a');
-    link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast({ title: "Report Downloaded", description: `The attendance sheet for ${reportGroup} has been generated.` });
-  };
+}
 
 
 
@@ -1066,7 +862,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                          <DropdownMenuSeparator />
                          <DropdownMenuGroup>
-                             <DropdownMenuItem onClick={handleDownloadAttendanceSheet} disabled={viewMode !== 'week'}>
+                             <DropdownMenuItem onClick={generateAttendanceSheetExcel} disabled={viewMode !== 'week'}>
                                 <Download className="mr-2 h-4 w-4" />
                                 <span>Download Attendance Sheet</span>
                              </DropdownMenuItem>
@@ -1299,16 +1095,3 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         </Dialog>
     );
 }
-
-
-
-    
-
-    
-
-
-
-
-
-
-
