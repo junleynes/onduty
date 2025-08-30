@@ -17,17 +17,29 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DatePicker } from './ui/date-picker';
 import { Separator } from './ui/separator';
 
-const Dashboard = ({ membersInGroup, allowances, currentDate }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date }) => {
+const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentage }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date, loadLimitPercentage: number }) => {
     const currentYear = currentDate.getFullYear();
     const lastYear = currentYear - 1;
 
     const yearlyData = useMemo(() => {
         return membersInGroup.map(employee => {
-            const currentYearAllowances = allowances.filter(a => a.employeeId === employee.id && a.year === currentYear);
-            const lastYearAllowances = allowances.filter(a => a.employeeId === employee.id && a.year === lastYear);
-            
-            const totalLoadedCurrentYear = currentYearAllowances.reduce((sum, a) => sum + a.balance, 0);
-            const totalLoadedLastYear = lastYearAllowances.reduce((sum, a) => sum + a.balance, 0);
+            const filterAndSumAllowances = (year: number) => {
+                const yearAllowances = allowances.filter(a => a.employeeId === employee.id && a.year === year);
+                
+                return yearAllowances.reduce((sum, allowance) => {
+                    const allocation = employee.loadAllocation || 0;
+                    const limit = allocation * (loadLimitPercentage / 100);
+                    const willReceive = (allowance.balance !== undefined && allowance.balance !== null) ? allowance.balance <= limit : undefined;
+
+                    if (willReceive) {
+                        return sum + (allowance.balance || 0);
+                    }
+                    return sum;
+                }, 0);
+            };
+
+            const totalLoadedCurrentYear = filterAndSumAllowances(currentYear);
+            const totalLoadedLastYear = filterAndSumAllowances(lastYear);
 
             return {
                 employeeId: employee.id,
@@ -36,7 +48,7 @@ const Dashboard = ({ membersInGroup, allowances, currentDate }: { membersInGroup
                 totalLoadedLastYear
             };
         });
-    }, [membersInGroup, allowances, currentYear, lastYear]);
+    }, [membersInGroup, allowances, currentYear, lastYear, loadLimitPercentage]);
 
     const groupAllocation = useMemo(() => {
         return membersInGroup.reduce((sum, e) => sum + (e.loadAllocation || 0), 0);
@@ -47,7 +59,7 @@ const Dashboard = ({ membersInGroup, allowances, currentDate }: { membersInGroup
             <Card>
                 <CardHeader>
                     <CardTitle>Yearly Report</CardTitle>
-                    <CardDescription>Individual load totals for the current and previous year.</CardDescription>
+                    <CardDescription>Individual load totals for the current and previous year, including only months where load was received.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -99,6 +111,13 @@ const Dashboard = ({ membersInGroup, allowances, currentDate }: { membersInGroup
     )
 }
 
+type AllowanceViewProps = {
+  employees: Employee[];
+  allowances: CommunicationAllowance[];
+  setAllowances: React.Dispatch<React.SetStateAction<CommunicationAllowance[]>>;
+  currentUser: Employee | null;
+};
+
 export default function AllowanceView({ employees, allowances, setAllowances, currentUser }: AllowanceViewProps) {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -110,6 +129,10 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isBalanceEditorOpen, setIsBalanceEditorOpen] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
+  
+  if (!currentUser) {
+    return null;
+  }
   
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
   
@@ -447,7 +470,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[70vh] overflow-y-auto p-1">
-                 <Dashboard membersInGroup={membersInGroup} allowances={allowances} currentDate={currentDate} />
+                 <Dashboard membersInGroup={membersInGroup} allowances={allowances} currentDate={currentDate} loadLimitPercentage={loadLimitPercentage} />
             </div>
             <DialogFooter>
                  <Button onClick={() => setIsSummaryOpen(false)}>Close</Button>
