@@ -249,7 +249,11 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
     const ws = XLSX.utils.json_to_sheet(dataForReport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Allowance Report");
-    XLSX.writeFile(wb, `Allowance Report - ${format(currentDate, 'MMMM yyyy')}.xlsx`);
+
+    const groupName = currentUser?.group || 'Team';
+    const fileName = `${groupName} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
 
     toast({ title: 'Report Downloaded', description: 'The allowance report has been saved as an Excel file.' });
   };
