@@ -537,8 +537,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   
   const generateExcelFromTemplate = async (templateData: any): Promise<string> => {
     if (viewMode !== 'week') {
-      toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
-      return '';
+        toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
+        return '';
     }
     
     const wb = XLSX.read(templateData, { type: 'binary', cellStyles: true });
@@ -549,8 +549,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const placeholderMap: { [key: string]: string } = {
         '{{department}}': currentUser.department || '',
         '{{group}}': currentUser.group || '',
-        '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`
+        '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
+        '{{month}}': format(currentDate, 'MMMM').toUpperCase(),
     };
+
+    // Add day placeholders
+    displayedDays.forEach((day, index) => {
+        placeholderMap[`{{day_${index + 1}}}`] = format(day, 'd');
+    });
 
     let dataStartRow = -1;
     let dataStartCol = -1;
@@ -1223,3 +1229,4 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         </Dialog>
     );
 }
+

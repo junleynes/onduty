@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -77,7 +78,8 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
-            Upload an .xlsx file to use as a template. It should contain placeholders like `{{department}}`, `{{group}}`, `{{week_of}}`, and `{{data_start}}` for dynamic data.
+            Upload an .xlsx file. The system will look for the following placeholders to replace:
+             `{{department}}`, `{{group}}`, `{{week_of}}`, `{{month}}`, `{{day_1}}` to `{{day_7}}`, and `{{data_start}}`.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
