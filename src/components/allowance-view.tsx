@@ -1,15 +1,15 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import type { Employee, CommunicationAllowance } from '@/types';
+import type { Employee, CommunicationAllowance, SmtpSettings } from '@/types';
 import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload, Send, Loader2 } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as XLSX from 'xlsx-js-style';
 import { Label } from './ui/label';
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DatePicker } from './ui/date-picker';
 import { Separator } from './ui/separator';
 import { AllowanceImporter, type ImportedAllowance } from './allowance-importer';
+import { sendEmail } from '@/app/actions';
 
 const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentage, currency }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date, loadLimitPercentage: number, currency: string }) => {
     const currentYear = currentDate.getFullYear();
@@ -134,6 +135,7 @@ type AllowanceViewProps = {
   allowances: CommunicationAllowance[];
   setAllowances: React.Dispatch<React.SetStateAction<CommunicationAllowance[]>>;
   currentUser: Employee | null;
+  smtpSettings: SmtpSettings;
 };
 
 type SortConfig = {
@@ -141,7 +143,7 @@ type SortConfig = {
     direction: 'asc' | 'desc';
 }
 
-export default function AllowanceView({ employees, setEmployees, allowances, setAllowances, currentUser }: AllowanceViewProps) {
+export default function AllowanceView({ employees, setEmployees, allowances, setAllowances, currentUser, smtpSettings }: AllowanceViewProps) {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
@@ -153,6 +155,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isBalanceEditorOpen, setIsBalanceEditorOpen] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'lastName', direction: 'asc' });
   
@@ -358,6 +361,36 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
       setIsSettingsOpen(false);
   }
 
+    const generateReportHTML = () => {
+        const today = new Date();
+        const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
+
+        let tableHTML = `<table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Recipient</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Load Allocation</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #FFFF00;">${balanceHeader}</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        
+        membersInGroup.forEach(employee => {
+            const allocation = employee.loadAllocation || 0;
+            const allowance = getEmployeeAllowance(employee.id);
+            const balance = allowance?.balance;
+            
+            tableHTML += `<tr>
+                <td style="border: 1px solid #ddd; padding: 8px;">${`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${currency}${allocation.toFixed(2)}</td>
+                <td style="border: 1px solid #ddd; padding: 8px;">${balance !== undefined && balance !== null ? `${currency}${balance.toFixed(2)}` : 'N/A'}</td>
+            </tr>`;
+        });
+
+        tableHTML += '</tbody></table>';
+        return tableHTML;
+    }
+
   const handleDownloadReport = () => {
     const today = new Date();
     const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
@@ -476,6 +509,10 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                              <Button variant="outline" onClick={() => setIsSummaryOpen(true)}>
                                 <FileText className="h-4 w-4 mr-2" />
                                 Show Summary
+                            </Button>
+                            <Button variant="outline" onClick={() => setIsEmailDialogOpen(true)}>
+                                <Send className="h-4 w-4 mr-2" />
+                                Send Email
                             </Button>
                             <Button variant="outline" onClick={handleDownloadReport}>
                                 <Download className="h-4 w-4 mr-2" />
@@ -615,6 +652,14 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         </Card>
     </div>
     
+    <EmailDialog
+        isOpen={isEmailDialogOpen}
+        setIsOpen={setIsEmailDialogOpen}
+        subject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
+        htmlBody={generateReportHTML()}
+        smtpSettings={smtpSettings}
+    />
+
     <Dialog open={isBalanceEditorOpen} onOpenChange={setIsBalanceEditorOpen}>
         <DialogContent>
             <DialogHeader>
@@ -692,4 +737,64 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
     />
     </>
   );
+}
+
+function EmailDialog({ isOpen, setIsOpen, subject, htmlBody, smtpSettings }: {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    subject: string;
+    htmlBody: string;
+    smtpSettings: SmtpSettings;
+}) {
+    const [to, setTo] = useState('');
+    const [isSending, startTransition] = useTransition();
+    const { toast } = useToast();
+
+    const handleSend = async () => {
+        if (!to) {
+            toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
+            return;
+        }
+        startTransition(async () => {
+            const result = await sendEmail({ to, subject, htmlBody }, smtpSettings);
+            if (result.success) {
+                toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
+                setIsOpen(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
+            }
+        });
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Send Report via Email</DialogTitle>
+                    <DialogDescription>Enter the recipient's email address below.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="recipientEmail">Recipient Email</Label>
+                        <Input id="recipientEmail" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="recipient@example.com" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Subject</Label>
+                        <Input value={subject} readOnly disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Preview</Label>
+                        <div className="h-48 overflow-y-auto rounded-md border p-2" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSend} disabled={isSending}>
+                        {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }

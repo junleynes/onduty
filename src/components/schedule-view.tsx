@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Employee, Shift, Leave, Notification, Note, Holiday, Task } from '@/types';
+import type { Employee, Shift, Leave, Notification, Note, Holiday, Task, SmtpSettings } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper, Mail, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -24,7 +24,10 @@ import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import * as XLSX from 'xlsx';
-
+import { sendEmail } from '@/app/actions';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -47,9 +50,10 @@ type ScheduleViewProps = {
   onViewNote: (note: Note | Holiday | Partial<Note>) => void;
   onEditNote: (note: Partial<Note>) => void;
   onManageHolidays: () => void;
+  smtpSettings: SmtpSettings;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, smtpSettings }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -73,6 +77,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(() => getInitialState('shiftTemplates', initialShiftTemplates));
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
@@ -387,6 +392,88 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     toast({ title: "Draft Saved", description: "Your schedule changes have been saved." });
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
+
+  const getAttendanceSheetHTML = () => {
+     if (viewMode !== 'week') {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid View',
+        description: 'Attendance Sheet can only be generated from the week view.',
+      });
+      return '';
+    }
+
+    if (!currentUser?.group) {
+        toast({
+            variant: 'destructive',
+            title: 'No Group Assigned',
+            description: 'You must be assigned to a group to generate a report.',
+        });
+        return '';
+    }
+
+    const reportGroup = currentUser.group;
+    const groupEmployees = employees.filter(e => e.group === reportGroup);
+
+    const monthName = format(dateRange.from, 'MMMM').toUpperCase();
+    
+    let tableHTML = `<table style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 12px;">`;
+    tableHTML += `
+        <thead>
+            <tr><th colspan="${3 + displayedDays.length}" style="text-align: left;">POST PRODUCTION</th></tr>
+            <tr>
+                <th style="border: 1px solid #ddd; padding: 8px;">Section/Unit</th>
+                <th style="border: 1px solid #ddd; padding: 8px;">Designation</th>
+                <th style="border: 1px solid #ddd; padding: 8px;">${monthName}</th>
+                ${displayedDays.map(() => `<th style="border: 1px solid #ddd; padding: 8px;"></th>`).join('')}
+            </tr>
+            <tr><th colspan="${3 + displayedDays.length}" style="text-align: left;">TECHNICAL AND MEDIA SERVER SUPPORT DIVISION</th></tr>
+            <tr>${[...Array(3 + displayedDays.length)].map(() => '<th></th>').join('')}</tr>
+             <tr>
+                <th style="border: 1px solid #ddd; padding: 8px;"></th>
+                <th style="border: 1px solid #ddd; padding: 8px;"></th>
+                <th style="border: 1px solid #ddd; padding: 8px;"></th>
+                ${displayedDays.map(d => `<th style="border: 1px solid #ddd; padding: 8px;">${format(d, 'd')}</th>`).join('')}
+            </tr>
+             <tr>
+                <th style="border: 1px solid #ddd; padding: 8px;"></th>
+                <th style="border: 1px solid #ddd; padding: 8px;"></th>
+                <th style="border: 1px solid #ddd; padding: 8px;"></th>
+                ${displayedDays.map(d => `<th style="border: 1px solid #ddd; padding: 8px;">${format(d, 'E').charAt(0)}</th>`).join('')}
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    groupEmployees.forEach(emp => {
+      tableHTML += `<tr>
+        <td style="border: 1px solid #ddd; padding: 8px;">${`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase()}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${emp.group}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${emp.position}</td>`;
+
+      displayedDays.forEach(day => {
+        const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
+        const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
+        const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+        let cellValue = '';
+
+        if (shift?.isHolidayOff) {
+            cellValue = 'HOL OFF';
+        } else if (holiday && (!shift || shift.isDayOff)) {
+            cellValue = 'HOL OFF';
+        } else if (leaveEntry) {
+            cellValue = leaveEntry.type.toUpperCase();
+        } else if (shift) {
+            cellValue = shift.isDayOff ? 'OFF' : 'SKE';
+        }
+        tableHTML += `<td style="border: 1px solid #ddd; padding: 8px;">${cellValue}</td>`;
+      });
+      tableHTML += `</tr>`;
+    });
+
+    tableHTML += '</tbody></table>';
+    return tableHTML;
+  }
 
   const handleDownloadAttendanceSheet = () => {
     if (viewMode !== 'week') {
@@ -876,6 +963,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                                 <Download className="mr-2 h-4 w-4" />
                                 <span>Download Attendance Sheet</span>
                              </DropdownMenuItem>
+                             <DropdownMenuItem onClick={() => setIsEmailDialogOpen(true)} disabled={viewMode !== 'week'}>
+                                <Mail className="mr-2 h-4 w-4" />
+                                <span>Email Attendance Sheet</span>
+                             </DropdownMenuItem>
                          </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                          <DropdownMenuGroup>
@@ -957,12 +1048,78 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         setIsOpen={setIsTemplateImporterOpen}
         onImport={handleImportTemplates}
       />
+      <EmailDialog
+        isOpen={isEmailDialogOpen}
+        setIsOpen={setIsEmailDialogOpen}
+        subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
+        htmlBody={getAttendanceSheetHTML()}
+        smtpSettings={smtpSettings}
+      />
     </Card>
   );
-
-    
-
+}
 
 
+function EmailDialog({ isOpen, setIsOpen, subject, htmlBody, smtpSettings }: {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    subject: string;
+    htmlBody: string;
+    smtpSettings: SmtpSettings;
+}) {
+    const [to, setTo] = useState('');
+    const [isSending, startTransition] = useTransition();
+    const { toast } = useToast();
 
+    const handleSend = async () => {
+        if (!to) {
+            toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
+            return;
+        }
+        if (!htmlBody) {
+             toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
+             return;
+        }
+        startTransition(async () => {
+            const result = await sendEmail({ to, subject, htmlBody }, smtpSettings);
+            if (result.success) {
+                toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
+                setIsOpen(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
+            }
+        });
+    };
 
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Send Report via Email</DialogTitle>
+                    <DialogDescription>Enter the recipient's email address below.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="recipientEmail">Recipient Email</Label>
+                        <Input id="recipientEmail" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="recipient@example.com" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Subject</Label>
+                        <Input value={subject} readOnly disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Preview</Label>
+                        <div className="h-48 overflow-y-auto rounded-md border p-2" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSend} disabled={isSending}>
+                        {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}

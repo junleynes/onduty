@@ -392,6 +392,7 @@ function AppContent() {
             }}
             onEditNote={handleEditNote}
             onManageHolidays={() => setIsHolidayEditorOpen(true)}
+            smtpSettings={smtpSettings}
           />
         );
       }
@@ -418,6 +419,7 @@ function AppContent() {
                   allowances={allowances} 
                   setAllowances={setAllowances} 
                   currentUser={currentUser} 
+                  smtpSettings={smtpSettings}
                />;
       case 'my-schedule':
         return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
@@ -453,7 +455,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, currentUser, groups, shiftsForView, addNotification, router, toast]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, currentUser, groups, shiftsForView, addNotification, router, toast]);
 
   if (!currentUser) {
       return null;
