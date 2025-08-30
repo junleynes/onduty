@@ -85,13 +85,8 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
             <AlertTitle>Available Placeholders</AlertTitle>
             <AlertDescription>
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
-                    <li>`{`{{group}}`}` - The name of the group for the report.</li>
-                    <li>`{`{{week_of}}`}` - The date range of the week.</li>
-                    <li>`{`{{day_1}}`}`...`{`{{day_7}}`}` - The day number for each day of the week.</li>
-                    <li>`{`{{employee_1}}`}`, `{`{{position_1}}`}` - Info for the first employee.</li>
-                    <li>`{`{{employee_2}}`}`, `{`{{position_2}}`}` - Info for the second employee, etc.</li>
-                     <li>`{`{{schedule_1_1}}`}`...`{`{{schedule_1_7}}`}` - Schedule codes for employee 1.</li>
-                     <li>`{`{{schedule_2_1}}`}`...`{`{{schedule_2_7}}`}` - Schedule codes for employee 2, etc.</li>
+                    <li>`{`{{day_1}}`}`...`{`{{day_7}}`}` - The day number for each day of the week (e.g., in a header).</li>
+                    <li>`{`{{data_start}}`}` - A single placeholder in the cell where the schedule data should begin (e.g., the first employee's name cell). Format all rows below this as you wish them to appear.</li>
                 </ul>
             </AlertDescription>
         </Alert>
