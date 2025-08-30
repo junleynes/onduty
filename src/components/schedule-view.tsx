@@ -404,11 +404,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
 
-    const generateAttendanceSheetExcel = async (): Promise<Buffer | null> => {
-        if (viewMode !== 'week') {
-            toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
-            return null;
-        }
+    const generateExcelFromTemplate = async (): Promise<Buffer | null> => {
         if (!attendanceTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
             return null;
@@ -417,88 +413,75 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         try {
             const groupEmployees = employees.filter(e => e.group === currentUser.group);
             const workbook = new ExcelJS.Workbook();
-            
-            // The template is stored as a base64 string, so we need to decode it
             const buffer = Buffer.from(attendanceTemplate, 'binary');
             await workbook.xlsx.load(buffer);
 
             const worksheet = workbook.worksheets[0];
             if (!worksheet) throw new Error("Template worksheet not found.");
 
-            let dataStartRow = -1;
-            let dataStartCol = -1;
-            let templateRow;
-
-            // Find placeholders and data start row
-            worksheet.eachRow((row, rowNumber) => {
-                row.eachCell((cell, colNumber) => {
+            // Find and replace header placeholders
+            worksheet.eachRow((row) => {
+                row.eachCell((cell) => {
                     if (cell.value && typeof cell.value === 'string') {
                         let cellText = cell.value;
-                        if (cellText.includes('{{month}}')) cell.value = cellText.replace('{{month}}', format(currentDate, 'MMMM yyyy'));
-                        if (cellText.includes('{{group}}')) cell.value = cellText.replace('{{group}}', currentUser.group || '');
-
+                        if (cellText.includes('{{month}}')) {
+                            cell.value = cellText.replace('{{month}}', format(currentDate, 'MMMM').toUpperCase());
+                        }
+                        if (cellText.includes('{{group}}')) {
+                            cell.value = cellText.replace('{{group}}', currentUser.group || '');
+                        }
                         for (let i = 0; i < 7; i++) {
                             if (cellText.includes(`{{day_${i + 1}}}`) && displayedDays[i]) {
                                 cell.value = cellText.replace(`{{day_${i + 1}}}`, String(getDate(displayedDays[i])));
                             }
                         }
+                    }
+                });
+            });
 
-                        if (cellText.includes('{{data_start}}')) {
-                            dataStartRow = rowNumber;
-                            dataStartCol = colNumber;
-                            templateRow = row;
-                            cell.value = ''; // Clear placeholder
+            // Find and replace employee data placeholders
+            for (let i = 0; i < groupEmployees.length; i++) {
+                const employee = groupEmployees[i];
+                const employeeIndex = i + 1; // 1-based index for placeholders
+
+                worksheet.eachRow((row) => {
+                    row.eachCell((cell) => {
+                        if (cell.value && typeof cell.value === 'string') {
+                            let cellText = cell.value;
+
+                            // Employee Name
+                            if (cellText.includes(`{{employee_${employeeIndex}}}`)) {
+                                cell.value = cellText.replace(`{{employee_${employeeIndex}}}`, `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase());
+                            }
+                            
+                            // Position
+                            if (cellText.includes(`{{position_${employeeIndex}}}`)) {
+                                cell.value = cellText.replace(`{{position_${employeeIndex}}}`, employee.position || '');
+                            }
+
+                            // Schedule Codes
+                            for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+                                const day = displayedDays[dayIndex];
+                                if (cellText.includes(`{{schedule_${employeeIndex}_${dayIndex + 1}}}`)) {
+                                    const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
+                                    const leaveEntry = leave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
+                                    const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+                                    
+                                    let scheduleCode = '';
+                                    if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) scheduleCode = 'HOL OFF';
+                                    else if (leaveEntry) scheduleCode = leaveEntry.type.toUpperCase();
+                                    else if (shift?.isDayOff) scheduleCode = 'OFF';
+                                    else if (shift) {
+                                       const shiftLabel = shift.label?.trim().toUpperCase();
+                                       scheduleCode = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
+                                    }
+                                    
+                                    cell.value = cellText.replace(`{{schedule_${employeeIndex}_${dayIndex + 1}}}`, scheduleCode);
+                                }
+                            }
                         }
-                    }
+                    });
                 });
-            });
-
-            if (dataStartRow === -1 || !templateRow) {
-                throw new Error("Could not find '{{data_start}}' placeholder in the template.");
-            }
-
-            // Generate and insert data
-            const dataToInsert = groupEmployees.map(emp => {
-                 const scheduleCodes = displayedDays.map(day => {
-                    const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
-                    const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
-                    const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-                    if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) return 'HOL OFF';
-                    if (leaveEntry) return leaveEntry.type.toUpperCase();
-                    if (shift?.isDayOff) return 'OFF';
-                    if (shift) {
-                       const shiftLabel = shift.label?.trim().toUpperCase();
-                       return (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
-                    }
-                    return ''; // Blank if no shift/leave
-                });
-
-                 return [
-                    `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
-                    ...scheduleCodes
-                ];
-            });
-
-            // Insert rows and apply styles
-            dataToInsert.forEach((rowData, index) => {
-                const newRow = worksheet.insertRow(dataStartRow + index, rowData);
-                
-                // Copy cell styles and row height from template row
-                newRow.height = templateRow!.height;
-                templateRow!.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const newCell = newRow.getCell(colNumber);
-                    newCell.style = { ...cell.style };
-                });
-
-                // The first cell of templateRow had the placeholder, replace its value
-                if(index === 0) {
-                   newRow.getCell(dataStartCol).value = rowData[0];
-                }
-            });
-
-            // If template row was just for placeholder and should be removed
-            if (dataToInsert.length > 0) {
-                 worksheet.spliceRows(dataStartRow + dataToInsert.length, 1);
             }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
@@ -513,7 +496,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
 
   const handleDownload = async () => {
-    const buffer = await generateAttendanceSheetExcel();
+    const buffer = await generateExcelFromTemplate();
     if (!buffer) return;
 
     const groupName = currentUser?.group || 'Team';
@@ -1019,7 +1002,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             setIsOpen={setIsEmailDialogOpen}
             subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
             smtpSettings={smtpSettings}
-            generateExcelData={generateAttendanceSheetExcel}
+            generateExcelData={generateExcelFromTemplate}
             fileName={`${currentUser.group} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`}
         />
       )}

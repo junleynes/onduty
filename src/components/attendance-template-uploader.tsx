@@ -76,8 +76,8 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
-          <DialogDescription>
-            Upload your formatted .xlsx file. The system will inject data starting from the {'\'{{data_start}}\''} placeholder.
+           <DialogDescription>
+            Upload your formatted .xlsx file. The system will find and replace placeholders to fill in the data.
           </DialogDescription>
         </DialogHeader>
         <Alert>
@@ -86,16 +86,18 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                     <li><b>Header Placeholders:</b> The system will find and replace these text placeholders anywhere in your sheet.
                         <ul className="list-disc pl-5">
-                             <li>`{'{{month}}'}` - Replaced with the current month and year (e.g., October 2024).</li>
-                             <li>`{'{{group}}'}` - Replaced with the name of the current user's group.</li>
-                             <li>`{'{{day_1}}'}`...`{'{{day_7}}'}` - Replaced with the day number for each day of the week.</li>
+                             <li>{'{{month}}'} - The current month (e.g., AUGUST).</li>
+                             <li>{'{{group}}'} - The name of the current user's group.</li>
+                             <li>{'{{day_1}}'}...{'{{day_7}}'} - The day number for each day of the week.</li>
                         </ul>
                     </li>
-                     <li><b>Data Start Placeholder:</b>
+                     <li><b>Employee Row Placeholders:</b> Create a row for each employee you want to appear in the report. The system will find and replace these placeholders for each employee.
                         <ul className="list-disc pl-5">
-                            <li>Place `{'{{data_start}}'}` in the first cell where employee data should begin (e.g., the cell for the first employee's name).</li>
-                            <li>The system will insert new rows for each employee, cloning the styles and height from the row that contains `{'{{data_start}}'}`.</li>
-                            <li>The data columns generated are: `Name`, and 7 `Schedule Code` columns. Ensure your template row has enough columns for the name and the 7 days of the week.</li>
+                            <li>{'{{employee_1}}'}, {'{{employee_2}}'}, etc.</li>
+                            <li>{'{{position_1}}'}, {'{{position_2}}'}, etc.</li>
+                            <li>{'{{schedule_1_1}}'} for Employee 1, Day 1.</li>
+                            <li>{'{{schedule_1_2}}'} for Employee 1, Day 2, etc.</li>
+                            <li>{'{{schedule_2_1}}'} for Employee 2, Day 1, etc.</li>
                         </ul>
                     </li>
                 </ul>
