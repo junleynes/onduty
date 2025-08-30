@@ -77,7 +77,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
-            Upload your formatted .xlsx file. The system will inject data starting from the `{{data_start}}` placeholder.
+            Upload your formatted .xlsx file. The system will inject data starting from the '{{data_start}}' placeholder.
           </DialogDescription>
         </DialogHeader>
         <Alert>
@@ -87,14 +87,14 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                     <li><b>Header Placeholders:</b>
                         <ul className="list-disc pl-5">
-                             <li>`{'{{month}}'}` - The current month and year (e.g., October 2024).</li>
-                             <li>`{'{{group}}'}` - The name of the current user's group.</li>
-                             <li>`{'{{day_1}}'}`...`{'{{day_7}}'}` - The day number for each day of the week.</li>
+                             <li>'{{month}}' - The current month and year (e.g., October 2024).</li>
+                             <li>'{{group}}' - The name of the current user's group.</li>
+                             <li>'{{day_1}}'...`{'{{day_7}}'}` - The day number for each day of the week.</li>
                         </ul>
                     </li>
                      <li><b>Data Start Placeholder:</b>
                         <ul className="list-disc pl-5">
-                            <li>Place `{'{{data_start}}'}` in the first cell where employee data should begin (e.g., the cell for the first employee's name).</li>
+                            <li>Place '{{data_start}}' in the first cell where employee data should begin (e.g., the cell for the first employee's name).</li>
                             <li>Format this single row exactly how you want all employee rows to appear. The system will copy this style for all employees.</li>
                              <li>The data columns generated are: `Name`, `Position`, and 7 `Schedule Code` columns. Ensure your template row has enough columns to match.</li>
                         </ul>
