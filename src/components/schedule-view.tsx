@@ -24,7 +24,7 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { sendEmail } from '@/app/actions';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
 import { Label } from './ui/label';
@@ -67,25 +67,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   
   const [viewEmployeeOrder, setViewEmployeeOrder] = useState<string[] | null>(null);
 
-  const [attendanceTemplate, setAttendanceTemplate] = useState<any>(null);
-  const [isTemplateUploaderOpen, setIsTemplateUploaderOpen] = useState(false);
-
-
   useEffect(() => {
     // Reset the custom order when the view or date range changes significantly
     setViewEmployeeOrder(null);
   }, [viewMode, currentDate.getMonth()]);
-
-  useEffect(() => {
-    // Load template from local storage on mount
-    if (typeof window !== 'undefined') {
-        const savedTemplate = localStorage.getItem('attendanceSheetTemplate');
-        if (savedTemplate) {
-            setAttendanceTemplate(JSON.parse(savedTemplate));
-        }
-    }
-  }, []);
-  
 
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
@@ -426,94 +411,81 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         return '';
     }
 
-    if (!attendanceTemplate) {
-        toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
-        return '';
-    }
-
-    // Create a copy of the workbook to avoid modifying the original template object
-    const wb = XLSX.read(attendanceTemplate, { type: 'binary', cellStyles: true });
-    const wsName = wb.SheetNames[0];
-    const ws = wb.Sheets[wsName];
-
-    // Simple placeholders
-    const simplePlaceholders: { [key: string]: string } = {
-        '{{group}}': currentUser.group || '',
-        '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
-        '{{month}}': format(currentDate, 'MMMM').toUpperCase(),
-    };
+    const groupEmployees = employees.filter(e => e.group === currentUser.group);
     
-    displayedDays.forEach((day, index) => {
-        simplePlaceholders[`{{day_${index + 1}}}`] = format(day, 'd');
+    const headerRow = [
+      "NAME OF PERSONNEL",
+      "GROUP",
+      "POSITION",
+      ...displayedDays.map(day => `${format(day, 'EEE').toUpperCase()}\n${format(day, 'd')}`)
+    ];
+    
+    const dataRows = groupEmployees.map(emp => {
+      const scheduleCells = displayedDays.map(day => {
+          const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
+          const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
+          const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+          
+          if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) return 'HOL OFF';
+          if (leaveEntry) return leaveEntry.type.toUpperCase();
+          if (shift?.isDayOff) return 'OFF';
+          if (shift) {
+              const shiftLabel = shift.label?.trim().toUpperCase();
+              return (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
+          }
+          return ''; // Blank if no shift or leave
+      });
+
+      return [
+        `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
+        emp.group,
+        emp.position,
+        ...scheduleCells
+      ];
     });
 
-    let dataStartCellRef: string | null = null;
-    let dataStartCoords = { r: -1, c: -1 };
+    const finalData = [headerRow, ...dataRows];
 
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    const ws = XLSX.utils.aoa_to_sheet(finalData);
+    
+    // Style the header
+    const headerStyle = {
+      font: { bold: true, color: { rgb: "FFFFFF" } },
+      fill: { fgColor: { rgb: "4F81BD" } },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+      border: {
+        top: { style: "thin", color: { rgb: "000000" } },
+        bottom: { style: "thin", color: { rgb: "000000" } },
+        left: { style: "thin", color: { rgb: "000000" } },
+        right: { style: "thin", color: { rgb: "000000" } },
+      }
+    };
 
-    for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-            const cell_address = { c: C, r: R };
-            const cell_ref = XLSX.utils.encode_cell(cell_address);
-            const cell = ws[cell_ref];
-
-            if (cell && typeof cell.v === 'string') {
-                const trimmedValue = cell.v.trim();
-                if (simplePlaceholders[trimmedValue]) {
-                    cell.v = simplePlaceholders[trimmedValue];
-                } else if (trimmedValue === '{{data_start}}') {
-                    dataStartCellRef = cell_ref;
-                    dataStartCoords = { r: R, c: C };
-                }
-            }
+    const headerRange = XLSX.utils.decode_range(ws['!ref'] || "A1");
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+        const cell_address = { c: C, r: 0 };
+        const cell_ref = XLSX.utils.encode_cell(cell_address);
+        if (ws[cell_ref]) {
+            ws[cell_ref].s = headerStyle;
         }
     }
-
-    if (!dataStartCellRef) {
-        toast({ variant: 'destructive', title: 'Template Error', description: 'The template must contain the {{data_start}} placeholder.' });
-        return '';
-    }
     
-    ws[dataStartCellRef].v = ''; // Clear the placeholder
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 30 }, // Name
+      { wch: 20 }, // Group
+      { wch: 20 }, // Position
+      ...Array(displayedDays.length).fill({ wch: 10 }) // Day columns
+    ];
 
-    const groupEmployees = employees.filter(e => e.group === currentUser.group);
-    const dataToInsert = groupEmployees.map(emp => {
-        const row = [
-            `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
-            emp.group,
-            emp.position
-        ];
-        
-        displayedDays.forEach(day => {
-            const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
-            const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
-            const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-            
-            let cellValue = '';
-            if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
-                cellValue = 'HOL OFF';
-            } else if (leaveEntry) {
-                cellValue = leaveEntry.type.toUpperCase();
-            } else if (shift) {
-                if (shift.isDayOff) cellValue = 'OFF';
-                else {
-                    const shiftLabel = shift.label?.trim().toUpperCase();
-                    cellValue = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
-                }
-            }
-            row.push(cellValue);
-        });
-        return row;
-    });
+    ws['!rows'] = [{ hpt: 40 }]; // Header row height
 
-    XLSX.utils.sheet_add_aoa(ws, dataToInsert, { origin: dataStartCoords, cellStyles: true });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance Sheet");
 
-    const newWb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(newWb, ws, wsName);
-    const excelBase64 = XLSX.write(newWb, { bookType: 'xlsx', type: 'base64' });
+    const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
     return excelBase64;
-}
+  }
 
 const handleDownload = async () => {
     const excelBase64 = await generateAttendanceSheetExcel();
@@ -882,10 +854,6 @@ const handleDownload = async () => {
                                 <Download className="mr-2 h-4 w-4" />
                                 <span>Download Attendance Sheet</span>
                              </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => isClient && setIsTemplateUploaderOpen(true)} disabled={viewMode !== 'week'}>
-                                <Upload className="mr-2 h-4 w-4" />
-                                <span>Upload Attendance Template</span>
-                             </DropdownMenuItem>
                              <DropdownMenuItem onClick={() => isClient && setIsEmailDialogOpen(true)} disabled={viewMode !== 'week'}>
                                 <Mail className="mr-2 h-4 w-4" />
                                 <span>Email Attendance Sheet</span>
@@ -1026,11 +994,6 @@ const handleDownload = async () => {
             fileName={`${currentUser.group} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`}
         />
       )}
-       <AttendanceTemplateUploader
-            isOpen={isTemplateUploaderOpen}
-            setIsOpen={setIsTemplateUploaderOpen}
-            onTemplateUpload={setAttendanceTemplate}
-        />
     </Card>
   );
 }

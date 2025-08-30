@@ -77,7 +77,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
-            {"Upload an .xlsx file. The system will look for a `{{data_start}}` placeholder to know where to insert the schedule data. Other placeholders like `{{group}}`, `{{week_of}}`, `{{month}}`, and `{{day_1}}`, `{{day_2}}`, etc. can be used to populate header info."}
+            {"Upload an .xlsx file. The system will look for a `{{data_start}}` placeholder in cell A1 (or where your data should start) to know where to insert the schedule data. Other placeholders like `{{group}}` and `{{week_of}}` can be used anywhere to populate header info."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
