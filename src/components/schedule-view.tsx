@@ -17,7 +17,7 @@ import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
-import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
@@ -26,7 +26,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/t
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import * as XLSX from 'xlsx-js-style';
 import { sendEmail } from '@/app/actions';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 
@@ -558,6 +558,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
     return XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
   };
+
 
 
   const handleDownloadAttendanceSheet = () => {
