@@ -1048,28 +1048,37 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         setIsOpen={setIsTemplateImporterOpen}
         onImport={handleImportTemplates}
       />
-      <EmailDialog
-        isOpen={isEmailDialogOpen}
-        setIsOpen={setIsEmailDialogOpen}
-        subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
-        htmlBody={getAttendanceSheetHTML()}
-        smtpSettings={smtpSettings}
-      />
+      {isEmailDialogOpen && (
+        <EmailDialog
+            isOpen={isEmailDialogOpen}
+            setIsOpen={setIsEmailDialogOpen}
+            subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
+            getHtmlBody={getAttendanceSheetHTML}
+            smtpSettings={smtpSettings}
+        />
+      )}
     </Card>
   );
 }
 
 
-function EmailDialog({ isOpen, setIsOpen, subject, htmlBody, smtpSettings }: {
+function EmailDialog({ isOpen, setIsOpen, subject, getHtmlBody, smtpSettings }: {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     subject: string;
-    htmlBody: string;
+    getHtmlBody: () => string;
     smtpSettings: SmtpSettings;
 }) {
     const [to, setTo] = useState('');
     const [isSending, startTransition] = useTransition();
     const { toast } = useToast();
+    const [htmlBody, setHtmlBody] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setHtmlBody(getHtmlBody());
+        }
+    }, [isOpen, getHtmlBody]);
 
     const handleSend = async () => {
         if (!to) {

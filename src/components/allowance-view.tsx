@@ -610,7 +610,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                         <TableCell>{currency}{limit.toFixed(2)}</TableCell>
                         <TableCell>{excess > 0 ? `${currency}${excess.toFixed(2)}` : ''}</TableCell>
                         <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
-                            {willReceive !== undefined ? (willReceive ? 'Yes' : 'No') : ''}
+                            {willReceive !== undefined ? 'Yes' : 'No'}
                         </TableCell>
                         </TableRow>
                     );
@@ -622,15 +622,17 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         </Card>
     </div>
     
-    <EmailDialog
-        isOpen={isEmailDialogOpen}
-        setIsOpen={setIsEmailDialogOpen}
-        subject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
-        smtpSettings={smtpSettings}
-        membersInGroup={membersInGroup}
-        getEmployeeAllowance={getEmployeeAllowance}
-        currency={currency}
-    />
+    {isEmailDialogOpen && (
+        <EmailDialog
+            isOpen={isEmailDialogOpen}
+            setIsOpen={setIsEmailDialogOpen}
+            subject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
+            smtpSettings={smtpSettings}
+            membersInGroup={membersInGroup}
+            getEmployeeAllowance={getEmployeeAllowance}
+            currency={currency}
+        />
+    )}
 
     <Dialog open={isBalanceEditorOpen} onOpenChange={setIsBalanceEditorOpen}>
         <DialogContent>
