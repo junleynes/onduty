@@ -84,8 +84,14 @@ export default function OndutyView({ employees, shifts, currentUser }: OndutyVie
   const groupOrder = Object.keys(groupedActiveShifts).sort();
 
   return (
-    <div className="space-y-6">
-       <div className="flex items-center justify-end">
+    <div className="space-y-4">
+        <div className="flex justify-between items-start">
+            <div>
+                <h2 className="text-2xl font-bold tracking-tight">Who's On Duty?</h2>
+                <p className="text-muted-foreground">
+                    Team members currently on shift as of {currentTime.toLocaleTimeString()}.
+                </p>
+            </div>
             <Button asChild variant="outline">
                 <Link href="/onduty" target="_blank">
                     <ExternalLink className="mr-2 h-4 w-4" />
@@ -93,65 +99,65 @@ export default function OndutyView({ employees, shifts, currentUser }: OndutyVie
                 </Link>
             </Button>
         </div>
-      {groupOrder.length > 0 ? (
-        groupOrder.map(groupName => (
-          <Card key={groupName}>
+       
+      <div className="space-y-6">
+        {groupOrder.length > 0 ? (
+            groupOrder.map(groupName => (
+            <Card key={groupName}>
+                <CardHeader>
+                <CardTitle>{groupName}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {groupedActiveShifts[groupName].map(({ employee, shift }) => (
+                    <Card key={employee.id} className="shadow-md">
+                        <CardContent className="p-4 flex flex-col gap-4">
+                        <div className="flex items-center gap-4">
+                            <Avatar className="h-16 w-16 border-2 border-primary">
+                            <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                            <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xl">
+                                {getInitials(getFullName(employee))}
+                            </AvatarFallback>
+                            </Avatar>
+                            <div>
+                            <p className="font-bold text-lg">{getFullName(employee)}</p>
+                            <p className="text-muted-foreground">{employee.position}</p>
+                            </div>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" /> 
+                            <span>{shift.startTime} - {shift.endTime} ({shift.label})</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-muted-foreground" /> 
+                            <a href={`mailto:${employee.email}`} className="text-primary hover:underline">{employee.email}</a>
+                            </div>
+                            <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-muted-foreground" /> 
+                            <a href={`tel:${employee.phone}`} className="hover:underline">{employee.phone}</a>
+                            </div>
+                        </div>
+                        </CardContent>
+                    </Card>
+                    ))}
+                </div>
+                </CardContent>
+            </Card>
+            ))
+        ) : (
+            <Card>
             <CardHeader>
-              <CardTitle>{groupName} On Duty</CardTitle>
-              <CardDescription>
-                Team members currently on shift as of {currentTime.toLocaleTimeString()}.
-              </CardDescription>
+                <CardTitle>No One On Duty</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {groupedActiveShifts[groupName].map(({ employee, shift }) => (
-                  <Card key={employee.id} className="shadow-md">
-                    <CardContent className="p-4 flex flex-col gap-4">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-16 w-16 border-2 border-primary">
-                          <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
-                          <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xl">
-                            {getInitials(getFullName(employee))}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-bold text-lg">{getFullName(employee)}</p>
-                          <p className="text-muted-foreground">{employee.position}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" /> 
-                          <span>{shift.startTime} - {shift.endTime} ({shift.label})</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" /> 
-                          <a href={`mailto:${employee.email}`} className="text-primary hover:underline">{employee.email}</a>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-muted-foreground" /> 
-                          <a href={`tel:${employee.phone}`} className="hover:underline">{employee.phone}</a>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                <p className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                    There are currently no team members on a published shift.
+                </p>
             </CardContent>
-          </Card>
-        ))
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>No One On Duty</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                There are currently no team members on a published shift.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+            </Card>
+        )}
+       </div>
     </div>
   );
 }
