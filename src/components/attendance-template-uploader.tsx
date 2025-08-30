@@ -16,6 +16,7 @@ import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 type AttendanceTemplateUploaderProps = {
   isOpen: boolean;
@@ -50,7 +51,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
                 throw new Error("Failed to read file data.");
             }
             // Store the raw binary string
-            localStorage.setItem('attendanceSheetTemplate', JSON.stringify(data));
+            localStorage.setItem('attendanceSheetTemplate', data);
             onTemplateUpload(data);
             toast({ title: 'Template Uploaded', description: 'The new attendance sheet template has been saved.' });
             setIsOpen(false);
@@ -77,9 +78,24 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
-            {"Upload an .xlsx file. The system will look for a `{{data_start}}` placeholder in cell A1 (or where your data should start) to know where to insert the schedule data. Other placeholders like `{{group}}` and `{{week_of}}` can be used anywhere to populate header info."}
+            Upload your formatted .xlsx file. The system will find and replace placeholders to fill in the data.
           </DialogDescription>
         </DialogHeader>
+        <Alert>
+            <AlertTitle>Available Placeholders</AlertTitle>
+            <AlertDescription>
+                <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
+                    <li>`{`{{group}}`}` - The name of the group for the report.</li>
+                    <li>`{`{{week_of}}`}` - The date range of the week.</li>
+                    <li>`{`{{day_1}}`}`...`{`{{day_7}}`}` - The day number for each day of the week.</li>
+                    <li>`{`{{employee_1}}`}`, `{`{{position_1}}`}` - Info for the first employee.</li>
+                    <li>`{`{{employee_2}}`}`, `{`{{position_2}}`}` - Info for the second employee, etc.</li>
+                     <li>`{`{{schedule_1_1}}`}`...`{`{{schedule_1_7}}`}` - Schedule codes for employee 1.</li>
+                     <li>`{`{{schedule_2_1}}`}`...`{`{{schedule_2_7}}`}` - Schedule codes for employee 2, etc.</li>
+                </ul>
+            </AlertDescription>
+        </Alert>
+
         <div className="grid gap-4 py-4">
             <Label htmlFor="template-file">XLSX Template File</Label>
             <Input id="template-file" type="file" onChange={handleFileChange} accept=".xlsx" />
