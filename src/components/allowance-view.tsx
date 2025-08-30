@@ -124,7 +124,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
   const [editableStartDay, setEditableStartDay] = useState<number>(() => getInitialState('editableStartDay', 15));
   const [editableEndDay, setEditableEndDay] = useState<number>(() => getInitialState('editableEndDay', 20));
-  const [currency, setCurrency] = useState<string>(() => getInitialState('globalCurrency', '$'));
+  const [currency, setCurrency] = useState<string>(() => getInitialState('globalCurrency', '₱'));
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
