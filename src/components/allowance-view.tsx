@@ -92,7 +92,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         const balance = getEmployeeBalance(employee.id);
         const limit = allocation * (loadLimitPercentage / 100);
         const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
-        const willReceive = balance !== undefined ? balance <= allocation : true;
+        const willReceive = balance !== undefined ? balance <= limit : true;
         
         return {
             "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
@@ -197,15 +197,16 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
               const limit = allocation * (loadLimitPercentage / 100);
               const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
               const willReceive = balance !== undefined ? balance <= limit : true;
+              
+              // Member can edit their own, Manager can edit their own.
+              const canEdit = employee.id === currentUser.id;
 
               return (
                 <TableRow key={employee.id}>
                   <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
                   <TableCell>{allocation.toFixed(2)}</TableCell>
                   <TableCell>
-                    {isManager ? (
-                        <span>{balance !== undefined ? balance.toFixed(2) : 'N/A'}</span>
-                    ) : (
+                    {canEdit ? (
                          <Input
                             type="number"
                             step="0.01"
@@ -214,6 +215,8 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                             className="w-32"
                             placeholder="Enter balance"
                          />
+                    ) : (
+                        <span>{balance !== undefined ? balance.toFixed(2) : 'N/A'}</span>
                     )}
                   </TableCell>
                   <TableCell>{limit.toFixed(2)}</TableCell>
