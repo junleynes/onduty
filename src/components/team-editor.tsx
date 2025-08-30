@@ -43,6 +43,7 @@ const employeeSchema = z.object({
   birthDate: z.date().optional().nullable(),
   startDate: z.date().optional().nullable(),
   position: z.string().optional(),
+  department: z.string().optional(),
   role: z.custom<UserRole>().optional(),
   group: z.string().optional(),
   avatar: z.string().optional(),
@@ -102,6 +103,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             birthDate: undefined,
             startDate: undefined,
             position: '',
+            department: '',
             role: 'member',
             group: '',
             avatar: '',
@@ -268,28 +270,43 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                     />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <FormField
-                        control={form.control}
-                        name="group"
-                        render={({ field }) => (
+                        <FormField
+                            control={form.control}
+                            name="department"
+                            render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Group</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormLabel>Department</FormLabel>
                                 <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a group" />
-                                    </SelectTrigger>
+                                <Input {...field} />
                                 </FormControl>
-                                <SelectContent>
-                                    {groups.map(group => (
-                                        <SelectItem key={group} value={group}>{group}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
+                                <FormMessage />
                             </FormItem>
-                        )}
+                            )}
                         />
+                         <FormField
+                            control={form.control}
+                            name="group"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Group</FormLabel>
+                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a group" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {groups.map(group => (
+                                            <SelectItem key={group} value={group}>{group}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                             control={form.control}
                             name="role"
@@ -542,5 +559,3 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     </Dialog>
   );
 }
-
-    

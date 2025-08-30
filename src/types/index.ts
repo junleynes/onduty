@@ -21,6 +21,7 @@ export type Employee = {
   startDate?: Date;
   position: string;
   role: UserRole;
+  department?: string;
   group?: string;
   avatar?: string;
   signature?: string;

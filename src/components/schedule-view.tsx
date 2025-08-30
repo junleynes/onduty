@@ -227,7 +227,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     } else {
         const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
-        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')} was added.` });
+        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')}} was added.` });
         toast({ title: "Time Off Added" });
     }
     setIsLeaveEditorOpen(false);
@@ -409,82 +409,94 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       });
       return '';
     }
-
-    if (!currentUser?.group) {
+  
+    if (!currentUser?.department || !currentUser.group) {
         toast({
             variant: 'destructive',
-            title: 'No Group Assigned',
-            description: 'You must be assigned to a group to generate a report.',
+            title: 'Missing User Info',
+            description: 'Your profile must have a Department and Group assigned to generate reports.',
         });
         return '';
     }
-
+  
+    const reportDepartment = currentUser.department;
     const reportGroup = currentUser.group;
     const groupEmployees = employees.filter(e => e.group === reportGroup);
+  
+    const data: any[][] = [
+      [{ v: reportDepartment, s: { font: { bold: true }, alignment: { horizontal: 'center' } } }, '', '', {v: format(dateRange.from, 'MMMM').toUpperCase(), s: { font: { bold: true }, alignment: { horizontal: 'center' } } }],
+      [],
+      [{ v: reportGroup, s: { font: { bold: true }, alignment: { horizontal: 'center' } } }],
+      [],
+      ['', '', '', ...displayedDays.map(d => ({ v: format(d, 'd'), s: { font: { bold: true }, alignment: { horizontal: 'center' } } }))],
+      ['', '', '', ...displayedDays.map(d => ({ v: format(d, 'E').charAt(0), s: { font: { bold: true }, alignment: { horizontal: 'center' } } }))]
+    ];
 
-    const data: (string | number)[][] = [];
+    const legend: any[][] = [
+        [{ v: 'Legend:', s: { font: { bold: true } } }],
+        ['SKE', { v: 'Schedule', s: { fill: { fgColor: { rgb: "FFFF00" } } } }],
+        ['OFF', { v: 'Rest Day', s: { fill: { fgColor: { rgb: "BDE4F5" } } } }],
+        ['HOL OFF', { v: 'Holiday / Rest Day', s: { font: { color: { rgb: "FF0000" } }, fill: { fgColor: { rgb: "BDE4F5" } } } }],
+        ['OB', 'Official Business'], ['SL', 'Sick Leave'], ['VL', 'Vacation Leave'],
+        ['OTHERS:', {v: 'see attached file for supporting documents', s: { font: { italic: true } }}],
+        ['BL', 'Bereavement Leave'], ['EL', 'Emergency Leave'], ['ML', 'Maternity Leave'], ['PL', 'Paternity Leave'], ['SPL', 'Solo Parent Leave']
+    ];
 
-    // Header Rows
-    const monthName = format(dateRange.from, 'MMMM').toUpperCase();
-    const headerRow1 = ['POST PRODUCTION', 'Section/Unit', 'Designation', monthName];
-    data.push(headerRow1);
-
-    const headerRow2 = ['', '', ''];
-    data.push(headerRow2);
-    
-    data.push([`TECHNICAL AND MEDIA SERVER SUPPORT DIVISION`]); // Row 3
-    
-    data.push([]); // Row 4 is empty
-    
-    const dateNumberHeader = ['', '', '', ...displayedDays.map(d => format(d, 'd'))];
-    const dayNameHeader = ['', '', '', ...displayedDays.map(d => format(d, 'E').charAt(0))];
-    data.push(dateNumberHeader);
-    data.push(dayNameHeader);
-
-    // Employee Data Rows
+    legend.forEach((row, rIdx) => {
+        if (!data[rIdx]) data[rIdx] = [];
+        row.forEach((cell, cIdx) => {
+            data[rIdx][11 + cIdx] = cell; // Place legend in columns L onwards
+        });
+    });
+  
+    const allBorders = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+  
     groupEmployees.forEach(emp => {
       const empName = `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase();
       const row = [
-        empName,
-        emp.group,
-        emp.position,
+        { v: empName, s: { border: allBorders } },
+        { v: emp.group, s: { border: allBorders } },
+        { v: emp.position, s: { border: allBorders } },
       ];
       displayedDays.forEach(day => {
         const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
         const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
         const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-
-        if (shift?.isHolidayOff) {
-            row.push('HOL OFF');
-        } else if (holiday && (!shift || shift.isDayOff)) {
-          row.push('HOL OFF');
+  
+        let cell: any = { v: '', s: { border: allBorders, alignment: { horizontal: 'center' } } };
+  
+        if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+          cell = { v: 'HOL OFF', s: { ...cell.s, font: { color: { rgb: 'FF0000' } }, fill: { fgColor: { rgb: "BDE4F5" } } } };
         } else if (leaveEntry) {
-          row.push(leaveEntry.type.toUpperCase());
+          cell.v = leaveEntry.type.toUpperCase();
         } else if (shift) {
           if (shift.isDayOff) {
-            row.push('OFF');
+            cell = { v: 'OFF', s: { ...cell.s, fill: { fgColor: { rgb: "BDE4F5" } } } };
           } else {
-            row.push('SKE'); 
+            cell = { v: 'SKE', s: { ...cell.s, fill: { fgColor: { rgb: "FFFF00" } } } };
           }
-        } else {
-          row.push('');
         }
+        row.push(cell);
       });
       data.push(row);
     });
-    
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    
-    const merges = [
-        { s: { r: 0, c: 3 }, e: { r: 0, c: 9 } } 
+  
+    const ws = XLSX.utils.aoa_to_sheet(data, { cellStyles: true });
+  
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, // POST PRODUCTION
+      { s: { r: 0, c: 3 }, e: { r: 0, c: 9 } },  // Month Name
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } }  // GROUP NAME
     ];
-    ws['!merges'] = merges;
-
+    
+    ws['!cols'] = [ { wch: 30 }, { wch: 20 }, { wch: 20 }, ...Array(7).fill({ wch: 5 }) ];
+    ws['!rows'] = Array(data.length).fill({ hpt: 20 });
+  
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
-
+  
     return XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-  }
+  };
 
   const handleDownloadAttendanceSheet = () => {
     const excelBase64 = generateAttendanceSheetExcel();
@@ -1014,7 +1026,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     
     const htmlBody = `<p>Please find the attendance sheet attached.</p>`;
 
-    const handleSend = async () => {
+    const handleSend = () => {
         if (!to) {
             toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
             return;

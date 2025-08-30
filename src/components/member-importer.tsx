@@ -74,23 +74,29 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
             
             const loadAllocationValue = parseFloat(row['Load Allocation']);
             
-            const showInAppValue = (row['Show in App'] || 'true').toLowerCase();
+            const visibility = {
+                schedule: (row['Show in Schedule'] || 'true').toLowerCase() === 'true',
+                onDuty: (row['Show in On Duty'] || 'true').toLowerCase() === 'true',
+                orgChart: (row['Show in Org Chart'] || 'true').toLowerCase() === 'true',
+                mobileLoad: (row['Show in Mobile Load'] || 'true').toLowerCase() === 'true',
+            };
 
             return {
               firstName: row['First Name'] || '',
               lastName: row['Last Name'] || '',
               middleInitial: row['M.I.'] || '',
               position: row['Position'] || '',
+              department: row['Department'] || '',
               birthDate: parseDate(row['Birth Date']),
               startDate: parseDate(row['Start Date']),
-              group: row['Group'] || row['Department'] || '',
+              group: row['Group'] || '',
               email: row['Email'] || '',
               phone: row['Phone'] || '',
               employeeNumber: row['Employee Number'] || '',
               password: row['Password'] || 'password', // Default password if not provided
               role: ['admin', 'manager', 'member'].includes(role) ? role : 'member',
               loadAllocation: !isNaN(loadAllocationValue) ? loadAllocationValue : 0,
-              showInApp: showInAppValue === 'true' || showInAppValue === '1',
+              visibility: visibility,
             };
           });
 
@@ -118,7 +124,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
         <DialogHeader>
           <DialogTitle>Import Members from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Phone, Employee Number, Password, Role, Load Allocation, Show in App.
+            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other headers are M.I., Position, Department, Group, Phone, etc.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
