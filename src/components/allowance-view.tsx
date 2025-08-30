@@ -259,7 +259,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
     ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 30 }];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Allowance Report");
+    XLSX.utils.book_append_sheet(wb, ws, "Report");
 
     const groupName = currentUser?.group || 'Team';
     const fileName = `${groupName} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`;
