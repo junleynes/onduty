@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
@@ -108,7 +107,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   }, [currentDate, viewMode]);
   
   const displayedDays = useMemo(() => {
-    if (dateRange?.from && dateRange?.to) {
+    if (dateRange?.from && dateRange.to) {
       return eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
     }
     return [];
@@ -404,85 +403,127 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
 
-  const generateAttendanceSheetExcel = async (): Promise<string> => {
-      if (viewMode !== 'week') {
-          toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
-          return '';
-      }
-      if (!attendanceTemplate) {
-          toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
-          return '';
-      }
+    const generateExcelFromTemplate = async (): Promise<string> => {
+        if (viewMode !== 'week') {
+            toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
+            return '';
+        }
+        if (!attendanceTemplate) {
+            toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
+            return '';
+        }
 
-      try {
-          const wb = XLSX.read(attendanceTemplate, { type: 'binary', cellStyles: true });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          if (!ws) throw new Error("Template worksheet not found.");
+        try {
+            const wb = XLSX.read(attendanceTemplate, { type: 'binary', cellStyles: true });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            if (!ws) throw new Error("Template worksheet not found.");
 
-          const groupEmployees = employees.filter(e => e.group === currentUser.group);
-          const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:Z100');
-          let dataStartRow = -1;
+            const groupEmployees = employees.filter(e => e.group === currentUser.group);
+            const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:Z100');
 
-          // --- 1. Find and replace placeholders & find data_start row ---
-          for (let R = range.s.r; R <= range.e.r; ++R) {
-              for (let C = range.s.c; C <= range.e.c; ++C) {
-                  const cellAddress = { c: C, r: R };
-                  const cellRef = XLSX.utils.encode_cell(cellAddress);
-                  const cell = ws[cellRef];
+            // --- 1. Find and replace simple placeholders ---
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cellAddress = { c: C, r: R };
+                    const cellRef = XLSX.utils.encode_cell(cellAddress);
+                    const cell = ws[cellRef];
 
-                  if (cell && typeof cell.v === 'string') {
-                      let cellValue = cell.v;
-                      if (cellValue.includes('{{data_start}}')) {
-                          dataStartRow = R;
-                          cell.v = ''; // Clear the placeholder
-                      }
-                      for (let i = 0; i < 7; i++) {
-                          if (cellValue.includes(`{{day_${i + 1}}}`)) {
-                              cell.v = cellValue.replace(`{{day_${i + 1}}}`, format(displayedDays[i], 'd'));
-                          }
-                      }
-                  }
-              }
-          }
+                    if (cell && typeof cell.v === 'string') {
+                        let cellValue = cell.v;
+                        if (cellValue.includes('{{group}}')) cell.v = cellValue.replace(/{{group}}/g, currentUser.group || '');
+                        if (cellValue.includes('{{month}}')) cell.v = cellValue.replace(/{{month}}/g, format(currentDate, 'MMMM yyyy'));
+                        if (cellValue.includes('{{week_of}}')) {
+                             const weekString = `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'd, yyyy')}`;
+                             cell.v = cellValue.replace(/{{week_of}}/g, weekString);
+                        }
 
-          if (dataStartRow === -1) {
-              throw new Error("Could not find '{{data_start}}' placeholder in the template.");
-          }
-          
-           // --- 2. Generate data array ---
-          const reportData = groupEmployees.map(emp => {
-              const scheduleCodes = displayedDays.map(day => {
-                  const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
-                  const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
-                  const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-                  
-                  if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) return 'HOL OFF';
-                  if (leaveEntry) return leaveEntry.type.toUpperCase();
-                  if (shift?.isDayOff) return 'OFF';
-                  if (shift) {
-                      const shiftLabel = shift.label?.trim().toUpperCase();
-                      return (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
-                  }
-                  return ''; // Blank if no shift/leave
-              });
-              return [`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(), emp.position, ...scheduleCodes];
-          });
-          
-          // --- 3. Inject data into the sheet ---
-          XLSX.utils.sheet_add_aoa(ws, reportData, { origin: `A${dataStartRow + 1}` });
+                        for (let i = 0; i < 7; i++) {
+                            const dayPlaceholder = new RegExp(`{{day_${i + 1}}}`, 'g');
+                            if (cellValue.match(dayPlaceholder)) {
+                                cell.v = cellValue.replace(dayPlaceholder, format(displayedDays[i], 'd'));
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // --- 2. Find and replace all schedule data placeholders ---
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+                 // Find which employee maps to this row, if any
+                let employeeIndex = -1;
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell = ws[XLSX.utils.encode_cell({c: C, r: R})];
+                    if (cell && typeof cell.v === 'string') {
+                        const match = cell.v.match(/^{{employee_(\d+)}}/);
+                        if (match && match[1]) {
+                            employeeIndex = parseInt(match[1], 10) - 1;
+                            break; 
+                        }
+                    }
+                }
 
-          const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-          return excelBase64;
-      } catch (error) {
-          console.error("Error generating Excel from template:", error);
-          toast({ variant: 'destructive', title: 'Template Error', description: (error as Error).message });
-          return '';
-      }
-  };
+                if (employeeIndex > -1 && employeeIndex < groupEmployees.length) {
+                    const emp = groupEmployees[employeeIndex];
+
+                    // Replace placeholders in this row
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                         const cellAddress = { c: C, r: R };
+                         const cellRef = XLSX.utils.encode_cell(cellAddress);
+                         const cell = ws[cellRef];
+                         
+                         if(cell && typeof cell.v === 'string') {
+                            let val = cell.v;
+                            if (val.includes(`{{employee_${employeeIndex + 1}}}`)) cell.v = val.replace(`{{employee_${employeeIndex + 1}}}`, `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase());
+                            if (val.includes(`{{position_${employeeIndex + 1}}}`)) cell.v = val.replace(`{{position_${employeeIndex + 1}}}`, emp.position || '');
+                            
+                             for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+                                 const day = displayedDays[dayIndex];
+                                 const schedulePlaceholder = `{{schedule_${employeeIndex + 1}_${dayIndex + 1}}}`;
+                                 if(val.includes(schedulePlaceholder)) {
+                                    const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
+                                    const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
+                                    const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+
+                                    let scheduleCode = '';
+                                    if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) scheduleCode = 'HOL OFF';
+                                    else if (leaveEntry) scheduleCode = leaveEntry.type.toUpperCase();
+                                    else if (shift?.isDayOff) scheduleCode = 'OFF';
+                                    else if (shift) {
+                                        const shiftLabel = shift.label?.trim().toUpperCase();
+                                        scheduleCode = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
+                                    }
+                                    cell.v = val.replace(schedulePlaceholder, scheduleCode);
+                                 }
+                            }
+                         }
+                    }
+                }
+            }
+
+
+            // --- 3. Clean up unused placeholder rows ---
+             for (let R = range.s.r; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell = ws[XLSX.utils.encode_cell({c: C, r: R})];
+                    if (cell && typeof cell.v === 'string' && /^{{.*}}$/.test(cell.v)) {
+                        cell.v = ''; // Clear any remaining placeholders
+                    }
+                }
+            }
+
+
+            const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+            return excelBase64;
+        } catch (error) {
+            console.error("Error generating Excel from template:", error);
+            toast({ variant: 'destructive', title: 'Template Error', description: (error as Error).message });
+            return '';
+        }
+    };
 
 
   const handleDownload = async () => {
-    const excelBase64 = await generateAttendanceSheetExcel();
+    const excelBase64 = await generateExcelFromTemplate();
     if (!excelBase64) return;
 
     const groupName = currentUser?.group || 'Team';
@@ -992,7 +1033,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             setIsOpen={setIsEmailDialogOpen}
             subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
             smtpSettings={smtpSettings}
-            generateExcelData={generateAttendanceSheetExcel}
+            generateExcelData={generateExcelFromTemplate}
             fileName={`${currentUser.group} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`}
         />
       )}
@@ -1076,3 +1117,5 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         </Dialog>
     );
 }
+
+    
