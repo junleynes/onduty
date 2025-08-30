@@ -23,7 +23,7 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { sendEmail } from '@/app/actions';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Label } from './ui/label';
@@ -227,7 +227,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     } else {
         const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
-        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')} was added.` });
+        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')}` was added.` });
         toast({ title: "Time Off Added" });
     }
     setIsLeaveEditorOpen(false);
@@ -400,8 +400,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
 
-  const getAttendanceSheetHTML = () => {
-     if (viewMode !== 'week') {
+  const generateAttendanceSheetExcel = (): string => {
+    if (viewMode !== 'week') {
       toast({
         variant: 'destructive',
         title: 'Invalid View',
@@ -417,88 +417,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             description: 'You must be assigned to a group to generate a report.',
         });
         return '';
-    }
-
-    const reportGroup = currentUser.group;
-    const groupEmployees = employees.filter(e => e.group === reportGroup);
-
-    const monthName = format(dateRange.from, 'MMMM').toUpperCase();
-    
-    let tableHTML = `<table style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 12px;">`;
-    tableHTML += `
-        <thead>
-            <tr><th colspan="${3 + displayedDays.length}" style="text-align: left;">POST PRODUCTION</th></tr>
-            <tr>
-                <th style="border: 1px solid #ddd; padding: 8px;">Section/Unit</th>
-                <th style="border: 1px solid #ddd; padding: 8px;">Designation</th>
-                <th style="border: 1px solid #ddd; padding: 8px;">${monthName}</th>
-                ${displayedDays.map(() => `<th style="border: 1px solid #ddd; padding: 8px;"></th>`).join('')}
-            </tr>
-            <tr><th colspan="${3 + displayedDays.length}" style="text-align: left;">TECHNICAL AND MEDIA SERVER SUPPORT DIVISION</th></tr>
-            <tr>${[...Array(3 + displayedDays.length)].map(() => '<th></th>').join('')}</tr>
-             <tr>
-                <th style="border: 1px solid #ddd; padding: 8px;"></th>
-                <th style="border: 1px solid #ddd; padding: 8px;"></th>
-                <th style="border: 1px solid #ddd; padding: 8px;"></th>
-                ${displayedDays.map(d => `<th style="border: 1px solid #ddd; padding: 8px;">${format(d, 'd')}</th>`).join('')}
-            </tr>
-             <tr>
-                <th style="border: 1px solid #ddd; padding: 8px;"></th>
-                <th style="border: 1px solid #ddd; padding: 8px;"></th>
-                <th style="border: 1px solid #ddd; padding: 8px;"></th>
-                ${displayedDays.map(d => `<th style="border: 1px solid #ddd; padding: 8px;">${format(d, 'E').charAt(0)}</th>`).join('')}
-            </tr>
-        </thead>
-        <tbody>
-    `;
-
-    groupEmployees.forEach(emp => {
-      tableHTML += `<tr>
-        <td style="border: 1px solid #ddd; padding: 8px;">${`${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase()}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">${emp.group}</td>
-        <td style="border: 1px solid #ddd; padding: 8px;">${emp.position}</td>`;
-
-      displayedDays.forEach(day => {
-        const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
-        const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
-        const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-        let cellValue = '';
-
-        if (shift?.isHolidayOff) {
-            cellValue = 'HOL OFF';
-        } else if (holiday && (!shift || shift.isDayOff)) {
-            cellValue = 'HOL OFF';
-        } else if (leaveEntry) {
-            cellValue = leaveEntry.type.toUpperCase();
-        } else if (shift) {
-            cellValue = shift.isDayOff ? 'OFF' : 'SKE';
-        }
-        tableHTML += `<td style="border: 1px solid #ddd; padding: 8px;">${cellValue}</td>`;
-      });
-      tableHTML += `</tr>`;
-    });
-
-    tableHTML += '</tbody></table>';
-    return tableHTML;
-  }
-
-  const handleDownloadAttendanceSheet = () => {
-    if (viewMode !== 'week') {
-      toast({
-        variant: 'destructive',
-        title: 'Invalid View',
-        description: 'Attendance Sheet can only be generated from the week view.',
-      });
-      return;
-    }
-
-    if (!currentUser?.group) {
-        toast({
-            variant: 'destructive',
-            title: 'No Group Assigned',
-            description: 'You must be assigned to a group to generate a report.',
-        });
-        return;
     }
 
     const reportGroup = currentUser.group;
@@ -538,7 +456,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
         if (shift?.isHolidayOff) {
             row.push('HOL OFF');
-        } else if (holiday && (!shift || shift.isDayOff)) { // Holiday counts if they are not working
+        } else if (holiday && (!shift || shift.isDayOff)) {
           row.push('HOL OFF');
         } else if (leaveEntry) {
           row.push(leaveEntry.type.toUpperCase());
@@ -549,7 +467,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             row.push('SKE'); 
           }
         } else {
-          row.push(''); // No shift or leave
+          row.push('');
         }
       });
       data.push(row);
@@ -558,17 +476,29 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const ws = XLSX.utils.aoa_to_sheet(data);
     
     const merges = [
-        // Merge D1 to J1 for the month name
         { s: { r: 0, c: 3 }, e: { r: 0, c: 9 } } 
     ];
     ws['!merges'] = merges;
 
-    
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sheet');
 
-    // Trigger download
-    XLSX.writeFile(wb, `${reportGroup} Attendance Sheet.xlsx`);
+    return XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+  }
+
+  const handleDownloadAttendanceSheet = () => {
+    const excelBase64 = generateAttendanceSheetExcel();
+    if (!excelBase64) return;
+
+    const reportGroup = currentUser.group || 'Team';
+    const fileName = `${reportGroup} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`;
+    
+    const link = document.createElement('a');
+    link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
     toast({ title: "Report Downloaded", description: `The attendance sheet for ${reportGroup} has been generated.` });
   };
@@ -1060,8 +990,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             isOpen={isEmailDialogOpen}
             setIsOpen={setIsEmailDialogOpen}
             subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
-            getHtmlBody={getAttendanceSheetHTML}
             smtpSettings={smtpSettings}
+            generateExcelData={generateAttendanceSheetExcel}
+            fileName={`${currentUser.group} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`}
         />
       )}
     </Card>
@@ -1069,35 +1000,40 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 }
 
 
-function EmailDialog({ isOpen, setIsOpen, subject, getHtmlBody, smtpSettings }: {
+function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelData, fileName }: {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     subject: string;
-    getHtmlBody: () => string;
     smtpSettings: SmtpSettings;
+    generateExcelData: () => string;
+    fileName: string;
 }) {
     const [to, setTo] = useState('');
     const [isSending, startTransition] = useTransition();
     const { toast } = useToast();
-    const [htmlBody, setHtmlBody] = useState('');
-
-    useEffect(() => {
-        if (isOpen) {
-            setHtmlBody(getHtmlBody());
-        }
-    }, [isOpen, getHtmlBody]);
+    
+    const htmlBody = `<p>Please find the attendance sheet attached.</p>`;
 
     const handleSend = async () => {
         if (!to) {
             toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
             return;
         }
-        if (!htmlBody) {
-             toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
-             return;
-        }
+        
         startTransition(async () => {
-            const result = await sendEmail({ to, subject, htmlBody }, smtpSettings);
+            const excelData = generateExcelData();
+            if (!excelData) {
+                 toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
+                 return;
+            }
+
+            const attachments = [{
+                filename: fileName,
+                content: excelData,
+                contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            }];
+
+            const result = await sendEmail({ to, subject, htmlBody, attachments }, smtpSettings);
             if (result.success) {
                 toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
                 setIsOpen(false);
@@ -1112,7 +1048,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, getHtmlBody, smtpSettings }: 
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Send Report via Email</DialogTitle>
-                    <DialogDescription>Enter the recipient's email address below.</DialogDescription>
+                    <DialogDescription>The attendance sheet will be sent as an Excel attachment.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -1124,8 +1060,8 @@ function EmailDialog({ isOpen, setIsOpen, subject, getHtmlBody, smtpSettings }: 
                         <Input value={subject} readOnly disabled />
                     </div>
                     <div className="space-y-2">
-                        <Label>Preview</Label>
-                        <div className="h-48 overflow-y-auto rounded-md border p-2" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                        <Label>Body</Label>
+                         <div className="h-24 rounded-md border p-2 text-sm" dangerouslySetInnerHTML={{ __html: htmlBody }} />
                     </div>
                 </div>
                 <DialogFooter>

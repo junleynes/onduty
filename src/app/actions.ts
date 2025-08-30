@@ -1,10 +1,17 @@
+
 'use server';
 
 import type { SmtpSettings } from '@/types';
 import nodemailer from 'nodemailer';
 
+type Attachment = {
+    filename: string;
+    content: string; // base64 encoded content
+    contentType: string;
+}
+
 export async function sendEmail(
-    { to, subject, htmlBody }: { to: string, subject: string, htmlBody: string },
+    { to, subject, htmlBody, attachments }: { to: string, subject: string, htmlBody: string, attachments?: Attachment[] },
     smtpSettings: SmtpSettings
 ) {
     if (!smtpSettings?.host || !smtpSettings?.port || !smtpSettings?.fromEmail || !smtpSettings?.fromName) {
@@ -28,6 +35,12 @@ export async function sendEmail(
             to,
             subject,
             html: htmlBody,
+            attachments: attachments?.map(att => ({
+                filename: att.filename,
+                content: att.content,
+                encoding: 'base64',
+                contentType: att.contentType,
+            }))
         });
         return { success: true };
     } catch (error) {

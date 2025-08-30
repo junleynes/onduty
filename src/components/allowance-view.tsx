@@ -366,7 +366,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
       setIsSettingsOpen(false);
   }
 
-  const handleDownloadReport = () => {
+  const generateExcelData = (): string => {
     const today = new Date();
     const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
 
@@ -384,10 +384,9 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
 
     const ws = XLSX.utils.json_to_sheet(dataForReport, {
       header: ["Recipient", "Load Allocation", balanceHeader],
-      skipHeader: true, // We will add a styled header manually
+      skipHeader: true,
     });
 
-    // Manually add the styled header
     XLSX.utils.sheet_add_aoa(ws, [
         [
             {v: "Recipient", t: "s", s: { fill: { fgColor: { rgb: "ADD8E6" } } } },
@@ -396,19 +395,28 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         ]
     ], { origin: "A1" });
     
-    // Add the data starting from the second row
     XLSX.utils.sheet_add_json(ws, dataForReport, { origin: "A2", skipHeader: true });
 
-    // Set column widths
     ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 30 }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Report");
 
+    const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+    return excelBase64;
+  }
+
+  const handleDownloadReport = () => {
+    const excelBase64 = generateExcelData();
     const groupName = currentUser?.group || 'Team';
     const fileName = `${groupName} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`;
 
-    XLSX.writeFile(wb, fileName);
+    const link = document.createElement('a');
+    link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
     toast({ title: 'Report Downloaded', description: 'The allowance report has been saved as an Excel file.' });
   };
@@ -633,9 +641,8 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
             setIsOpen={setIsEmailDialogOpen}
             subject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
             smtpSettings={smtpSettings}
-            membersInGroup={membersInGroup}
-            getEmployeeAllowance={getEmployeeAllowance}
-            currency={currency}
+            generateExcelData={generateExcelData}
+            fileName={`${currentUser.group} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`}
         />
     )}
 
@@ -723,73 +730,50 @@ type EmailDialogProps = {
     setIsOpen: (isOpen: boolean) => void;
     subject: string;
     smtpSettings: SmtpSettings;
-    membersInGroup: Employee[];
-    getEmployeeAllowance: (employeeId: string) => CommunicationAllowance | undefined;
-    currency: string;
+    generateExcelData: () => string;
+    fileName: string;
 };
 
 function EmailDialog({ 
     isOpen, 
     setIsOpen, 
     subject, 
-    smtpSettings, 
-    membersInGroup, 
-    getEmployeeAllowance, 
-    currency 
+    smtpSettings,
+    generateExcelData,
+    fileName,
 }: EmailDialogProps) {
     const [to, setTo] = useState('');
     const [isSending, startTransition] = useTransition();
     const { toast } = useToast();
     
-    const [htmlBody, setHtmlBody] = useState('');
-
-    useEffect(() => {
-        if (isOpen) {
-             const generateReportHTML = () => {
-                const today = new Date();
-                const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
-
-                let tableHTML = `<table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Recipient</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Load Allocation</th>
-                            <th style="border: 1px solid #ddd; padding: 8px; background-color: #FFFF00;">${balanceHeader}</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-                
-                membersInGroup.forEach(employee => {
-                    const allocation = employee.loadAllocation || 0;
-                    const allowance = getEmployeeAllowance(employee.id);
-                    const balance = allowance?.balance;
-                    
-                    tableHTML += `<tr>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${currency}${allocation.toFixed(2)}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">${balance !== undefined && balance !== null ? `${currency}${balance.toFixed(2)}` : 'N/A'}</td>
-                    </tr>`;
-                });
-
-                tableHTML += '</tbody></table>';
-                return tableHTML;
-            }
-            setHtmlBody(generateReportHTML());
-        }
-    }, [isOpen, membersInGroup, getEmployeeAllowance, currency]);
+    const htmlBody = `<p>Please find the report attached.</p>`;
 
     const handleSend = async () => {
         if (!to) {
             toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
             return;
         }
+
         startTransition(async () => {
-            const result = await sendEmail({ to, subject, htmlBody }, smtpSettings);
-            if (result.success) {
-                toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
-                setIsOpen(false);
-            } else {
-                toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
+            try {
+                const excelData = generateExcelData();
+
+                const attachments = [{
+                    filename: fileName,
+                    content: excelData,
+                    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                }];
+
+                const result = await sendEmail({ to, subject, htmlBody, attachments }, smtpSettings);
+
+                if (result.success) {
+                    toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
+                    setIsOpen(false);
+                } else {
+                    toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
+                }
+            } catch(e: any) {
+                toast({ variant: 'destructive', title: 'Failed to generate report', description: e.message });
             }
         });
     };
@@ -799,7 +783,7 @@ function EmailDialog({
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Send Report via Email</DialogTitle>
-                    <DialogDescription>Enter the recipient's email address below.</DialogDescription>
+                    <DialogDescription>The report will be sent as an Excel attachment.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -811,8 +795,8 @@ function EmailDialog({
                         <Input value={subject} readOnly disabled />
                     </div>
                     <div className="space-y-2">
-                        <Label>Preview</Label>
-                        <div className="h-48 overflow-y-auto rounded-md border p-2" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                        <Label>Body</Label>
+                        <div className="h-24 rounded-md border p-2 text-sm" dangerouslySetInnerHTML={{ __html: htmlBody }} />
                     </div>
                 </div>
                 <DialogFooter>
