@@ -1,5 +1,4 @@
 
-
 'use client';
 import { 
     CalendarDays, 
@@ -51,11 +50,10 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
     }],
     manager: [
         {
-            label: 'General',
+            label: 'Overview',
             items: [
                 { view: 'my-schedule', label: 'My Schedule', icon: Calendar, iconColor: 'bg-blue-500' },
                 { view: 'my-tasks', label: 'My Shift Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
-                { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
         {
@@ -64,6 +62,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
                 { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
+                { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
         {
@@ -78,11 +77,10 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
     ],
     member: [
          {
-            label: 'General',
+            label: 'Overview',
             items: [
                 { view: 'my-schedule', label: 'My Schedule', icon: Calendar, iconColor: 'bg-blue-500' },
                 { view: 'my-tasks', label: 'My Shift Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
-                { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
         {
@@ -91,6 +89,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
                  { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
+                 { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
         {
