@@ -79,7 +79,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
             Upload an .xlsx file. The system will look for the following placeholders to replace:
-             `{{department}}`, `{{group}}`, `{{week_of}}`, `{{month}}`, `{{day_1}}` to `{{day_7}}`, and `{{data_start}}`.
+             '{{department}}', '{{group}}', '{{week_of}}', '{{month}}', '{{day_1}}' to '{{day_7}}', and '{{data_start}}'.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
