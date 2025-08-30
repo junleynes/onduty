@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth } from 'date-fns';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Employee, Shift, Leave, Notification, Note, Holiday, Task } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -726,44 +726,50 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   )
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-       <header className="flex flex-col md:flex-row items-center justify-between gap-4 p-4 border-b">
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={'outline'}
-                className={cn('w-full md:w-[260px] justify-start text-left font-normal text-sm')}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  formatRange(dateRange.from, dateRange.to)
-                ) : (
-                  <span>Pick a date</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="single"
-                selected={currentDate}
-                onSelect={(date) => date && setCurrentDate(date)}
-              />
-            </PopoverContent>
-          </Popover>
-          <div className="flex items-center gap-1 rounded-md border bg-card p-1">
-            <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
-            <Button variant="ghost" size="icon" onClick={() => navigateDate('next')}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+    <Card className="flex flex-col h-full">
+      <CardHeader>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+                <CardTitle>Schedule</CardTitle>
+                <CardDescription>Drag and drop shifts, manage time off, and publish the schedule for your team.</CardDescription>
+            </div>
+            <div className="flex items-center gap-4 w-full md:w-auto">
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={'outline'}
+                        className={cn('w-full md:w-[260px] justify-start text-left font-normal text-sm')}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (
+                        formatRange(dateRange.from, dateRange.to)
+                        ) : (
+                        <span>Pick a date</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="single"
+                        selected={currentDate}
+                        onSelect={(date) => date && setCurrentDate(date)}
+                    />
+                    </PopoverContent>
+                </Popover>
+                <div className="flex items-center gap-1 rounded-md border bg-card p-1">
+                    <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')}>
+                    <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
+                    <Button variant="ghost" size="icon" onClick={() => navigateDate('next')}>
+                    <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-center">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end mt-4">
            <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
             <SelectTrigger className="w-full md:w-[120px]">
               <SelectValue placeholder="View" />
@@ -866,9 +872,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             </>
           )}
         </div>
-      </header>
+      </CardHeader>
     
-      <div className="flex-1 overflow-auto p-4">
+      <CardContent className="flex-1 p-0 overflow-auto">
         <div className="relative h-full overflow-auto shadow-md rounded-lg">
             {viewMode === 'month' ? (
                 <div className="space-y-4">
@@ -888,7 +894,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 </div>
             )}
         </div>
-      </div>
+      </CardContent>
 
       <ShiftEditor
         isOpen={isShiftEditorOpen}
@@ -929,9 +935,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         setIsOpen={setIsTemplateImporterOpen}
         onImport={handleImportTemplates}
       />
-    </div>
+    </Card>
   );
 
     
+
 
 
