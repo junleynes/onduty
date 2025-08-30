@@ -45,9 +45,9 @@ export const getInitialState = <T>(key: string, defaultValue: T): T => {
         const item = window.localStorage.getItem(key);
         // A more robust date reviver that handles UTC dates correctly
         const dateReviver = (k: string, v: any) => {
-            if (['date', 'birthDate', 'startDate', 'timestamp'].includes(k) && typeof v === 'string') {
+            if (['date', 'birthDate', 'startDate', 'timestamp', 'completedAt', 'dueDate', 'asOfDate'].includes(k) && typeof v === 'string') {
                 // Regex to check for ISO 8601 date format (YYYY-MM-DDTHH:mm:ss.sssZ)
-                const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z$/;
+                const isoDateRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?$/;
                 if (isoDateRegex.test(v)) {
                     const date = new Date(v);
                     if (!isNaN(date.getTime())) {
@@ -64,3 +64,39 @@ export const getInitialState = <T>(key: string, defaultValue: T): T => {
     }
 };
 
+const normalizeName = (name: string): string => {
+  if (!name) return '';
+  return name.trim().toLowerCase().replace(/,/g, '').replace(/\s+/g, ' ');
+};
+
+export const findEmployeeByName = (name: string, allEmployees: Employee[]): Employee | null => {
+  if (!name || typeof name !== 'string') return null;
+
+  const normalizedInput = normalizeName(name);
+
+  // Exact match first
+  for (const emp of allEmployees) {
+    const fullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
+    const fullNameWithMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''} ${emp.lastName}`);
+    if (fullName === normalizedInput || fullNameWithMI === normalizedInput) {
+      return emp;
+    }
+  }
+
+  // Handle "Lastname, Firstname M.I. Suffix"
+  if (name.includes(',')) {
+    const parts = name.split(',').map(p => p.trim());
+    const lastNamePart = normalizeName(parts[0]);
+    const firstNamePart = normalizeName(parts[1] || '');
+
+    for (const emp of allEmployees) {
+      const normalizedEmpLastName = normalizeName(emp.lastName);
+      const normalizedEmpFirstName = normalizeName(emp.firstName);
+      if (normalizedEmpLastName === lastNamePart && firstNamePart.startsWith(normalizedEmpFirstName)) {
+        return emp;
+      }
+    }
+  }
+
+  return null;
+};

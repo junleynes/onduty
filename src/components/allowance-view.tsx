@@ -9,13 +9,14 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance } from '@/types';
 import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as XLSX from 'xlsx-js-style';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DatePicker } from './ui/date-picker';
 import { Separator } from './ui/separator';
+import { AllowanceImporter, type ImportedAllowance } from './allowance-importer';
 
 const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentage, currency }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date, loadLimitPercentage: number, currency: string }) => {
     const currentYear = currentDate.getFullYear();
@@ -129,6 +130,7 @@ const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentag
 
 type AllowanceViewProps = {
   employees: Employee[];
+  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
   allowances: CommunicationAllowance[];
   setAllowances: React.Dispatch<React.SetStateAction<CommunicationAllowance[]>>;
   currentUser: Employee | null;
@@ -139,7 +141,7 @@ type SortConfig = {
     direction: 'asc' | 'desc';
 }
 
-export default function AllowanceView({ employees, allowances, setAllowances, currentUser }: AllowanceViewProps) {
+export default function AllowanceView({ employees, setEmployees, allowances, setAllowances, currentUser }: AllowanceViewProps) {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
@@ -150,6 +152,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isBalanceEditorOpen, setIsBalanceEditorOpen] = useState(false);
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'lastName', direction: 'asc' });
   
@@ -265,6 +268,50 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
     setEditingAllowance(null);
   };
   
+  const handleImport = (importedData: ImportedAllowance[]) => {
+    // 1. Update employee allocations
+    setEmployees(prevEmployees => {
+      return prevEmployees.map(emp => {
+        const importedEmp = importedData.find(d => d.employeeId === emp.id);
+        if (importedEmp) {
+          return { ...emp, loadAllocation: importedEmp.loadAllocation };
+        }
+        return emp;
+      });
+    });
+
+    // 2. Update allowances for the current month
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    setAllowances(prevAllowances => {
+      const updatedAllowances = [...prevAllowances];
+      importedData.forEach(item => {
+        const existingIndex = updatedAllowances.findIndex(a => 
+          a.employeeId === item.employeeId && a.year === year && a.month === month
+        );
+        
+        const newEntry: CommunicationAllowance = {
+          id: `ca-${item.employeeId}-${year}-${month}`,
+          employeeId: item.employeeId,
+          year,
+          month,
+          balance: item.balance,
+          asOfDate: new Date(),
+        };
+
+        if (existingIndex > -1) {
+          updatedAllowances[existingIndex] = { ...updatedAllowances[existingIndex], ...newEntry };
+        } else {
+          updatedAllowances.push(newEntry);
+        }
+      });
+      return updatedAllowances;
+    });
+    
+    toast({ title: "Import Successful", description: `${importedData.length} records have been updated.` });
+  };
+
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1));
@@ -422,6 +469,10 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                     </div>
                     {isManager && (
                         <div className="flex items-center gap-2">
+                             <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Import Balances
+                            </Button>
                              <Button variant="outline" onClick={() => setIsSummaryOpen(true)}>
                                 <FileText className="h-4 w-4 mr-2" />
                                 Show Summary
@@ -632,6 +683,13 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
             </DialogFooter>
         </DialogContent>
     </Dialog>
+    
+    <AllowanceImporter 
+        isOpen={isImporterOpen}
+        setIsOpen={setIsImporterOpen}
+        onImport={handleImport}
+        employees={employees}
+    />
     </>
   );
 }

@@ -413,7 +413,8 @@ function AppContent() {
                 />;
       case 'allowance':
         return <AllowanceView 
-                  employees={employees} 
+                  employees={employees}
+                  setEmployees={setEmployees}
                   allowances={allowances} 
                   setAllowances={setAllowances} 
                   currentUser={currentUser} 
