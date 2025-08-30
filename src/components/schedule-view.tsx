@@ -421,58 +421,87 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     }
   
     try {
-      const response = await fetch('/attendance_template.xlsx');
-      if (!response.ok) {
-        throw new Error('Template file not found.');
+      const wb = XLSX.utils.book_new();
+      const ws_data: any[][] = [];
+  
+      // Basic styling objects
+      const boldCenter = { font: { bold: true }, alignment: { horizontal: 'center' } };
+      const center = { alignment: { horizontal: 'center' } };
+      const yellowFill = { fill: { fgColor: { rgb: "FFFF00" } } };
+      const blueFill = { fill: { fgColor: { rgb: "ADD8E6" } } };
+      const lightBlueFill = { fill: { fgColor: { rgb: "DDEBF7" } } };
+      const borderAll = { 
+          top: { style: "thin" }, 
+          bottom: { style: "thin" }, 
+          left: { style: "thin" }, 
+          right: { style: "thin" } 
+      };
+  
+      // Merged Headers
+      ws_data[0] = [{v: currentUser.department.toUpperCase(), s: { ...boldCenter, ...yellowFill, ...borderAll }}];
+      ws_data[1] = [{v: "ATTENDANCE SHEET", s: { ...boldCenter, ...yellowFill, ...borderAll }}];
+      ws_data[2] = [{v: currentUser.group.toUpperCase(), s: { ...boldCenter, ...blueFill, ...borderAll }}];
+      ws_data[3] = [{v: `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`, s: { ...boldCenter, ...lightBlueFill, ...borderAll }}];
+  
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 10 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 10 } },
+      ];
+      
+      // Table Header
+      const header = ["NAME OF PERSONNEL", "SECTION/ UNIT", "DESIGNATION"];
+      displayedDays.forEach(day => header.push(format(day, 'E\ndd')));
+      header.push("COMMENTS");
+      XLSX.utils.sheet_add_aoa(ws, [header], { origin: 'A6' });
+  
+      // Style header
+      for (let c = 0; c < header.length; c++) {
+        const cellRef = XLSX.utils.encode_cell({ r: 5, c });
+        if (ws[cellRef]) ws[cellRef].s = { ...boldCenter, ...blueFill, ...borderAll, alignment: { ...boldCenter.alignment, wrapText: true } };
       }
-      const templateArrayBuffer = await response.arrayBuffer();
-      const wb = XLSX.read(templateArrayBuffer, { type: 'buffer', cellStyles: true });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-  
-      // --- Data Population ---
-      ws['A2'] = { t: 's', v: currentUser.department.toUpperCase() };
-      ws['A4'] = { t: 's', v: currentUser.group.toUpperCase() };
-      ws['D2'] = { t: 's', v: format(currentDate, 'MMMM').toUpperCase() };
-  
+      
+      // Populate data
+      let currentRow = 6;
       const groupEmployees = employees.filter(e => e.group === currentUser.group);
-      let currentRow = 7; // Start populating data from row 7
-  
-      displayedDays.forEach((day, i) => {
-        const col = 3 + i;
-        const cellRef = XLSX.utils.encode_cell({ r: 5, c: col });
-        if (!ws[cellRef]) ws[cellRef] = {};
-        ws[cellRef].v = format(day, 'd');
-      });
-  
       groupEmployees.forEach(emp => {
-        const empName = `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase();
-        ws[XLSX.utils.encode_cell({r: currentRow, c: 0})] = { v: empName, t: 's' };
-        ws[XLSX.utils.encode_cell({r: currentRow, c: 1})] = { v: emp.group, t: 's' };
-        ws[XLSX.utils.encode_cell({r: currentRow, c: 2})] = { v: emp.position, t: 's' };
-  
-        displayedDays.forEach((day, i) => {
+        const row = [
+          `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
+          emp.group,
+          emp.position
+        ];
+        
+        displayedDays.forEach(day => {
           const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
           const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
           const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
   
           let cellValue = '';
-  
-          if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
-            cellValue = 'HOL OFF';
-          } else if (leaveEntry) {
-            cellValue = leaveEntry.type.toUpperCase();
-          } else if (shift) {
-            if (shift.isDayOff) {
-              cellValue = 'OFF';
-            } else {
-              cellValue = shift.label || 'SKE';
-            }
-          }
-          ws[XLSX.utils.encode_cell({r: currentRow, c: 3 + i})] = { v: cellValue, t: 's' };
+          if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) cellValue = 'HOL OFF';
+          else if (leaveEntry) cellValue = leaveEntry.type.toUpperCase();
+          else if (shift) cellValue = shift.isDayOff ? 'OFF' : (shift.label || 'SKE');
+          row.push(cellValue);
         });
+        row.push(''); // Comments column
+        XLSX.utils.sheet_add_aoa(ws, [row], { origin: `A${currentRow + 1}` });
+        
+        // Style row
+        for(let c=0; c<row.length; c++) {
+             const cellRef = XLSX.utils.encode_cell({ r: currentRow, c });
+             if(!ws[cellRef]) ws[cellRef] = {v: ''};
+             ws[cellRef].s = { ...center, ...borderAll };
+             if(ws[cellRef].v === 'HOL OFF') ws[cellRef].s.font = { color: { rgb: "FF0000" } };
+        }
         currentRow++;
       });
   
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 30 }, { wch: 20 }, { wch: 20 }, ...Array(7).fill({ wch: 10 }), { wch: 40 }
+      ];
+      
       const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
       return excelBase64;
   
@@ -481,7 +510,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       toast({
         variant: 'destructive',
         title: 'Generation Failed',
-        description: 'Could not generate the attendance sheet from the template.',
+        description: 'Could not generate the attendance sheet.',
       });
       return '';
     }
@@ -899,10 +928,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                          <DropdownMenuSeparator />
                          <DropdownMenuGroup>
-                             <DropdownMenuItem onClick={() => window.open('/attendance_template.xlsx', '_blank')}>
-                                <Download className="mr-2 h-4 w-4" />
-                                <span>Download Template</span>
-                             </DropdownMenuItem>
                              <DropdownMenuItem onClick={handleDownloadAttendanceSheet} disabled={viewMode !== 'week'}>
                                 <Download className="mr-2 h-4 w-4" />
                                 <span>Download Attendance Sheet</span>
