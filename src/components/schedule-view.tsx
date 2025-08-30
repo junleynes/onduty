@@ -24,7 +24,7 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx';
 import { sendEmail } from '@/app/actions';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
 import { Label } from './ui/label';
@@ -474,6 +474,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         toast({ variant: 'destructive', title: 'Template Error', description: 'The template must contain the {{data_start}} placeholder.' });
         return '';
     }
+    
+    ws[dataStartCellRef].v = ''; // Clear the placeholder
 
     const groupEmployees = employees.filter(e => e.group === currentUser.group);
     const dataToInsert = groupEmployees.map(emp => {
@@ -505,16 +507,30 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         return row;
     });
 
-    // Clear the placeholder itself
-    ws[dataStartCellRef].v = '';
-
-    XLSX.utils.sheet_add_aoa(ws, dataToInsert, { origin: dataStartCoords });
+    XLSX.utils.sheet_add_aoa(ws, dataToInsert, { origin: dataStartCoords, cellStyles: true });
 
     const newWb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(newWb, ws, wsName);
     const excelBase64 = XLSX.write(newWb, { bookType: 'xlsx', type: 'base64' });
     return excelBase64;
 }
+
+const handleDownload = async () => {
+    const excelBase64 = await generateAttendanceSheetExcel();
+    if (!excelBase64) return;
+
+    const groupName = currentUser?.group || 'Team';
+    const fileName = `${groupName} Attendance Sheet - ${format(currentDate, 'MMMM yyyy')}.xlsx`;
+
+    const link = document.createElement('a');
+    link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({ title: 'Report Downloaded', description: 'The attendance report has been saved as an Excel file.' });
+};
 
 
 
@@ -862,7 +878,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                          <DropdownMenuSeparator />
                          <DropdownMenuGroup>
-                             <DropdownMenuItem onClick={generateAttendanceSheetExcel} disabled={viewMode !== 'week'}>
+                             <DropdownMenuItem onClick={handleDownload} disabled={viewMode !== 'week'}>
                                 <Download className="mr-2 h-4 w-4" />
                                 <span>Download Attendance Sheet</span>
                              </DropdownMenuItem>
@@ -1095,3 +1111,4 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         </Dialog>
     );
 }
+
