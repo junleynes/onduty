@@ -11,7 +11,8 @@ import type { Employee, CommunicationAllowance, SmtpSettings } from '@/types';
 import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload, Send, Loader2 } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
-import * as XLSX from 'xlsx-js-style';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DatePicker } from './ui/date-picker';
@@ -366,57 +367,75 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
       setIsSettingsOpen(false);
   }
 
-  const generateExcelData = (): string => {
-    const today = new Date();
-    const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
+  const generateExcelData = async (): Promise<Buffer | null> => {
+    try {
+        const today = new Date();
+        const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
 
-    const dataForReport = membersInGroup.map(employee => {
-        const allocation = employee.loadAllocation || 0;
-        const allowance = getEmployeeAllowance(employee.id);
-        const balance = allowance?.balance;
-        
-        return {
-            "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
-            "Load Allocation": `${currency}${allocation.toFixed(2)}`,
-            [balanceHeader]: balance !== undefined && balance !== null ? `${currency}${balance.toFixed(2)}` : 'N/A',
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Report");
+
+        // Define Header Styles
+        const headerStyle: Partial<ExcelJS.Style> = {
+            font: { bold: true, color: { argb: 'FFFFFFFF' } },
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0070C0' } },
+            alignment: { vertical: 'middle', horizontal: 'center' },
+            border: {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            }
         };
-    });
 
-    const ws = XLSX.utils.json_to_sheet(dataForReport, {
-      header: ["Recipient", "Load Allocation", balanceHeader],
-      skipHeader: true,
-    });
+        const balanceHeaderStyle: Partial<ExcelJS.Style> = { ...headerStyle, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } }, font: { bold: true, color: { argb: 'FF000000' } } };
 
-    XLSX.utils.sheet_add_aoa(ws, [
-        [
-            {v: "Recipient", t: "s", s: { fill: { fgColor: { rgb: "ADD8E6" } } } },
-            {v: "Load Allocation", t: "s", s: { fill: { fgColor: { rgb: "ADD8E6" } } } },
-            {v: balanceHeader, t: "s", s: { fill: { fgColor: { rgb: "FFFF00" } } } }
-        ]
-    ], { origin: "A1" });
-    
-    XLSX.utils.sheet_add_json(ws, dataForReport, { origin: "A2", skipHeader: true });
+        worksheet.columns = [
+            { header: 'Recipient', key: 'recipient', width: 40 },
+            { header: 'Load Allocation', key: 'allocation', width: 20 },
+            { header: balanceHeader, key: 'balance', width: 30 }
+        ];
+        
+        const headerRow = worksheet.getRow(1);
+        headerRow.getCell('recipient').style = headerStyle;
+        headerRow.getCell('allocation').style = headerStyle;
+        headerRow.getCell('balance').style = balanceHeaderStyle;
 
-    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 30 }];
+        // Add Data
+        membersInGroup.forEach(employee => {
+            const allocation = employee.loadAllocation || 0;
+            const allowance = getEmployeeAllowance(employee.id);
+            const balance = allowance?.balance;
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Report");
+            worksheet.addRow({
+                recipient: `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
+                allocation: `${currency}${allocation.toFixed(2)}`,
+                balance: balance !== undefined && balance !== null ? `${currency}${balance.toFixed(2)}` : 'N/A'
+            });
+        });
 
-    const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-    return excelBase64;
-  }
+        const buffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(buffer);
+    } catch (error) {
+        console.error("Error generating Excel report:", error);
+        toast({
+            title: 'Report Generation Failed',
+            description: (error as Error).message,
+            variant: 'destructive',
+        });
+        return null;
+    }
+  };
 
-  const handleDownloadReport = () => {
-    const excelBase64 = generateExcelData();
+  const handleDownloadReport = async () => {
+    const buffer = await generateExcelData();
+    if (!buffer) return;
+
     const groupName = currentUser?.group || 'Team';
     const fileName = `${groupName} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`;
-
-    const link = document.createElement('a');
-    link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, fileName);
 
     toast({ title: 'Report Downloaded', description: 'The allowance report has been saved as an Excel file.' });
   };
@@ -731,7 +750,7 @@ type EmailDialogProps = {
     setIsOpen: (isOpen: boolean) => void;
     subject: string;
     smtpSettings: SmtpSettings;
-    generateExcelData: () => string;
+    generateExcelData: () => Promise<Buffer | null>;
     fileName: string;
 };
 
@@ -757,7 +776,12 @@ function EmailDialog({
 
         startTransition(async () => {
             try {
-                const excelData = generateExcelData();
+                const excelBuffer = await generateExcelData();
+                 if (!excelBuffer) {
+                    toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated.' });
+                    return;
+                }
+                const excelData = excelBuffer.toString('base64');
 
                 const attachments = [{
                     filename: fileName,
@@ -813,3 +837,4 @@ function EmailDialog({
 }
 
     
+
