@@ -376,7 +376,7 @@ function AppContent() {
       case 'onduty':
         return <OndutyView employees={employees} shifts={shifts} />;
        case 'org-chart':
-        return <OrgChartView employees={employees} />;
+        return <OrgChartView employees={employees} currentUser={currentUser} />;
       case 'celebrations':
         return <CelebrationsView employees={employees} />;
       case 'holidays':

@@ -156,12 +156,9 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
 
     onSave(dataToSave);
     
-    // Add new values to lists if they don't exist
-    if (values.position && !positions.includes(values.position)) {
-      // The state for positions is local and doesn't need to be bubbled up.
-      // This might be something to refactor if positions need to be managed globally.
+    if (values.group && !groups.includes(values.group)) {
+      setGroups(prev => [...prev, values.group!]);
     }
-    if (values.group && !groups.includes(values.group)) setGroups(prev => [...prev, values.group!]);
 
     setIsOpen(false);
   };
