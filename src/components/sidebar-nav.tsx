@@ -61,7 +61,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             items: [
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
-                { view: 'allowance', label: 'Allowance', icon: Smartphone, iconColor: 'bg-teal-500' },
+                { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
             ]
         },
         {
@@ -87,7 +87,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             items: [
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
-                 { view: 'allowance', label: 'Allowance', icon: Smartphone, iconColor: 'bg-teal-500' },
+                 { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
             ]
         },
         {
