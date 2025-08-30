@@ -19,7 +19,8 @@ import {
     ClipboardList,
     PlusCircle,
     Smartphone,
-    ListChecks
+    ListChecks,
+    Mail
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
@@ -46,6 +47,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
         label: 'Admin',
         items: [
             { view: 'admin', label: 'Admin Panel', icon: Shield, iconColor: 'bg-red-500' },
+            { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
         ]
     }],
     manager: [

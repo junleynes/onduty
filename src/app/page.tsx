@@ -33,10 +33,10 @@ import OndutyView from '@/components/onduty-view';
 import MyTasksView from '@/components/my-tasks-view';
 import AllowanceView from '@/components/allowance-view';
 import TaskManagerView from '@/components/task-manager-view';
-import { SmtpSettingsDialog } from '@/components/smtp-settings-dialog';
+import SmtpSettingsView from '@/components/smtp-settings-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings';
 
 
 function AppContent() {
@@ -61,7 +61,6 @@ function AppContent() {
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const [isHolidayEditorOpen, setIsHolidayEditorOpen] = useState(false);
-  const [isSmtpSettingsOpen, setIsSmtpSettingsOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
@@ -439,9 +438,10 @@ function AppContent() {
                 onBatchDelete={handleBatchDeleteMembers}
                 onImportMembers={() => setIsImporterOpen(true)}
                 onManageGroups={() => setIsGroupEditorOpen(true)}
-                onManageSmtp={() => setIsSmtpSettingsOpen(true)}
             />
         );
+      case 'smtp-settings':
+        return <SmtpSettingsView settings={smtpSettings} onSave={setSmtpSettings} />
       default:
         return (
             <Card>
@@ -511,12 +511,6 @@ function AppContent() {
         setIsOpen={setIsHolidayEditorOpen}
         holidays={holidays}
         setHolidays={setHolidays}
-    />
-    <SmtpSettingsDialog
-        isOpen={isSmtpSettingsOpen}
-        setIsOpen={setIsSmtpSettingsOpen}
-        settings={smtpSettings}
-        onSave={setSmtpSettings}
     />
     <NoteEditor
         isOpen={isNoteEditorOpen}

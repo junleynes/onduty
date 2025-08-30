@@ -6,14 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -30,52 +23,39 @@ const smtpSchema = z.object({
   fromName: z.string().min(1, 'From name is required'),
 });
 
-type SmtpSettingsDialogProps = {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+type SmtpSettingsViewProps = {
   settings: SmtpSettings;
   onSave: (settings: SmtpSettings) => void;
 };
 
-export function SmtpSettingsDialog({ isOpen, setIsOpen, settings, onSave }: SmtpSettingsDialogProps) {
+export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewProps) {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof smtpSchema>>({
     resolver: zodResolver(smtpSchema),
-    defaultValues: {
-      host: '',
-      port: 587,
-      secure: true,
-      user: '',
-      pass: '',
-      fromEmail: '',
-      fromName: '',
-    },
+    defaultValues: settings,
   });
 
   useEffect(() => {
-    if (isOpen) {
-      form.reset(settings);
-    }
-  }, [isOpen, settings, form]);
+    form.reset(settings);
+  }, [settings, form]);
 
   const onSubmit = (values: z.infer<typeof smtpSchema>) => {
     onSave(values);
-    setIsOpen(false);
     toast({ title: 'SMTP Settings Saved' });
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>SMTP Settings</DialogTitle>
-          <DialogDescription>
-            Configure your external email server for sending notifications.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-            <div className="grid grid-cols-[3fr_1fr] gap-4">
+    <Card>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardHeader>
+            <CardTitle>SMTP Settings</CardTitle>
+            <CardDescription>
+              Configure your external email server for sending notifications.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="grid grid-cols-[3fr_1fr] gap-4">
               <FormField
                 control={form.control}
                 name="host"
@@ -166,15 +146,12 @@ export function SmtpSettingsDialog({ isOpen, setIsOpen, settings, onSave }: Smtp
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">Save Changes</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          </CardContent>
+          <CardFooter>
+            <Button type="submit">Save Changes</Button>
+          </CardFooter>
+        </form>
+      </Form>
+    </Card>
   );
 }
