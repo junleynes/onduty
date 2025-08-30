@@ -217,8 +217,18 @@ function AppContent() {
   };
 
   const handleDeleteMember = (employeeId: string) => {
-    setEmployees(employees.filter(emp => emp.id !== employeeId));
-    toast({ title: 'User Removed', variant: 'destructive' });
+    // Also remove all associated data
+    setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
+    
+    const shiftsForEmployee = shifts.filter(s => s.employeeId === employeeId);
+    const shiftIdsForEmployee = new Set(shiftsForEmployee.map(s => s.id));
+
+    setShifts(prev => prev.filter(s => s.employeeId !== employeeId));
+    setLeave(prev => prev.filter(l => l.employeeId !== employeeId));
+    setTasks(prev => prev.filter(t => !shiftIdsForEmployee.has(t.shiftId)));
+    setAllowances(prev => prev.filter(a => a.employeeId !== employeeId));
+
+    toast({ title: 'User Removed', description: 'All associated shifts, tasks, and allowances have been removed.', variant: 'destructive' });
   };
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
