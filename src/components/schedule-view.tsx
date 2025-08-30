@@ -580,7 +580,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                   const trimmedValue = cell.v.trim();
                   if (placeholderMap[trimmedValue]) {
                       cell.v = placeholderMap[trimmedValue];
-                  } else if (/\{\{employee_\d+\}\}/.test(trimmedValue)) { // Corrected regex
+                  } else if (/\{\{employee_\d+\}\}/.test(trimmedValue)) {
                       employeePlaceholders.push({ placeholder: trimmedValue, r: R, c: C });
                   }
               }
@@ -594,60 +594,95 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       
       const groupEmployees = employees.filter(e => e.group === currentUser.group);
 
-      employeePlaceholders.forEach(({ placeholder, r, c }) => {
-          const match = placeholder.match(/\{\{employee_(\d+)\}\}/); // Corrected regex
-          if (!match) return;
+      for (const { placeholder, r, c } of employeePlaceholders) {
+        const match = placeholder.match(/\{\{employee_(\d+)\}\}/);
+        if (!match) continue;
 
-          const index = parseInt(match[1], 10) - 1;
-          const employee = groupEmployees[index];
-
-          if (employee) {
-              // Fill name
-              ws[XLSX.utils.encode_cell({r, c})].v = `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase();
-
-              // Fill position (assuming it's in the next column)
-              const posCellRef = XLSX.utils.encode_cell({r, c: c + 1});
-              if (ws[posCellRef] && /\{\{position_\d+\}\}/.test(String(ws[posCellRef].v).trim())) { // Corrected regex
-                  ws[posCellRef].v = employee.position;
-              }
-              
-              // Fill schedule data for the week (assuming it's in the next 7 columns)
-              displayedDays.forEach((day, dayIndex) => {
-                  const dataCellRef = XLSX.utils.encode_cell({r, c: c + 2 + dayIndex});
-                  if (!ws[dataCellRef]) { // Create cell if it doesn't exist but has formatting
-                      ws[dataCellRef] = {t: 's', v: ''};
-                  }
-
-                  const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-                  const leaveEntry = leave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
-                  const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+        const index = parseInt(match[1], 10) - 1;
+        const employee = groupEmployees[index];
         
-                  let cellValue = '';
-                   if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
-                      cellValue = 'HOL OFF';
-                  } else if (leaveEntry) {
-                      cellValue = leaveEntry.type.toUpperCase();
-                  } else if (shift) {
-                      if (shift.isDayOff) {
-                          cellValue = 'OFF';
-                      } else {
-                          const shiftLabel = shift.label?.trim().toUpperCase();
-                          cellValue = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
-                      }
-                  }
-                  ws[dataCellRef].v = cellValue;
-              });
+        let nameFilled = false;
+        if (employee) {
+            ws[XLSX.utils.encode_cell({r, c})].v = `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase();
+            nameFilled = true;
+        } else {
+             ws[XLSX.utils.encode_cell({r, c})].v = ''; // Clear name if no employee
+        }
 
-          } else {
-              // Clear the entire row if no employee for this placeholder
-              for (let colOffset = 0; colOffset < 10; colOffset++) { // Clear name, pos, 7 days, comments
-                 const cellToClearRef = XLSX.utils.encode_cell({r, c: c + colOffset});
-                 if(ws[cellToClearRef]) {
-                    ws[cellToClearRef].v = '';
+        // Iterate through the entire row to find other placeholders
+        for (let C = c + 1; C <= range.e.c; ++C) {
+            const currentCellRef = XLSX.utils.encode_cell({r, c: C});
+            const cell = ws[currentCellRef];
+            if (!cell || typeof cell.v !== 'string') continue;
+
+            const trimmedValue = cell.v.trim();
+            
+            if (trimmedValue === `{{group_${index + 1}}}`) {
+                 ws[currentCellRef].v = nameFilled ? (employee.group || '') : '';
+            } else if (trimmedValue === `{{position_${index + 1}}}`) {
+                ws[currentCellRef].v = nameFilled ? employee.position : '';
+            }
+        }
+        
+        // Fill schedule data
+        if(nameFilled) {
+             // Find the first day column by searching for 'Mon' or a similar pattern, assuming it's after name/pos/group
+            let dayStartCol = -1;
+            for(let C = 0; C <= range.e.c; ++C) {
+                 const headerCell = ws[XLSX.utils.encode_cell({r: r-1, c: C})]; // Assuming header is right above
+                 if(headerCell && typeof headerCell.v === 'string' && /mon|tue|wed|thu|fri|sat|sun/i.test(headerCell.v)){
+                     dayStartCol = C;
+                     break;
                  }
-              }
-          }
-      });
+            }
+            // A fallback if header isn't found, search for day placeholders
+            if (dayStartCol === -1) {
+                for (let C = c + 1; C <= range.e.c; ++C) {
+                    const dataCell = ws[XLSX.utils.encode_cell({r, c: C})];
+                    if (dataCell && typeof dataCell.v === 'string' && /\{\{day_\d+_data\}\}/.test(dataCell.v)) {
+                         dayStartCol = C;
+                         break;
+                    }
+                }
+            }
+
+
+            if (dayStartCol !== -1) {
+                displayedDays.forEach((day, dayIndex) => {
+                    const dataCellRef = XLSX.utils.encode_cell({r, c: dayStartCol + dayIndex});
+                    if (!ws[dataCellRef]) ws[dataCellRef] = {t: 's', v: ''};
+
+                    const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
+                    const leaveEntry = leave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
+                    const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+          
+                    let cellValue = '';
+                     if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+                        cellValue = 'HOL OFF';
+                    } else if (leaveEntry) {
+                        cellValue = leaveEntry.type.toUpperCase();
+                    } else if (shift) {
+                        if (shift.isDayOff) {
+                            cellValue = 'OFF';
+                        } else {
+                            const shiftLabel = shift.label?.trim().toUpperCase();
+                            cellValue = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
+                        }
+                    }
+                    ws[dataCellRef].v = cellValue;
+                });
+            }
+        } else {
+             // Clear the entire row if no employee
+            for(let C = c; C <= range.e.c; ++C) {
+                const cellToClearRef = XLSX.utils.encode_cell({r,c:C});
+                if(ws[cellToClearRef]) {
+                    ws[cellToClearRef].v = '';
+                }
+            }
+        }
+    }
+
 
       const newWb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(newWb, ws, wsName);
@@ -1272,6 +1307,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     
 
     
+
 
 
 

@@ -77,7 +77,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
-            {"Upload an .xlsx file. The system will look for placeholders to replace, such as '{{group}}', '{{week_of}}', and '{{month}}'. For employee data, use '{{employee_1}}', '{{position_1}}' for the first row, '{{employee_2}}' for the second, and so on."}
+            {"Upload an .xlsx file. The system will look for placeholders to replace, such as '{{group}}', '{{week_of}}', and '{{month}}'. For employee data, use '{{employee_1}}', '{{group_1}}', '{{position_1}}' for the first row, '{{employee_2}}' for the second, and so on."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
