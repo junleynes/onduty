@@ -361,14 +361,17 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                 render={({ field }) => (
                                     <FormItem>
                                     <FormLabel>Reports To</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value || ''}>
+                                    <Select
+                                        onValueChange={(value) => field.onChange(value === 'null' ? null : value)}
+                                        value={field.value ?? 'null'}
+                                    >
                                         <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select a manager" />
                                         </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                        <SelectItem value="">None</SelectItem>
+                                        <SelectItem value="null">None</SelectItem>
                                         {allEmployees
                                             .filter(e => e.role === 'manager' && e.id !== employee?.id)
                                             .map(manager => (
