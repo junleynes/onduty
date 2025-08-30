@@ -19,9 +19,10 @@ type ActiveShift = {
 type OndutyViewProps = {
   employees: Employee[];
   shifts: Shift[];
+  currentUser: Employee | null;
 };
 
-export default function OndutyView({ employees, shifts }: OndutyViewProps) {
+export default function OndutyView({ employees, shifts, currentUser }: OndutyViewProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -60,8 +61,12 @@ export default function OndutyView({ employees, shifts }: OndutyViewProps) {
     }
   });
 
+  const shiftsForView = currentUser?.group
+    ? activeShifts.filter(as => as.employee.group === currentUser.group)
+    : activeShifts;
 
-  const groupedActiveShifts = activeShifts.reduce((acc, { employee, shift }) => {
+
+  const groupedActiveShifts = shiftsForView.reduce((acc, { employee, shift }) => {
     const groupName = employee.group || 'Unassigned';
     if (!acc[groupName]) {
       acc[groupName] = [];

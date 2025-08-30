@@ -374,7 +374,7 @@ function AppContent() {
         return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
       }
       case 'onduty':
-        return <OndutyView employees={employees} shifts={shifts} />;
+        return <OndutyView employees={employees} shifts={shifts} currentUser={currentUser} />;
        case 'org-chart':
         return <OrgChartView employees={employees} currentUser={currentUser} />;
       case 'celebrations':
