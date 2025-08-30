@@ -24,7 +24,7 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { sendEmail } from '@/app/actions';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
 import { Label } from './ui/label';
@@ -243,7 +243,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     } else {
         const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
-        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')} was added.` });
+        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')}.` });
         toast({ title: "Time Off Added" });
     }
     setIsLeaveEditorOpen(false);
@@ -645,7 +645,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             
             // Update only the value
             existingCell.v = cellValue;
-            existingCell.t = 's'; // Set cell type to string
+            if (typeof cellValue === 'string') {
+              existingCell.t = 's';
+            } else if (typeof cellValue === 'number') {
+              existingCell.t = 'n';
+            } else {
+              delete existingCell.t;
+            }
             
             ws[cellRef] = existingCell;
         });
@@ -961,62 +967,15 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     <Card className="h-full flex flex-col">
        <CardHeader>
         <div className="flex flex-col md:flex-row items-start justify-between gap-4">
-            <div className='mb-4 md:mb-0'>
+            <div>
                 <CardTitle>Schedule</CardTitle>
                 <CardDescription>Drag and drop shifts, manage time off, and publish the schedule for your team.</CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        id="date"
-                        variant={'outline'}
-                        className={cn('w-full md:w-[260px] justify-start text-left font-normal text-sm')}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (
-                        formatRange(dateRange.from, dateRange.to)
-                        ) : (
-                        <span>Pick a date</span>
-                        )}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        initialFocus
-                        mode="single"
-                        selected={currentDate}
-                        onSelect={(date) => date && setCurrentDate(date)}
-                    />
-                    </PopoverContent>
-                </Popover>
-                <div className="flex items-center gap-1 rounded-md border bg-card p-1">
-                    <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')}>
-                    <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
-                    <Button variant="ghost" size="icon" onClick={() => navigateDate('next')}>
-                    <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full justify-end mt-4">
-           <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
-            <SelectTrigger className="w-full sm:w-[120px]">
-              <SelectValue placeholder="View" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Day</SelectItem>
-              <SelectItem value="week">Week</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
-            </SelectContent>
-          </Select>
-          {!isReadOnly && (
-            <>
+             {!isReadOnly && (
+            <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="w-full sm:w-auto">
+                  <Button>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add
                   </Button>
@@ -1028,7 +987,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
               </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button className="w-full sm:w-auto">
+                        <Button variant="outline">
                             Actions
                             <ChevronsUpDown className="ml-2 h-4 w-4" />
                         </Button>
@@ -1109,8 +1068,53 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
-            </>
+            </div>
           )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 w-full justify-end mt-4">
+           <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
+            <SelectTrigger className="w-full sm:w-[120px]">
+              <SelectValue placeholder="View" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="day">Day</SelectItem>
+              <SelectItem value="week">Week</SelectItem>
+              <SelectItem value="month">Month</SelectItem>
+            </SelectContent>
+          </Select>
+           <Popover>
+              <PopoverTrigger asChild>
+              <Button
+                  id="date"
+                  variant={'outline'}
+                  className={cn('w-full md:w-[260px] justify-start text-left font-normal text-sm')}
+              >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                  formatRange(dateRange.from, dateRange.to)
+                  ) : (
+                  <span>Pick a date</span>
+                  )}
+              </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                  initialFocus
+                  mode="single"
+                  selected={currentDate}
+                  onSelect={(date) => date && setCurrentDate(date)}
+              />
+              </PopoverContent>
+          </Popover>
+          <div className="flex items-center gap-1 rounded-md border bg-card p-1">
+              <Button variant="ghost" size="icon" onClick={() => navigateDate('prev')}>
+              <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
+              <Button variant="ghost" size="icon" onClick={() => navigateDate('next')}>
+              <ChevronRight className="h-4 w-4" />
+              </Button>
+          </div>
         </div>
       </CardHeader>
     
@@ -1273,5 +1277,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
 }
 
 
+
+    
 
     
