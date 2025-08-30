@@ -1,6 +1,13 @@
 
 export type UserRole = 'admin' | 'manager' | 'member';
 
+export type AppVisibility = {
+  schedule?: boolean;
+  onDuty?: boolean;
+  orgChart?: boolean;
+  mobileLoad?: boolean;
+};
+
 export type Employee = {
   id: string;
   employeeNumber?: string;
@@ -19,7 +26,7 @@ export type Employee = {
   signature?: string;
   loadAllocation?: number;
   reportsTo?: string | null;
-  showInApp?: boolean;
+  visibility?: AppVisibility;
 };
 
 export type Shift = {

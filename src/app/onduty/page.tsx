@@ -30,7 +30,7 @@ export default function OndutyPage() {
     return () => clearInterval(timer);
   }, []);
   
-  const visibleEmployees = employees.filter(e => e.showInApp !== false);
+  const visibleEmployees = employees.filter(e => e.visibility?.onDuty !== false);
   const publishedShifts = shifts.filter(s => s.status === 'published' && !s.isDayOff && !s.isHolidayOff);
   const activeShifts: ActiveShift[] = [];
 

@@ -16,13 +16,20 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import type { Employee, UserRole } from '@/types';
+import type { Employee, UserRole, AppVisibility } from '@/types';
 import { DatePicker } from './ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { getInitials, getFullName, getBackgroundColor, getInitialState } from '@/lib/utils';
 import Image from 'next/image';
 import { Checkbox } from './ui/checkbox';
+
+const visibilitySchema = z.object({
+  schedule: z.boolean().optional(),
+  onDuty: z.boolean().optional(),
+  orgChart: z.boolean().optional(),
+  mobileLoad: z.boolean().optional(),
+});
 
 const employeeSchema = z.object({
   id: z.string().optional(),
@@ -42,7 +49,7 @@ const employeeSchema = z.object({
   signature: z.string().optional(),
   loadAllocation: z.coerce.number().optional(),
   reportsTo: z.string().optional().nullable(),
-  showInApp: z.boolean().optional(),
+  visibility: visibilitySchema.optional(),
 });
 
 
@@ -77,6 +84,12 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             password: '',
             birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
             startDate: employee.startDate ? new Date(employee.startDate) : undefined,
+            visibility: {
+              schedule: employee.visibility?.schedule ?? true,
+              onDuty: employee.visibility?.onDuty ?? true,
+              orgChart: employee.visibility?.orgChart ?? true,
+              mobileLoad: employee.visibility?.mobileLoad ?? true,
+            }
         } : {
             id: undefined,
             employeeNumber: '',
@@ -95,7 +108,12 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             signature: '',
             loadAllocation: 500,
             reportsTo: null,
-            showInApp: true,
+            visibility: {
+              schedule: true,
+              onDuty: true,
+              orgChart: true,
+              mobileLoad: true,
+            },
         };
         form.reset(defaultValues);
         setAvatarPreview(employee?.avatar || null);
@@ -430,28 +448,52 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     )}
                                 />
                             </div>
-                            <FormField
-                                control={form.control}
-                                name="showInApp"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                        <FormControl>
-                                            <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>
-                                            Show in App
-                                            </FormLabel>
-                                             <FormDescription>
-                                                Uncheck to hide this user from Schedule, On Duty, Org Chart, and Mobile Load views.
-                                            </FormDescription>
-                                        </div>
-                                    </FormItem>
-                                )}
-                            />
+                            <div className="space-y-2 rounded-md border p-4">
+                                <FormLabel>App Visibility</FormLabel>
+                                <FormDescription>Control where this user is visible within the application.</FormDescription>
+                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                     <FormField
+                                        control={form.control}
+                                        name="visibility.schedule"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                <FormLabel className="font-normal">Show in Schedule</FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="visibility.onDuty"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                <FormLabel className="font-normal">Show in On Duty</FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="visibility.orgChart"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                <FormLabel className="font-normal">Show in Org Chart</FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="visibility.mobileLoad"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                <FormLabel className="font-normal">Show in Mobile Load</FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </div>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <FormItem>
                                     <FormLabel>Profile Picture</FormLabel>

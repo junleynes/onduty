@@ -56,7 +56,7 @@ type ScheduleViewProps = {
 export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, smtpSettings }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
   
-  const visibleEmployees = useMemo(() => employees.filter(e => e.showInApp !== false), [employees]);
+  const visibleEmployees = useMemo(() => employees.filter(e => e.visibility?.schedule !== false), [employees]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');

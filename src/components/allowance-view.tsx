@@ -177,7 +177,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
   }
 
   const membersInGroup = React.useMemo(() => {
-    let allMembersInGroup = employees.filter(e => e.group === currentUser.group && e.showInApp !== false);
+    let allMembersInGroup = employees.filter(e => e.group === currentUser.group && e.visibility?.mobileLoad !== false);
 
     allMembersInGroup.sort((a, b) => {
         let aValue: any;
