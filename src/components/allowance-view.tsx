@@ -118,6 +118,11 @@ type AllowanceViewProps = {
   currentUser: Employee | null;
 };
 
+type SortConfig = {
+    key: keyof Employee | 'balance' | 'excess';
+    direction: 'asc' | 'desc';
+}
+
 export default function AllowanceView({ employees, allowances, setAllowances, currentUser }: AllowanceViewProps) {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -130,7 +135,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isBalanceEditorOpen, setIsBalanceEditorOpen] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'lastName', direction: 'asc' });
   
   if (!currentUser) {
     return null;
@@ -145,12 +150,40 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   }
 
   const membersInGroup = React.useMemo(() => {
-    const allMembersInGroup = employees
-        .filter(e => e.group === currentUser.group)
-        .sort((a,b) => {
-            const compare = a.lastName.localeCompare(b.lastName);
-            return sortOrder === 'asc' ? compare : -compare;
-        });
+    let allMembersInGroup = employees.filter(e => e.group === currentUser.group);
+
+    allMembersInGroup.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        if (sortConfig.key === 'balance' || sortConfig.key === 'excess') {
+            const aAllowance = getEmployeeAllowance(a.id);
+            const bAllowance = getEmployeeAllowance(b.id);
+            
+            if (sortConfig.key === 'balance') {
+                aValue = aAllowance?.balance ?? -1;
+                bValue = bAllowance?.balance ?? -1;
+            } else { // excess
+                const aExcess = aAllowance?.balance !== undefined && aAllowance.balance !== null && aAllowance.balance > (a.loadAllocation || 0) ? aAllowance.balance - (a.loadAllocation || 0) : 0;
+                const bExcess = bAllowance?.balance !== undefined && bAllowance.balance !== null && bAllowance.balance > (b.loadAllocation || 0) ? bAllowance.balance - (b.loadAllocation || 0) : 0;
+                aValue = aExcess;
+                bValue = bExcess;
+            }
+
+        } else {
+             aValue = a[sortConfig.key as keyof Employee];
+             bValue = b[sortConfig.key as keyof Employee];
+        }
+
+
+        if (aValue < bValue) {
+            return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+            return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+    });
 
     if (isManager) {
         return allMembersInGroup;
@@ -160,7 +193,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         const allowance = getEmployeeAllowance(employee.id);
         return allowance && allowance.balance !== undefined && allowance.balance !== null;
     });
-  }, [employees, currentUser, isManager, allowances, currentDate, sortOrder]);
+  }, [employees, currentUser, isManager, allowances, currentDate, sortConfig]);
 
 
   const handleOpenBalanceEditor = (employeeId: string) => {
@@ -219,6 +252,15 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
           setEditableEndDay(value);
       }
   }
+  
+  const requestSort = (key: SortConfig['key']) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
 
   const handleSaveSettings = () => {
       if (typeof window !== 'undefined') {
@@ -277,6 +319,19 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
 
     toast({ title: 'Report Downloaded', description: 'The allowance report has been saved as an Excel file.' });
   };
+  
+  const SortableHeader = ({ tKey, children }: {tKey: SortConfig['key'], children: React.ReactNode}) => {
+    const isSorted = sortConfig.key === tKey;
+    const isAsc = sortConfig.direction === 'asc';
+    return (
+        <TableHead>
+            <Button variant="ghost" onClick={() => requestSort(tKey)}>
+                {children}
+                <ArrowUpDown className={cn("ml-2 h-4 w-4", !isSorted && "opacity-20", isSorted && isAsc && "transform rotate-180")}/>
+            </Button>
+        </TableHead>
+    )
+  }
 
 
   return (
@@ -300,9 +355,6 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                     </h2>
                     <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={!isManager && isFuture(startOfMonth(addMonths(currentDate, 1)))}>
                     <ChevronRight className="h-4 w-4" />
-                    </Button>
-                     <Button variant="outline" size="icon" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
-                        <ArrowUpDown className="h-4 w-4" />
                     </Button>
                 </div>
                 {isManager && (
@@ -390,13 +442,13 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
             <Table className="mt-4">
             <TableHeader>
                 <TableRow>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Load Allocation</TableHead>
-                <TableHead>Load Balance</TableHead>
-                <TableHead>Balance as of</TableHead>
-                <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
-                <TableHead>Excess in Allocation</TableHead>
-                <TableHead>Receives Load?</TableHead>
+                    <SortableHeader tKey="lastName">Recipient</SortableHeader>
+                    <SortableHeader tKey="loadAllocation">Load Allocation</SortableHeader>
+                    <SortableHeader tKey="balance">Load Balance</SortableHeader>
+                    <TableHead>Balance as of</TableHead>
+                    <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
+                    <SortableHeader tKey="excess">Excess in Allocation</SortableHeader>
+                    <TableHead>Receives Load?</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
