@@ -438,6 +438,10 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
   return (
     <>
     <div className="space-y-4">
+        <div className="space-y-1">
+            <h2 className="text-2xl font-bold tracking-tight">Communication Allowance</h2>
+            <p className="text-muted-foreground">Monitor monthly communication allowances for your team.</p>
+        </div>
         <Card>
             <CardHeader>
                 <CardTitle>Monthly Status</CardTitle>
@@ -464,10 +468,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Communication Allowance</CardTitle>
-            <CardDescription>
-                Monitor monthly communication allowances for your team.
-            </CardDescription>
+            <CardTitle>Allowance Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -810,3 +811,5 @@ function EmailDialog({
         </Dialog>
     );
 }
+
+    
