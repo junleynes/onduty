@@ -580,7 +580,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                   const trimmedValue = cell.v.trim();
                   if (placeholderMap[trimmedValue]) {
                       cell.v = placeholderMap[trimmedValue];
-                  } else if (/^{{employee_\d+}}$/.test(trimmedValue)) {
+                  } else if (/\{\{employee_\d+\}\}/.test(trimmedValue)) { // Corrected regex
                       employeePlaceholders.push({ placeholder: trimmedValue, r: R, c: C });
                   }
               }
@@ -595,7 +595,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       const groupEmployees = employees.filter(e => e.group === currentUser.group);
 
       employeePlaceholders.forEach(({ placeholder, r, c }) => {
-          const match = placeholder.match(/^{{employee_(\d+)}}$/);
+          const match = placeholder.match(/\{\{employee_(\d+)\}\}/); // Corrected regex
           if (!match) return;
 
           const index = parseInt(match[1], 10) - 1;
@@ -607,7 +607,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
               // Fill position (assuming it's in the next column)
               const posCellRef = XLSX.utils.encode_cell({r, c: c + 1});
-              if (ws[posCellRef] && /^{{position_\d+}}$/.test(String(ws[posCellRef].v).trim())) {
+              if (ws[posCellRef] && /\{\{position_\d+\}\}/.test(String(ws[posCellRef].v).trim())) { // Corrected regex
                   ws[posCellRef].v = employee.position;
               }
               
@@ -1272,6 +1272,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     
 
     
+
 
 
 
