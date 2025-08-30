@@ -16,12 +16,13 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from './ui/input';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Upload } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import type { Holiday } from '@/types';
 import { DatePicker } from './ui/date-picker';
 import { format } from 'date-fns';
+import { Separator } from './ui/separator';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Holiday name is required'),
@@ -33,9 +34,10 @@ type HolidayEditorProps = {
   setIsOpen: (isOpen: boolean) => void;
   holidays: Holiday[];
   setHolidays: React.Dispatch<React.SetStateAction<Holiday[]>>;
+  onImport: () => void;
 };
 
-export function HolidayEditor({ isOpen, setIsOpen, holidays, setHolidays }: HolidayEditorProps) {
+export function HolidayEditor({ isOpen, setIsOpen, holidays, setHolidays, onImport }: HolidayEditorProps) {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -113,6 +115,13 @@ export function HolidayEditor({ isOpen, setIsOpen, holidays, setHolidays }: Holi
             </Button>
           </form>
         </Form>
+        
+        <Separator />
+        
+        <Button variant="outline" className="w-full" onClick={onImport}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import from CSV
+        </Button>
         
         <div className="font-semibold mt-4">Current Holidays</div>
         <ScrollArea className="h-60 pr-6 border rounded-md">

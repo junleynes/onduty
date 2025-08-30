@@ -34,6 +34,7 @@ import MyTasksView from '@/components/my-tasks-view';
 import AllowanceView from '@/components/allowance-view';
 import TaskManagerView from '@/components/task-manager-view';
 import SmtpSettingsView from '@/components/smtp-settings-view';
+import { HolidayImporter } from '@/components/holiday-importer';
 
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings';
@@ -61,6 +62,7 @@ function AppContent() {
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const [isHolidayEditorOpen, setIsHolidayEditorOpen] = useState(false);
+  const [isHolidayImporterOpen, setIsHolidayImporterOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
@@ -314,6 +316,16 @@ function AppContent() {
       toast({ title: 'Import Successful', description: `${newEmployees.length} new members added.`})
   }
 
+  const handleImportHolidays = (newHolidays: Partial<Holiday>[]) => {
+      const holidaysWithIds: Holiday[] = newHolidays.map((holiday, index) => ({
+        ...holiday,
+        id: `hol-${Date.now()}-${index}`,
+      } as Holiday));
+
+      setHolidays(prev => [...prev, ...holidaysWithIds]);
+      toast({ title: 'Import Successful', description: `${holidaysWithIds.length} new holidays added.`})
+  }
+
   const handlePublish = () => {
     setShifts(currentShifts => 
         currentShifts.map(shift => ({...shift, status: 'published' }))
@@ -511,6 +523,12 @@ function AppContent() {
         setIsOpen={setIsHolidayEditorOpen}
         holidays={holidays}
         setHolidays={setHolidays}
+        onImport={() => setIsHolidayImporterOpen(true)}
+    />
+    <HolidayImporter
+        isOpen={isHolidayImporterOpen}
+        setIsOpen={setIsHolidayImporterOpen}
+        onImport={handleImportHolidays}
     />
     <NoteEditor
         isOpen={isNoteEditorOpen}
