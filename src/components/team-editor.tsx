@@ -17,11 +17,10 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import type { Employee, UserRole } from '@/types';
-import { employees as initialEmployees } from '@/lib/data';
 import { DatePicker } from './ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
-import { getInitials, getFullName, getBackgroundColor } from '@/lib/utils';
+import { getInitials, getFullName, getBackgroundColor, getInitialState } from '@/lib/utils';
 import Image from 'next/image';
 
 const employeeSchema = z.object({
@@ -57,44 +56,15 @@ type TeamEditorProps = {
 };
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups }: TeamEditorProps) {
-    const [positions] = useState(() => [...new Set(initialEmployees.map(e => e.position))]);
+    const [allEmployees, setAllEmployees] = useState<Employee[]>(() => getInitialState('employees', []));
+    const [positions] = useState(() => [...new Set(allEmployees.map(e => e.position))]);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
-    const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
-
-    useEffect(() => {
-        // In a real app, you'd fetch this or get it from props.
-        // For now, using the initial data and assuming it's up-to-date.
-        setAllEmployees(initialEmployees);
-    }, []);
-
-  const form = useForm<z.infer<typeof employeeSchema>>({
-    resolver: zodResolver(employeeSchema),
-    defaultValues: employee?.id ? {
-      ...employee,
-      password: '', // Don't pre-fill password for existing users
-      birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
-      startDate: employee.startDate ? new Date(employee.startDate) : undefined,
-    } : {
-      id: undefined,
-      employeeNumber: '',
-      firstName: '',
-      lastName: '',
-      middleInitial: '',
-      email: '',
-      phone: '',
-      password: '',
-      birthDate: undefined,
-      startDate: undefined,
-      position: '',
-      role: 'member',
-      group: '',
-      avatar: '',
-      signature: '',
-      loadAllocation: 500,
-      reportsTo: null,
-    }
-  });
+    
+    const form = useForm<z.infer<typeof employeeSchema>>({
+        resolver: zodResolver(employeeSchema),
+        defaultValues: {},
+    });
   
   const currentGroup = form.watch('group');
 
