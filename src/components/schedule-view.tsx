@@ -23,7 +23,8 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
-import * as XLSX from 'xlsx-js-style';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { sendEmail } from '@/app/actions';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
 import { Label } from './ui/label';
@@ -403,71 +404,62 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
 
-    const generateExcelFromTemplate = async (): Promise<string> => {
+    const generateAttendanceSheetExcel = async (): Promise<Buffer | null> => {
         if (viewMode !== 'week') {
             toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
-            return '';
+            return null;
         }
         if (!attendanceTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
-            return '';
+            return null;
         }
 
         try {
-            const wb = XLSX.read(attendanceTemplate, { type: 'binary', cellStyles: true });
-            const ws = wb.Sheets[wb.SheetNames[0]];
-            if (!ws) throw new Error("Template worksheet not found.");
-
             const groupEmployees = employees.filter(e => e.group === currentUser.group);
-            const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:Z100');
+            const workbook = new ExcelJS.Workbook();
+            
+            // The template is stored as a base64 string, so we need to decode it
+            const buffer = Buffer.from(attendanceTemplate, 'binary');
+            await workbook.xlsx.load(buffer);
+
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) throw new Error("Template worksheet not found.");
 
             let dataStartRow = -1;
-            let rowStyles: any[] = [];
-            let rowHeight;
+            let dataStartCol = -1;
+            let templateRow;
 
-
-            // --- 1. Find placeholders and data start, and read template row style ---
-            for (let R = range.s.r; R <= range.e.r; ++R) {
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                    const cellAddress = { c: C, r: R };
-                    const cellRef = XLSX.utils.encode_cell(cellAddress);
-                    const cell = ws[cellRef];
-
-                    if (cell && typeof cell.v === 'string') {
-                        let cellValue = cell.v;
-                        if (cellValue.includes('{{month}}')) cell.v = cellValue.replace(/{{month}}/g, format(currentDate, 'MMMM yyyy'));
-                        if (cellValue.includes('{{group}}')) cell.v = cellValue.replace(/{{group}}/g, currentUser.group || '');
+            // Find placeholders and data start row
+            worksheet.eachRow((row, rowNumber) => {
+                row.eachCell((cell, colNumber) => {
+                    if (cell.value && typeof cell.value === 'string') {
+                        let cellText = cell.value;
+                        if (cellText.includes('{{month}}')) cell.value = cellText.replace('{{month}}', format(currentDate, 'MMMM yyyy'));
+                        if (cellText.includes('{{group}}')) cell.value = cellText.replace('{{group}}', currentUser.group || '');
 
                         for (let i = 0; i < 7; i++) {
-                            const dayPlaceholder = new RegExp(`{{day_${i + 1}}}`, 'g');
-                            if (cellValue.match(dayPlaceholder) && displayedDays[i]) {
-                                cell.v = cellValue.replace(dayPlaceholder, String(getDate(displayedDays[i])));
+                            if (cellText.includes(`{{day_${i + 1}}}`) && displayedDays[i]) {
+                                cell.value = cellText.replace(`{{day_${i + 1}}}`, String(getDate(displayedDays[i])));
                             }
                         }
 
-                        if (cellValue.includes('{{data_start}}')) {
-                            dataStartRow = R;
-                            // Capture the style of the entire template row
-                            for(let col = range.s.c; col <= range.e.c; col++){
-                                rowStyles.push(ws[XLSX.utils.encode_cell({c: col, r: R})]?.s || {});
-                            }
-                            // Capture row height
-                            if (ws['!rows'] && ws['!rows'][R]) {
-                                rowHeight = ws['!rows'][R].hpt;
-                            }
-                            cell.v = ''; // Clear the placeholder
+                        if (cellText.includes('{{data_start}}')) {
+                            dataStartRow = rowNumber;
+                            dataStartCol = colNumber;
+                            templateRow = row;
+                            cell.value = ''; // Clear placeholder
                         }
                     }
-                }
+                });
+            });
+
+            if (dataStartRow === -1 || !templateRow) {
+                throw new Error("Could not find '{{data_start}}' placeholder in the template.");
             }
 
-            if (dataStartRow === -1) {
-                throw new Error("Could not find the '{{data_start}}' placeholder in the template.");
-            }
-
-            // --- 2. Generate data array and write it to the sheet ---
+            // Generate and insert data
             const dataToInsert = groupEmployees.map(emp => {
-                const scheduleCodes = displayedDays.map(day => {
+                 const scheduleCodes = displayedDays.map(day => {
                     const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
                     const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
                     const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
@@ -481,64 +473,54 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     return ''; // Blank if no shift/leave
                 });
 
-                return [
+                 return [
                     `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
                     ...scheduleCodes
                 ];
             });
 
-            // Write new data row by row, applying the template style
-            dataToInsert.forEach((rowData, rowIndex) => {
-                 const currentRow = dataStartRow + rowIndex;
-                 // Find the placeholder cell and start writing from its column
-                 const startCol = ws[XLSX.utils.encode_cell({r:dataStartRow, c:0})] ? 0 : 1; // Basic assumption, may need refinement
-                 
-                 rowData.forEach((cellData, colIndex) => {
-                    const currentCol = startCol + colIndex;
-                    const cellRef = XLSX.utils.encode_cell({ r: currentRow, c: currentCol });
-                    // Ensure the cell object exists before assigning properties
-                    if (!ws[cellRef]) ws[cellRef] = {};
-                    ws[cellRef].t = 's';
-                    ws[cellRef].v = cellData;
-                    ws[cellRef].s = rowStyles[colIndex] || {};
-                 });
-                 
-                 if (rowHeight) {
-                    if(!ws['!rows']) ws['!rows'] = [];
-                    ws['!rows'][currentRow] = { hpt: rowHeight };
-                 }
+            // Insert rows and apply styles
+            dataToInsert.forEach((rowData, index) => {
+                const newRow = worksheet.insertRow(dataStartRow + index, rowData);
+                
+                // Copy cell styles and row height from template row
+                newRow.height = templateRow!.height;
+                templateRow!.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    const newCell = newRow.getCell(colNumber);
+                    newCell.style = { ...cell.style };
+                });
+
+                // The first cell of templateRow had the placeholder, replace its value
+                if(index === 0) {
+                   newRow.getCell(dataStartCol).value = rowData[0];
+                }
             });
-            
-             // Update the sheet range if we added more rows than the original template had
-            const newRangeEndRow = dataStartRow + dataToInsert.length - 1;
-            if (range.e.r < newRangeEndRow) {
-                range.e.r = newRangeEndRow;
-                ws['!ref'] = XLSX.utils.encode_range(range);
+
+            // If template row was just for placeholder and should be removed
+            if (dataToInsert.length > 0) {
+                 worksheet.spliceRows(dataStartRow + dataToInsert.length, 1);
             }
 
-            const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-            return excelBase64;
+            const uint8Array = await workbook.xlsx.writeBuffer();
+            return Buffer.from(uint8Array);
+
         } catch (error) {
             console.error("Error generating Excel from template:", error);
             toast({ variant: 'destructive', title: 'Template Error', description: (error as Error).message, duration: 8000 });
-            return '';
+            return null;
         }
     };
 
 
   const handleDownload = async () => {
-    const excelBase64 = await generateExcelFromTemplate();
-    if (!excelBase64) return;
+    const buffer = await generateAttendanceSheetExcel();
+    if (!buffer) return;
 
     const groupName = currentUser?.group || 'Team';
     const fileName = `${groupName} Attendance Sheet - ${format(currentDate, 'MMMM yyyy')}.xlsx`;
-
-    const link = document.createElement('a');
-    link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${excelBase64}`;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, fileName);
 
     toast({ title: 'Report Downloaded', description: 'The attendance report has been saved as an Excel file.' });
   };
@@ -1037,7 +1019,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             setIsOpen={setIsEmailDialogOpen}
             subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
             smtpSettings={smtpSettings}
-            generateExcelData={generateExcelFromTemplate}
+            generateExcelData={generateAttendanceSheetExcel}
             fileName={`${currentUser.group} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`}
         />
       )}
@@ -1051,7 +1033,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     setIsOpen: (isOpen: boolean) => void;
     subject: string;
     smtpSettings: SmtpSettings;
-    generateExcelData: () => Promise<string>;
+    generateExcelData: () => Promise<Buffer | null>;
     fileName: string;
 }) {
     const [to, setTo] = useState('');
@@ -1067,15 +1049,15 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         }
         
         startTransition(async () => {
-            const excelData = await generateExcelData();
-            if (!excelData) {
+            const excelBuffer = await generateExcelData();
+            if (!excelBuffer) {
                  toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
                  return;
             }
 
             const attachments = [{
                 filename: fileName,
-                content: excelData,
+                content: excelBuffer.toString('base64'),
                 contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             }];
 
