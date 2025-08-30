@@ -55,6 +55,8 @@ type ScheduleViewProps = {
 
 export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, smtpSettings }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
+  
+  const visibleEmployees = useMemo(() => employees.filter(e => e.showInApp !== false), [employees]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('week');
@@ -124,13 +126,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   }, [currentDate, viewMode]);
   
   const orderedEmployees = useMemo(() => {
-    const employeeMap = new Map(employees.map(e => [e.id, e]));
-    let baseEmployees = employees;
+    const employeeMap = new Map(visibleEmployees.map(e => [e.id, e]));
+    let baseEmployees = visibleEmployees;
 
     if (viewEmployeeOrder) {
       const orderedSet = new Set(viewEmployeeOrder);
       const ordered = viewEmployeeOrder.map(id => employeeMap.get(id)).filter((e): e is Employee => !!e);
-      const unordered = employees.filter(e => !orderedSet.has(e.id));
+      const unordered = visibleEmployees.filter(e => !orderedSet.has(e.id));
       baseEmployees = [...ordered, ...unordered];
     }
       
@@ -138,7 +140,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       { id: 'unassigned', firstName: 'Unassigned Shifts', lastName: '', role: 'member', position: 'Special', avatar: '' } as Employee,
       ...baseEmployees
     ];
-  }, [employees, viewEmployeeOrder]);
+  }, [visibleEmployees, viewEmployeeOrder]);
   
 
   const handleAddShiftClick = () => {
@@ -626,7 +628,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const draggedEmployeeId = e.dataTransfer.getData('draggedEmployeeId');
     if (!draggedEmployeeId || draggedEmployeeId === targetEmployeeId) return;
 
-    const currentOrder = viewEmployeeOrder || employees.map(e => e.id);
+    const currentOrder = viewEmployeeOrder || visibleEmployees.map(e => e.id);
     const draggedIndex = currentOrder.indexOf(draggedEmployeeId);
     const targetIndex = currentOrder.indexOf(targetEmployeeId);
 

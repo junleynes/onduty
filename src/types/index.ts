@@ -19,6 +19,7 @@ export type Employee = {
   signature?: string;
   loadAllocation?: number;
   reportsTo?: string | null;
+  showInApp?: boolean;
 };
 
 export type Shift = {

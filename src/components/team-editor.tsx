@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { getInitials, getFullName, getBackgroundColor, getInitialState } from '@/lib/utils';
 import Image from 'next/image';
+import { Checkbox } from './ui/checkbox';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
@@ -41,6 +42,7 @@ const employeeSchema = z.object({
   signature: z.string().optional(),
   loadAllocation: z.coerce.number().optional(),
   reportsTo: z.string().optional().nullable(),
+  showInApp: z.boolean().optional(),
 });
 
 
@@ -93,6 +95,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             signature: '',
             loadAllocation: 500,
             reportsTo: null,
+            showInApp: true,
         };
         form.reset(defaultValues);
         setAvatarPreview(employee?.avatar || null);
@@ -427,6 +430,28 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     )}
                                 />
                             </div>
+                            <FormField
+                                control={form.control}
+                                name="showInApp"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>
+                                            Show in App
+                                            </FormLabel>
+                                             <FormDescription>
+                                                Uncheck to hide this user from Schedule, On Duty, Org Chart, and Mobile Load views.
+                                            </FormDescription>
+                                        </div>
+                                    </FormItem>
+                                )}
+                            />
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <FormItem>
                                     <FormLabel>Profile Picture</FormLabel>

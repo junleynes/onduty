@@ -73,6 +73,8 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
             }
             
             const loadAllocationValue = parseFloat(row['Load Allocation']);
+            
+            const showInAppValue = (row['Show in App'] || 'true').toLowerCase();
 
             return {
               firstName: row['First Name'] || '',
@@ -88,6 +90,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
               password: row['Password'] || 'password', // Default password if not provided
               role: ['admin', 'manager', 'member'].includes(role) ? role : 'member',
               loadAllocation: !isNaN(loadAllocationValue) ? loadAllocationValue : 0,
+              showInApp: showInAppValue === 'true' || showInAppValue === '1',
             };
           });
 
@@ -115,7 +118,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
         <DialogHeader>
           <DialogTitle>Import Members from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Phone, Employee Number, Password, Role, Load Allocation.
+            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Phone, Employee Number, Password, Role, Load Allocation, Show in App.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">

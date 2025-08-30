@@ -107,8 +107,9 @@ export default function OrgChartView({ employees, currentUser }: OrgChartViewPro
   const onMouseLeave = () => setIsDragging(false);
 
   const treesByGroup = useMemo(() => {
+    const visibleEmployees = employees.filter(e => e.showInApp !== false);
     const groupedEmployees: Record<string, Employee[]> = {};
-    employees.forEach(emp => {
+    visibleEmployees.forEach(emp => {
         if (emp.role !== 'admin') {
             const group = emp.group || 'Unassigned';
             if (!groupedEmployees[group]) {

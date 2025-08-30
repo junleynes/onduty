@@ -10,7 +10,7 @@ import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users } from 'lucide-react';
+import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
@@ -148,7 +148,10 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{getFullName(user)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{getFullName(user)}</p>
+                        {user.showInApp === false && <EyeOff className="h-4 w-4 text-muted-foreground" title="User is hidden in the app"/>}
+                      </div>
                       <p className="text-sm text-muted-foreground">{user.position}</p>
                     </div>
                   </div>

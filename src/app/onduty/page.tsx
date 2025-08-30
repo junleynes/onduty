@@ -29,7 +29,8 @@ export default function OndutyPage() {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
     return () => clearInterval(timer);
   }, []);
-
+  
+  const visibleEmployees = employees.filter(e => e.showInApp !== false);
   const publishedShifts = shifts.filter(s => s.status === 'published' && !s.isDayOff && !s.isHolidayOff);
   const activeShifts: ActiveShift[] = [];
 
@@ -54,7 +55,7 @@ export default function OndutyPage() {
     }
     
     if (currentTime >= startTime && currentTime <= endTime) {
-      const employee = employees.find(e => e.id === shift.employeeId);
+      const employee = visibleEmployees.find(e => e.id === shift.employeeId);
       if (employee) {
         activeShifts.push({ employee, shift });
       }
