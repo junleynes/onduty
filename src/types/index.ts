@@ -1,5 +1,4 @@
 
-
 export type UserRole = 'admin' | 'manager' | 'member';
 
 export type Employee = {
@@ -91,4 +90,14 @@ export type CommunicationAllowance = {
   balance: number;
   asOfDate?: Date;
   screenshot?: string; // base64 string
+};
+
+export type SmtpSettings = {
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  user?: string;
+  pass?: string;
+  fromEmail?: string;
+  fromName?: string;
 };

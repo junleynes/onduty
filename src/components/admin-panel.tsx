@@ -10,7 +10,7 @@ import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users } from 'lucide-react';
+import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
@@ -26,9 +26,10 @@ type AdminPanelProps = {
   onBatchDelete: (employeeIds: string[]) => void;
   onImportMembers: () => void;
   onManageGroups: () => void;
+  onManageSmtp: () => void;
 };
 
-export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups }: AdminPanelProps) {
+export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups, onManageSmtp }: AdminPanelProps) {
   const { toast } = useToast();
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
@@ -95,6 +96,10 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
                 </AlertDialog>
             ) : (
                 <>
+                    <Button variant="outline" onClick={onManageSmtp}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        SMTP Settings
+                    </Button>
                     <Button variant="outline" onClick={onManageGroups}>
                         <Users className="h-4 w-4 mr-2" />
                         Manage Groups

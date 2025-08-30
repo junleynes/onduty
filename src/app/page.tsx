@@ -2,11 +2,11 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance } from '@/types';
+import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes, initialHolidays, initialTasks, communicationAllowances as initialAllowance } from '@/lib/data';
+import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes, initialHolidays, initialTasks, communicationAllowances as initialAllowance, initialSmtpSettings } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
@@ -33,6 +33,7 @@ import OndutyView from '@/components/onduty-view';
 import MyTasksView from '@/components/my-tasks-view';
 import AllowanceView from '@/components/allowance-view';
 import TaskManagerView from '@/components/task-manager-view';
+import { SmtpSettingsDialog } from '@/components/smtp-settings-dialog';
 
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager';
@@ -50,6 +51,8 @@ function AppContent() {
   const [holidays, setHolidays] = useState<Holiday[]>(() => getInitialState('holidays', initialHolidays));
   const [tasks, setTasks] = useState<Task[]>(() => getInitialState('tasks', initialTasks));
   const [allowances, setAllowances] = useState<CommunicationAllowance[]>(() => getInitialState('communicationAllowances', initialAllowance));
+  const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>(() => getInitialState('smtpSettings', initialSmtpSettings));
+
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [activeView, setActiveView] = useState<NavItem>('schedule');
@@ -58,6 +61,7 @@ function AppContent() {
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const [isHolidayEditorOpen, setIsHolidayEditorOpen] = useState(false);
+  const [isSmtpSettingsOpen, setIsSmtpSettingsOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
@@ -80,6 +84,8 @@ function AppContent() {
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('holidays', JSON.stringify(holidays)); }, [holidays]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('tasks', JSON.stringify(tasks)); }, [tasks]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('communicationAllowances', JSON.stringify(allowances)); }, [allowances]);
+  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('smtpSettings', JSON.stringify(smtpSettings)); }, [smtpSettings]);
+
 
 
   useEffect(() => {
@@ -430,6 +436,7 @@ function AppContent() {
                 onBatchDelete={handleBatchDeleteMembers}
                 onImportMembers={() => setIsImporterOpen(true)}
                 onManageGroups={() => setIsGroupEditorOpen(true)}
+                onManageSmtp={() => setIsSmtpSettingsOpen(true)}
             />
         );
       default:
@@ -501,6 +508,12 @@ function AppContent() {
         setIsOpen={setIsHolidayEditorOpen}
         holidays={holidays}
         setHolidays={setHolidays}
+    />
+    <SmtpSettingsDialog
+        isOpen={isSmtpSettingsOpen}
+        setIsOpen={setIsSmtpSettingsOpen}
+        settings={smtpSettings}
+        onSave={setSmtpSettings}
     />
     <NoteEditor
         isOpen={isNoteEditorOpen}
