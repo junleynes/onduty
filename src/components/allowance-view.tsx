@@ -32,15 +32,32 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
   
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
-  const membersInGroup = isManager 
-    ? employees.filter(e => e.group === currentUser.group)
-    : employees.filter(e => e.group === currentUser.group);
+  
+  const getEmployeeAllowance = (employeeId: string): CommunicationAllowance | undefined => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    return allowances.find(a => a.employeeId === employeeId && a.year === year && a.month === month);
+  }
+
+  const membersInGroup = React.useMemo(() => {
+    const allMembersInGroup = employees.filter(e => e.group === currentUser.group);
+    if (isManager) {
+        return allMembersInGroup;
+    }
+    return allMembersInGroup.filter(employee => {
+        // Always include the current user
+        if (employee.id === currentUser.id) return true;
+        // Include other members only if they have an allowance entry for the current month
+        const allowance = getEmployeeAllowance(employee.id);
+        return allowance && allowance.balance !== undefined && allowance.balance !== null;
+    });
+  }, [employees, currentUser, isManager, getEmployeeAllowance]);
 
 
   const handleOpenBalanceEditor = (employeeId: string) => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const existingAllowance = allowances.find(a => a.employeeId === employeeId && a.year === year && a.month === month);
+    const existingAllowance = getEmployeeAllowance(employeeId);
     setEditingAllowance(existingAllowance || { employeeId, year, month });
     setIsBalanceEditorOpen(true);
   }
@@ -68,11 +85,6 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
     setEditingAllowance(null);
   };
   
-  const getEmployeeAllowance = (employeeId: string): CommunicationAllowance | undefined => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    return allowances.find(a => a.employeeId === employeeId && a.year === year && a.month === month);
-  }
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1));
