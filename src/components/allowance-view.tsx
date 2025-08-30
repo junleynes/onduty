@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DatePicker } from './ui/date-picker';
 import { Separator } from './ui/separator';
 
-const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentage }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date, loadLimitPercentage: number }) => {
+const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentage, currency }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date, loadLimitPercentage: number, currency: string }) => {
     const currentYear = currentDate.getFullYear();
     const lastYear = currentYear - 1;
 
@@ -74,8 +74,8 @@ const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentag
                             {yearlyData.map(data => (
                                 <TableRow key={data.employeeId}>
                                     <TableCell className="font-medium">{data.name}</TableCell>
-                                    <TableCell>{data.totalLoadedLastYear.toFixed(2)}</TableCell>
-                                    <TableCell>{data.totalLoadedCurrentYear.toFixed(2)}</TableCell>
+                                    <TableCell>{currency}{data.totalLoadedLastYear.toFixed(2)}</TableCell>
+                                    <TableCell>{currency}{data.totalLoadedCurrentYear.toFixed(2)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
@@ -97,11 +97,11 @@ const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentag
                         <TableBody>
                             <TableRow>
                                 <TableCell>{lastYear}</TableCell>
-                                <TableCell>{groupAllocation.toFixed(2)}</TableCell>
+                                <TableCell>{currency}{groupAllocation.toFixed(2)}</TableCell>
                             </TableRow>
                              <TableRow>
                                 <TableCell>{currentYear}</TableCell>
-                                <TableCell>{groupAllocation.toFixed(2)}</TableCell>
+                                <TableCell>{currency}{groupAllocation.toFixed(2)}</TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>
@@ -124,6 +124,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
   const [editableStartDay, setEditableStartDay] = useState<number>(() => getInitialState('editableStartDay', 15));
   const [editableEndDay, setEditableEndDay] = useState<number>(() => getInitialState('editableEndDay', 20));
+  const [currency, setCurrency] = useState<string>(() => getInitialState('globalCurrency', '$'));
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
@@ -217,6 +218,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
           localStorage.setItem('globalLoadLimit', JSON.stringify(loadLimitPercentage));
           localStorage.setItem('editableStartDay', JSON.stringify(editableStartDay));
           localStorage.setItem('editableEndDay', JSON.stringify(editableEndDay));
+          localStorage.setItem('globalCurrency', currency);
       }
       toast({ title: "Global settings updated." });
       setIsSettingsOpen(false);
@@ -233,8 +235,8 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         
         return {
             "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
-            "Load Allocation": allocation,
-            [balanceHeader]: balance !== undefined && balance !== null ? balance : 'N/A',
+            "Load Allocation": `${currency}${allocation.toFixed(2)}`,
+            [balanceHeader]: balance !== undefined && balance !== null ? `${currency}${balance.toFixed(2)}` : 'N/A',
         };
     });
 
@@ -313,7 +315,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                                 <DialogHeader>
                                 <DialogTitle>Global Settings</DialogTitle>
                                 <DialogDescription>
-                                    Set the global load limit and member editing window.
+                                    Set the global load limit, member editing window, and currency.
                                 </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
@@ -353,6 +355,18 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                                             onChange={handleEndDayChange}
                                         />
                                         </div>
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="currency" className="text-right col-span-2">
+                                        Currency Symbol
+                                        </Label>
+                                        <Input
+                                            id="currency"
+                                            type="text"
+                                            value={currency}
+                                            onChange={(e) => setCurrency(e.target.value)}
+                                            className="col-span-2"
+                                        />
                                     </div>
                                 </div>
                                 <DialogFooter>
@@ -396,10 +410,10 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                 return (
                     <TableRow key={employee.id}>
                     <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
-                    <TableCell>{allocation.toFixed(2)}</TableCell>
+                    <TableCell>{currency}{allocation.toFixed(2)}</TableCell>
                     <TableCell>
                         <div className="flex items-center gap-2">
-                            <span>{(balance !== undefined && balance !== null) ? balance.toFixed(2) : 'N/A'}</span>
+                            <span>{(balance !== undefined && balance !== null) ? `${currency}${balance.toFixed(2)}` : 'N/A'}</span>
                             {canEdit && (
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id)}>
                                     <Pencil className="h-4 w-4" />
@@ -410,8 +424,8 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                     <TableCell>
                         {allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'MMM d, yyyy') : 'N/A'}
                     </TableCell>
-                    <TableCell>{limit.toFixed(2)}</TableCell>
-                    <TableCell>{excess > 0 ? excess.toFixed(2) : ''}</TableCell>
+                    <TableCell>{currency}{limit.toFixed(2)}</TableCell>
+                    <TableCell>{excess > 0 ? `${currency}${excess.toFixed(2)}` : ''}</TableCell>
                     <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
                         {willReceive !== undefined ? (willReceive ? 'Yes' : 'No') : ''}
                     </TableCell>
@@ -485,7 +499,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[70vh] overflow-y-auto p-1">
-                 <Dashboard membersInGroup={membersInGroup} allowances={allowances} currentDate={currentDate} loadLimitPercentage={loadLimitPercentage} />
+                 <Dashboard membersInGroup={membersInGroup} allowances={allowances} currentDate={currentDate} loadLimitPercentage={loadLimitPercentage} currency={currency} />
             </div>
             <DialogFooter>
                  <Button onClick={() => setIsSummaryOpen(false)}>Close</Button>
