@@ -227,7 +227,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     } else {
         const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
-        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')}` was added.` });
+        addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')} was added.` });
         toast({ title: "Time Off Added" });
     }
     setIsLeaveEditorOpen(false);
@@ -1021,7 +1021,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         }
         
         startTransition(async () => {
-            const excelData = generateExcelData();
+            const excelData = generateAttendanceSheetExcel();
             if (!excelData) {
                  toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
                  return;
