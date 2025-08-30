@@ -131,7 +131,11 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         const balance = allowance?.balance;
         const limit = allocation * (loadLimitPercentage / 100);
         const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
-        const willReceive = balance !== undefined ? balance <= limit : true;
+        
+        let willReceiveText = '';
+        if (balance !== undefined) {
+            willReceiveText = balance <= limit ? 'Yes' : 'No';
+        }
         
         return {
             "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
@@ -140,7 +144,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
             "Balance as of": allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'yyyy-MM-dd') : 'N/A',
             "Limit": limit.toFixed(2),
             "Excess in Allocation": excess > 0 ? excess.toFixed(2) : '',
-            "Will receive load?": balance !== undefined ? (willReceive ? 'Yes' : 'No') : 'Yes'
+            "Will receive load?": willReceiveText,
         };
     });
 
@@ -264,7 +268,8 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
               const balance = allowance?.balance;
               const limit = allocation * (loadLimitPercentage / 100);
               const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
-              const willReceive = balance !== undefined ? balance <= limit : true;
+              
+              const willReceive = balance !== undefined ? balance <= limit : undefined;
               
               const isCurrentUser = employee.id === currentUser.id;
               const isCurrentMonth = isSameMonth(currentDate, new Date());
@@ -293,8 +298,8 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                   </TableCell>
                   <TableCell>{limit.toFixed(2)}</TableCell>
                   <TableCell>{excess > 0 ? excess.toFixed(2) : ''}</TableCell>
-                  <TableCell className={cn(!willReceive && 'bg-red-200 text-black font-bold')}>
-                    {balance !== undefined ? (willReceive ? 'Yes' : 'No') : 'Yes'}
+                  <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
+                    {willReceive !== undefined ? (willReceive ? 'Yes' : 'No') : ''}
                   </TableCell>
                 </TableRow>
               );
