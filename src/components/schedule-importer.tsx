@@ -22,7 +22,12 @@ import type { ShiftTemplate } from './shift-editor';
 type ScheduleImporterProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  onImport: (importedShifts: Shift[], importedLeave: Leave[], employeeOrder: string[]) => void;
+  onImport: (importedData: {
+    shifts: Shift[],
+    leave: Leave[],
+    employeeOrder: string[],
+    overwrittenCells: { employeeId: string, date: Date }[]
+  }) => void;
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
 };
@@ -116,6 +121,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
           const importedShifts: Shift[] = [];
           const importedLeave: Leave[] = [];
           const employeeOrder: string[] = [];
+          const overwrittenCells: { employeeId: string, date: Date }[] = [];
           
           const scheduleBlocks: string[][][] = [];
           let currentBlock: string[][] = [];
@@ -181,7 +187,13 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
 
                   dates.forEach(({ colIndex, date }) => {
                       const cellValue = employeeRow[colIndex]?.trim();
-                      if (!cellValue) return;
+                      if (!cellValue) {
+                          // Still mark this cell for overwrite, even if it's empty
+                          overwrittenCells.push({ employeeId: employee.id, date });
+                          return;
+                      };
+
+                      overwrittenCells.push({ employeeId: employee.id, date });
 
                       const upperCellValue = cellValue.toUpperCase();
 
@@ -266,7 +278,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
             throw new Error("No shifts or leave could be parsed from the file. Please check the file format, especially employee names and date headers.");
           }
 
-          onImport(importedShifts, importedLeave, employeeOrder);
+          onImport({ shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells });
           toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
           setIsOpen(false);
 
@@ -291,7 +303,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
         <DialogHeader>
           <DialogTitle>Import Schedule from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file. The file should have a header row starting with "Employees" followed by dates in yyyy-mm-dd format.
+            Upload a CSV file. The file should have a header row starting with "Employees" followed by dates in yyyy-mm-dd format. Existing entries for the same date and employee will be overwritten.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -309,5 +321,3 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
     </Dialog>
   );
 }
-
-

@@ -348,14 +348,35 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     toast({ title: "Template Loaded", description: "The saved template has been applied to the current week." });
   };
 
-  const handleImportedData = (importedShifts: Shift[], importedLeave: Leave[], employeeOrder: string[]) => {
-      const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
-      setShifts(prev => [...prev, ...shiftsWithStatus]);
-      setLeave(prev => [...prev, ...importedLeave]);
-      
-      const currentEmployeeIds = employees.map(e => e.id);
-      const validOrder = employeeOrder.filter(id => currentEmployeeIds.includes(id));
-      setViewEmployeeOrder(validOrder);
+  const handleImportedData = (importedData: {
+    shifts: Shift[],
+    leave: Leave[],
+    employeeOrder: string[],
+    overwrittenCells: { employeeId: string, date: Date }[]
+  }) => {
+    const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells } = importedData;
+
+    // Create a set of cells to overwrite for efficient lookup
+    const cellsToOverwrite = new Set(
+      overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
+    );
+  
+    // Filter out existing shifts and leave that are in the overwritten cells
+    const remainingShifts = shifts.filter(s => 
+        !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
+    );
+    const remainingLeave = leave.filter(l => 
+        !cellsToOverwrite.has(`${l.employeeId}-${format(new Date(l.date), 'yyyy-MM-dd')}`)
+    );
+    
+    const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
+
+    setShifts([...remainingShifts, ...shiftsWithStatus]);
+    setLeave([...remainingLeave, ...importedLeave]);
+    
+    const currentEmployeeIds = employees.map(e => e.id);
+    const validOrder = employeeOrder.filter(id => currentEmployeeIds.includes(id));
+    setViewEmployeeOrder(validOrder);
   };
   
   const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
@@ -726,14 +747,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   )
 
   return (
-    <Card className="flex flex-col h-full">
-      <CardHeader>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
+    <Card className="h-full flex flex-col">
+       <CardHeader>
+        <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+            <div className='mb-4 md:mb-0'>
                 <CardTitle>Schedule</CardTitle>
                 <CardDescription>Drag and drop shifts, manage time off, and publish the schedule for your team.</CardDescription>
             </div>
-            <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
                 <Popover>
                     <PopoverTrigger asChild>
                     <Button
@@ -769,9 +790,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 </div>
             </div>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end mt-4">
+        <div className="flex flex-wrap items-center gap-2 w-full justify-end mt-4">
            <Select value={viewMode} onValueChange={(value: ViewMode) => setViewMode(value)}>
-            <SelectTrigger className="w-full md:w-[120px]">
+            <SelectTrigger className="w-full sm:w-[120px]">
               <SelectValue placeholder="View" />
             </SelectTrigger>
             <SelectContent>
@@ -784,7 +805,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             <>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="w-full md:w-auto">
+                  <Button className="w-full sm:w-auto">
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add
                   </Button>
@@ -796,7 +817,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
               </DropdownMenu>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button className="w-full md:w-auto">
+                        <Button className="w-full sm:w-auto">
                             Actions
                             <ChevronsUpDown className="ml-2 h-4 w-4" />
                         </Button>
@@ -940,6 +961,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
 
