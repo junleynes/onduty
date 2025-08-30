@@ -1021,7 +1021,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         }
         
         startTransition(async () => {
-            const excelData = generateAttendanceSheetExcel();
+            const excelData = generateExcelData();
             if (!excelData) {
                  toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
                  return;
