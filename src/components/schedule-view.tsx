@@ -507,9 +507,22 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
 
         let cellValue = '';
-        if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) cellValue = 'HOL OFF';
-        else if (leaveEntry) cellValue = leaveEntry.type.toUpperCase();
-        else if (shift) cellValue = shift.isDayOff ? 'OFF' : (shift.label || 'SKE');
+        if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+          cellValue = 'HOL OFF';
+        } else if (leaveEntry) {
+          cellValue = leaveEntry.type.toUpperCase();
+        } else if (shift) {
+          if (shift.isDayOff) {
+            cellValue = 'OFF';
+          } else {
+            const shiftLabel = shift.label?.trim().toUpperCase();
+            if (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') {
+              cellValue = 'WFH';
+            } else {
+              cellValue = 'SKE';
+            }
+          }
+        }
         row.push(cellValue);
       });
       row.push(''); // Comments column
@@ -546,7 +559,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const ws = wb.Sheets[wsName];
 
     // Find and replace placeholders
-    const placeholderMap: { [key: string]: string } = {
+    const placeholderMap: { [key: string]: string | number } = {
         '{{department}}': currentUser.department || '',
         '{{group}}': currentUser.group || '',
         '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
@@ -596,10 +609,24 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
         const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
         const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+        
         let cellValue = '';
-        if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) cellValue = 'HOL OFF';
-        else if (leaveEntry) cellValue = leaveEntry.type.toUpperCase();
-        else if (shift) cellValue = shift.isDayOff ? 'OFF' : (shift.label || 'SKE');
+        if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+          cellValue = 'HOL OFF';
+        } else if (leaveEntry) {
+          cellValue = leaveEntry.type.toUpperCase();
+        } else if (shift) {
+          if (shift.isDayOff) {
+            cellValue = 'OFF';
+          } else {
+            const shiftLabel = shift.label?.trim().toUpperCase();
+            if (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') {
+              cellValue = 'WFH';
+            } else {
+              cellValue = 'SKE';
+            }
+          }
+        }
         row.push(cellValue);
       });
       row.push(''); // Comments column
