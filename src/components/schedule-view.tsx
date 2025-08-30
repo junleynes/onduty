@@ -26,7 +26,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/t
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import * as XLSX from 'xlsx-js-style';
 import { sendEmail } from '@/app/actions';
-import { Dialog, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 
@@ -401,168 +401,96 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
 
-  const generateAttendanceSheetExcel = (): string => {
+  const generateAttendanceSheetExcel = async (): Promise<string> => {
     if (viewMode !== 'week') {
-        toast({
-            variant: 'destructive',
-            title: 'Invalid View',
-            description: 'Attendance Sheet can only be generated from the week view.',
-        });
-        return '';
+      toast({
+        variant: 'destructive',
+        title: 'Invalid View',
+        description: 'Attendance Sheet can only be generated from the week view.',
+      });
+      return '';
     }
-
+  
     if (!currentUser?.department || !currentUser.group) {
-        toast({
-            variant: 'destructive',
-            title: 'Missing User Info',
-            description: 'Your profile must have a Department and Group assigned to generate reports.',
-        });
-        return '';
+      toast({
+        variant: 'destructive',
+        title: 'Missing User Info',
+        description: 'Your profile must have a Department and Group assigned to generate reports.',
+      });
+      return '';
     }
-
-    const reportDepartment = currentUser.department.toUpperCase();
-    const reportGroup = currentUser.group.toUpperCase();
-    const groupEmployees = employees.filter(e => e.group === currentUser.group);
-
-    const wsData: any[][] = [];
-
-    // Styles
-    const allBorders = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
-    const centerAlign = { alignment: { horizontal: 'center', vertical: 'center' } };
-    const boldFont = { font: { bold: true } };
-    const redFont = { font: { color: { rgb: "FF0000" } } };
-    const yellowFill = { fill: { fgColor: { rgb: "FFFF00" } } };
-    const blueFill = { fill: { fgColor: { rgb: "0070C0" } } };
-    const lightBlueFill = { fill: { fgColor: { rgb: "BDE4F5" } } };
-    const whiteFont = { font: { color: { rgb: "FFFFFF" } } };
-
-    // Legend Data
-    const legend = [
-        [{v: 'Legend', s: {...centerAlign, ...boldFont}}],
-        [{v: 'WFH', s: { ...centerAlign, ...allBorders, ...lightBlueFill }}, {v: 'Work From Home', s: {...allBorders}}],
-        [{v: 'SKE', s: { ...centerAlign, ...allBorders, ...lightBlueFill }}, {v: 'Skeletal Workforce at GNC', s: {...allBorders}}],
-        [{v: 'VL', s: { ...centerAlign, ...allBorders, ...lightBlueFill }}, {v: 'Vacation Leave', s: {...allBorders}}],
-        [],
-        [{v: 'SL', s: { ...centerAlign, ...allBorders, ...lightBlueFill }}, {v: 'Sick Leave', s: {...allBorders}}],
-        [{v: 'ML', s: { ...centerAlign, ...allBorders, ...lightBlueFill }}, {v: 'Maternity Leave', s: {...allBorders}}],
-        [{v: 'OFF', s: { ...centerAlign, ...allBorders, ...lightBlueFill }}, {v: 'Restday', s: {...allBorders}}],
-    ];
-
-    const others = [
-        [{v: 'OTHERS', s: { ...centerAlign, ...boldFont, ...yellowFill }}],
-        [{v: '1', s: {...centerAlign, ...allBorders, ...yellowFill}}, {v: 'advised to take leave; tried to report to work but cannot due to community quarantine', s: {...allBorders}}],
-        [{v: '2', s: {...centerAlign, ...allBorders, ...yellowFill}}, {v: 'services are currently not needed because of scaled down operations', s: {...allBorders}}],
-        [{v: '3', s: {...centerAlign, ...allBorders, ...yellowFill}}, {v: 'Ees who opted not to report to work citing "hazard" of COVID-19', s: {...allBorders}}],
-    ];
-
-    // Combine Legend and Others
-    legend.forEach((row, idx) => {
-        if (!wsData[idx]) wsData[idx] = [];
-        wsData[idx][11] = row[0];
-        wsData[idx][12] = row[1];
-    });
-
-    others.forEach((row, idx) => {
-        const targetRow = legend.length + idx;
-        if (!wsData[targetRow]) wsData[targetRow] = [];
-        wsData[targetRow][11] = row[0];
-        wsData[targetRow][12] = row[1];
-    });
-
-
-    // Main Headers
-    wsData[0] = wsData[0] || [];
-    wsData[0][0] = { v: reportDepartment, s: { ...boldFont } };
-    wsData[3] = wsData[3] || [];
-    wsData[3][0] = { v: reportGroup, s: { ...boldFont } };
-    wsData[1] = wsData[1] || [];
-    wsData[1][3] = { v: format(currentDate, 'MMMM').toUpperCase(), s: { ...centerAlign, ...boldFont } };
-
-    // Employee Table Headers
-    const employeeHeaderRow = 4;
-    wsData[employeeHeaderRow] = wsData[employeeHeaderRow] || [];
-    wsData[employeeHeaderRow][0] = { v: 'POST PRODUCTION', s: { ...centerAlign, ...boldFont, ...yellowFill, ...allBorders } };
-    wsData[employeeHeaderRow][1] = { v: 'Section/Unit', s: { ...centerAlign, ...boldFont, ...yellowFill, ...allBorders } };
-    wsData[employeeHeaderRow][2] = { v: 'Designation', s: { ...centerAlign, ...boldFont, ...yellowFill, ...allBorders } };
-    
-    wsData[employeeHeaderRow+1] = wsData[employeeHeaderRow+1] || [];
-    wsData[employeeHeaderRow+1][0] = { v: '', s: { ...blueFill, ...allBorders } };
-    wsData[employeeHeaderRow+1][1] = { v: '', s: { ...blueFill, ...allBorders } };
-    wsData[employeeHeaderRow+1][2] = { v: '', s: { ...blueFill, ...allBorders } };
-
-    displayedDays.forEach((day, i) => {
-        wsData[employeeHeaderRow][3 + i] = { v: format(day, 'd'), s: { ...centerAlign, ...boldFont, ...yellowFill, ...allBorders } };
-        wsData[employeeHeaderRow+1][3 + i] = { v: '', s: { ...blueFill, ...allBorders } };
-    });
-     wsData[employeeHeaderRow][3 + displayedDays.length] = { v: 'COMMENTS', s: { ...centerAlign, ...boldFont, ...blueFill, ...whiteFont, ...allBorders } };
-     wsData[employeeHeaderRow+1][3 + displayedDays.length] = { v: '', s: { ...blueFill, ...allBorders } };
-
-
-    // Employee Rows
-    let currentRow = employeeHeaderRow + 2;
-    groupEmployees.forEach(emp => {
-        wsData[currentRow] = [];
+  
+    try {
+      const response = await fetch('/attendance_template.xlsx');
+      if (!response.ok) {
+        throw new Error('Template file not found.');
+      }
+      const templateArrayBuffer = await response.arrayBuffer();
+      const wb = XLSX.read(templateArrayBuffer, { type: 'buffer', cellStyles: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+  
+      // --- Data Population ---
+      ws['A2'] = { t: 's', v: currentUser.department.toUpperCase() };
+      ws['A4'] = { t: 's', v: currentUser.group.toUpperCase() };
+      ws['D2'] = { t: 's', v: format(currentDate, 'MMMM').toUpperCase() };
+  
+      const groupEmployees = employees.filter(e => e.group === currentUser.group);
+      let currentRow = 7; // Start populating data from row 7
+  
+      displayedDays.forEach((day, i) => {
+        const col = 3 + i;
+        const cellRef = XLSX.utils.encode_cell({ r: 5, c: col });
+        if (!ws[cellRef]) ws[cellRef] = {};
+        ws[cellRef].v = format(day, 'd');
+      });
+  
+      groupEmployees.forEach(emp => {
         const empName = `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase();
-        wsData[currentRow][0] = { v: empName, s: { ...allBorders } };
-        wsData[currentRow][1] = { v: emp.group, s: { ...allBorders } };
-        wsData[currentRow][2] = { v: emp.position, s: { ...allBorders } };
-
+        ws[XLSX.utils.encode_cell({r: currentRow, c: 0})] = { v: empName, t: 's' };
+        ws[XLSX.utils.encode_cell({r: currentRow, c: 1})] = { v: emp.group, t: 's' };
+        ws[XLSX.utils.encode_cell({r: currentRow, c: 2})] = { v: emp.position, t: 's' };
+  
         displayedDays.forEach((day, i) => {
-            const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
-            const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
-            const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-
-            let cellValue = '';
-            let cellStyle: any = { ...centerAlign, ...allBorders };
-
-            if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
-                cellValue = 'HOL OFF';
-                cellStyle = { ...cellStyle, ...redFont };
-            } else if (leaveEntry) {
-                cellValue = leaveEntry.type.toUpperCase();
-                 if (leaveEntry.type.toUpperCase() === 'VL') {
-                    cellStyle = { ...cellStyle, ...yellowFill };
-                }
-            } else if (shift) {
-                if (shift.isDayOff) {
-                    cellValue = 'OFF';
-                     cellStyle = { ...cellStyle, ...redFont };
-                } else {
-                    cellValue = shift.label || 'SKE';
-                     if(cellValue === 'OFFSET') {
-                        cellStyle = { ...cellStyle, ...yellowFill };
-                    }
-                }
+          const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
+          const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
+          const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+  
+          let cellValue = '';
+  
+          if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+            cellValue = 'HOL OFF';
+          } else if (leaveEntry) {
+            cellValue = leaveEntry.type.toUpperCase();
+          } else if (shift) {
+            if (shift.isDayOff) {
+              cellValue = 'OFF';
+            } else {
+              cellValue = shift.label || 'SKE';
             }
-            wsData[currentRow][3 + i] = { v: cellValue, s: cellStyle };
+          }
+          ws[XLSX.utils.encode_cell({r: currentRow, c: 3 + i})] = { v: cellValue, t: 's' };
         });
-        wsData[currentRow][3+displayedDays.length] = { v: '', s: { ...allBorders, ...lightBlueFill } };
         currentRow++;
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(wsData, { cellStyles: true });
-
-    ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 2, c: 2 } }, // Dept
-        { s: { r: 3, c: 0 }, e: { r: 3, c: 10 } }, // Group
-        { s: { r: 1, c: 3 }, e: { r: 1, c: 9 } },  // Month
-    ];
-    
-    ws['!cols'] = [
-        { wch: 25 }, { wch: 20 }, { wch: 20 }, ...Array(7).fill({ wch: 8 }), {wch: 20},
-        {wch: 5}, {wch: 15}, {wch: 25} // Legend/Others columns
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
-
-    return XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+      });
+  
+      const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+      return excelBase64;
+  
+    } catch (error) {
+      console.error("Error generating attendance sheet:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Generation Failed',
+        description: 'Could not generate the attendance sheet from the template.',
+      });
+      return '';
+    }
   };
 
 
 
-  const handleDownloadAttendanceSheet = () => {
-    const excelBase64 = generateAttendanceSheetExcel();
+  const handleDownloadAttendanceSheet = async () => {
+    const excelBase64 = await generateAttendanceSheetExcel();
     if (!excelBase64) return;
 
     const reportGroup = currentUser.group || 'Team';
@@ -971,6 +899,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                          <DropdownMenuSeparator />
                          <DropdownMenuGroup>
+                             <DropdownMenuItem onClick={() => window.open('/attendance_template.xlsx', '_blank')}>
+                                <Download className="mr-2 h-4 w-4" />
+                                <span>Download Template</span>
+                             </DropdownMenuItem>
                              <DropdownMenuItem onClick={handleDownloadAttendanceSheet} disabled={viewMode !== 'week'}>
                                 <Download className="mr-2 h-4 w-4" />
                                 <span>Download Attendance Sheet</span>
@@ -1080,7 +1012,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     setIsOpen: (isOpen: boolean) => void;
     subject: string;
     smtpSettings: SmtpSettings;
-    generateExcelData: () => string;
+    generateExcelData: () => Promise<string>;
     fileName: string;
 }) {
     const [to, setTo] = useState('');
@@ -1096,7 +1028,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         }
         
         startTransition(async () => {
-            const excelData = generateExcelData();
+            const excelData = await generateExcelData();
             if (!excelData) {
                  toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
                  return;
