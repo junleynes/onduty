@@ -11,7 +11,7 @@ import type { Employee, CommunicationAllowance } from '@/types';
 import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DatePicker } from './ui/date-picker';
@@ -223,30 +223,41 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   }
 
   const handleDownloadReport = () => {
+    const today = new Date();
+    const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
+
     const dataForReport = membersInGroup.map(employee => {
         const allocation = employee.loadAllocation || 0;
         const allowance = getEmployeeAllowance(employee.id);
         const balance = allowance?.balance;
-        const limit = allocation * (loadLimitPercentage / 100);
-        const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
-        
-        let willReceiveText = '';
-        if (balance !== undefined && balance !== null) {
-            willReceiveText = balance <= limit ? 'Yes' : 'No';
-        }
         
         return {
             "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
-            "Load Allocation": allocation.toFixed(2),
-            "Load Balance": balance !== undefined && balance !== null ? balance.toFixed(2) : 'N/A',
-            "Balance as of": allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'yyyy-MM-dd') : 'N/A',
-            "Limit": limit.toFixed(2),
-            "Excess in Allocation": excess > 0 ? excess.toFixed(2) : '',
-            "Will receive load?": willReceiveText,
+            "Load Allocation": allocation,
+            [balanceHeader]: balance !== undefined && balance !== null ? balance : 'N/A',
         };
     });
 
-    const ws = XLSX.utils.json_to_sheet(dataForReport);
+    const ws = XLSX.utils.json_to_sheet(dataForReport, {
+      header: ["Recipient", "Load Allocation", balanceHeader],
+      skipHeader: true, // We will add a styled header manually
+    });
+
+    // Manually add the styled header
+    XLSX.utils.sheet_add_aoa(ws, [
+        [
+            {v: "Recipient", t: "s", s: { fill: { fgColor: { rgb: "ADD8E6" } } } },
+            {v: "Load Allocation", t: "s", s: { fill: { fgColor: { rgb: "ADD8E6" } } } },
+            {v: balanceHeader, t: "s", s: { fill: { fgColor: { rgb: "FFFF00" } } } }
+        ]
+    ], { origin: "A1" });
+    
+    // Add the data starting from the second row
+    XLSX.utils.sheet_add_json(ws, dataForReport, { origin: "A2", skipHeader: true });
+
+    // Set column widths
+    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 30 }];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Allowance Report");
 
