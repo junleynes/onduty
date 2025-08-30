@@ -567,7 +567,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     });
 
     let dataStartRow = -1;
-    let dataStartCol = -1;
 
     const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
     for (let R = range.s.r; R <= range.e.r; ++R) {
@@ -581,8 +580,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     cell.v = placeholderMap[trimmedValue];
                  } else if (trimmedValue === '{{data_start}}') {
                     dataStartRow = R;
-                    dataStartCol = C;
-                    cell.v = ''; // Clear the placeholder
                  }
             }
         }
@@ -594,27 +591,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     }
     
     const groupEmployees = employees.filter(e => e.group === currentUser.group);
-
-    // Deep copy the style of each cell in the template data row
+    
+    const dataStartCol = 0; 
+    const numDataCols = 10;
+    
     const templateRowStyles: (XLSX.CellStyle | undefined)[] = [];
-    const numColsToCopy = 10; // Adjust as needed
-    for (let C = 0; C < numColsToCopy; ++C) {
+    for (let C = 0; C < numDataCols; C++) {
         const templateCellRef = XLSX.utils.encode_cell({ r: dataStartRow, c: dataStartCol + C });
         const templateCell = ws[templateCellRef];
-        // Deep copy style object
         templateRowStyles.push(templateCell?.s ? JSON.parse(JSON.stringify(templateCell.s)) : undefined);
     }
     
-    // Clear the placeholder row itself but keep its row height
-    for (let C = 0; C < numColsToCopy; ++C) {
-        const cellRef = XLSX.utils.encode_cell({ r: dataStartRow, c: dataStartCol + C });
-        if(ws[cellRef]) {
-            ws[cellRef].v = '';
-            ws[cellRef].t = 's';
-        }
-    }
-
-    // Write data and apply styles
     groupEmployees.forEach((emp, rowIndex) => {
         const rowData = [
             `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
@@ -648,6 +635,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         rowData.push(''); // Comments column
 
         const currentRow = dataStartRow + rowIndex;
+        
         rowData.forEach((cellValue, colIndex) => {
             const cellAddress = { r: currentRow, c: dataStartCol + colIndex };
             const cellRef = XLSX.utils.encode_cell(cellAddress);
@@ -657,19 +645,23 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 s: templateRowStyles[colIndex]
             };
         });
-        // Ensure row height is copied if it exists on the template row
-        if (ws['!rows'] && ws['!rows'][dataStartRow]) {
-             if(!ws['!rows'][currentRow]) ws['!rows'][currentRow] = {};
-             Object.assign(ws['!rows'][currentRow], ws['!rows'][dataStartRow]);
-        }
     });
+
+    // Clear the original placeholder row
+    if (groupEmployees.length > 0) { // only clear if data was added
+        for (let C = 0; C < numDataCols; C++) {
+             const cellRef = XLSX.utils.encode_cell({ r: dataStartRow + groupEmployees.length, c: dataStartCol + C });
+             if (ws[cellRef]) delete ws[cellRef];
+        }
+    }
+
 
     const newWb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(newWb, ws, wsName);
 
     const excelBase64 = XLSX.write(newWb, { bookType: 'xlsx', type: 'base64' });
     return excelBase64;
-  }
+}
 
   const generateAttendanceSheetExcel = async (): Promise<string> => {
       if (attendanceTemplate) {
@@ -1288,5 +1280,6 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     
 
     
+
 
 
