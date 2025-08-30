@@ -43,7 +43,6 @@ const employeeSchema = z.object({
   birthDate: z.date().optional().nullable(),
   startDate: z.date().optional().nullable(),
   position: z.string().optional(),
-  department: z.string().optional(),
   role: z.custom<UserRole>().optional(),
   group: z.string().optional(),
   avatar: z.string().optional(),
@@ -103,7 +102,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             birthDate: undefined,
             startDate: undefined,
             position: '',
-            department: '',
             role: 'member',
             group: '',
             avatar: '',
@@ -270,19 +268,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                     />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="department"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Department</FormLabel>
-                                <FormControl>
-                                <Input {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
                          <FormField
                             control={form.control}
                             name="group"
@@ -305,8 +290,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                 </FormItem>
                             )}
                         />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                             control={form.control}
                             name="role"

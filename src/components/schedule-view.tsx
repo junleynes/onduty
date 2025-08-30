@@ -421,8 +421,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       toast({ variant: 'destructive', title: 'Invalid View', description: 'Attendance Sheet can only be generated from the week view.' });
       return '';
     }
-    if (!currentUser?.department || !currentUser.group) {
-      toast({ variant: 'destructive', title: 'Missing User Info', description: 'Your profile must have a Department and Group assigned to generate reports.' });
+    if (!currentUser?.group) {
+      toast({ variant: 'destructive', title: 'Missing User Info', description: 'Your profile must have a Group assigned to generate reports.' });
       return '';
     }
     
@@ -439,7 +439,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const redText = { font: { color: { rgb: "FF0000" } } };
 
     // Merged Headers
-    ws_data[0] = [{ v: currentUser.department.toUpperCase(), s: { ...boldCenter, ...yellowFill, ...borderAll } }];
+    ws_data[0] = [{ v: "POST PRODUCTION", s: { ...boldCenter, ...yellowFill, ...borderAll } }];
     ws_data[1] = [{ v: "ATTENDANCE SHEET", s: { ...boldCenter, ...yellowFill, ...borderAll } }];
     ws_data[2] = [{ v: currentUser.group.toUpperCase(), s: { ...boldCenter, ...blueFill, ...borderAll } }];
     ws_data[3] = [{ v: `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`, s: { ...boldCenter, ...lightBlueFill, ...borderAll } }];
@@ -560,7 +560,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
     // Find and replace placeholders
     const placeholderMap: { [key: string]: string | number } = {
-        '{{department}}': currentUser.department || '',
         '{{group}}': currentUser.group || '',
         '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
         '{{month}}': format(currentDate, 'MMMM').toUpperCase(),
@@ -598,62 +597,60 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         return '';
     }
     
-    // Prepare data
     const groupEmployees = employees.filter(e => e.group === currentUser.group);
-    const dataRows = groupEmployees.map(emp => {
-      const row = [
-        `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
-        emp.group,
-        emp.position
-      ];
-      displayedDays.forEach(day => {
-        const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
-        const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
-        const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-        
-        let cellValue = '';
-        if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
-          cellValue = 'HOL OFF';
-        } else if (leaveEntry) {
-          cellValue = leaveEntry.type.toUpperCase();
-        } else if (shift) {
-          if (shift.isDayOff) {
-            cellValue = 'OFF';
-          } else {
-            const shiftLabel = shift.label?.trim().toUpperCase();
-            if (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') {
-              cellValue = 'WFH';
-            } else {
-              cellValue = 'SKE';
-            }
-          }
-        }
-        row.push(cellValue);
-      });
-      row.push(''); // Comments column
-      return row;
-    });
-
+    
     // Write data to sheet cell by cell to preserve formatting
-    dataRows.forEach((rowData, rowIndex) => {
+    groupEmployees.forEach((emp, rowIndex) => {
+        const rowData = [
+            `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
+            emp.group,
+            emp.position
+        ];
+        
+        displayedDays.forEach(day => {
+            const shift = shifts.find(s => s.employeeId === emp.id && isSameDay(new Date(s.date), day));
+            const leaveEntry = leave.find(l => l.employeeId === emp.id && isSameDay(new Date(l.date), day));
+            const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
+            
+            let cellValue = '';
+            if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+                cellValue = 'HOL OFF';
+            } else if (leaveEntry) {
+                cellValue = leaveEntry.type.toUpperCase();
+            } else if (shift) {
+                if (shift.isDayOff) {
+                    cellValue = 'OFF';
+                } else {
+                    const shiftLabel = shift.label?.trim().toUpperCase();
+                    if (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') {
+                        cellValue = 'WFH';
+                    } else {
+                        cellValue = 'SKE';
+                    }
+                }
+            }
+            rowData.push(cellValue);
+        });
+        rowData.push(''); // Comments column
+
         rowData.forEach((cellValue, colIndex) => {
             const cellAddress = { r: dataStartRow + rowIndex, c: dataStartCol + colIndex };
             const cellRef = XLSX.utils.encode_cell(cellAddress);
             
-            // Get existing cell to preserve style
-            const existingCell = ws[cellRef] || {};
+            // Get existing cell to preserve style or create a new one
+            const cell = ws[cellRef] || {};
             
             // Update only the value
-            existingCell.v = cellValue;
+            cell.v = cellValue;
             if (typeof cellValue === 'string') {
-              existingCell.t = 's';
+              cell.t = 's';
             } else if (typeof cellValue === 'number') {
-              existingCell.t = 'n';
+              cell.t = 'n';
             } else {
-              delete existingCell.t;
+              delete cell.t;
             }
             
-            ws[cellRef] = existingCell;
+            ws[cellRef] = cell;
         });
     });
 

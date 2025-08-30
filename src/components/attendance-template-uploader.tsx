@@ -66,7 +66,6 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
     reader.onerror = (error) => {
         console.error(error);
         toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
-        setIsUploading(false);
     };
     
     reader.readAsBinaryString(file);
@@ -78,8 +77,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
-            Upload an .xlsx file. The system will look for the following placeholders to replace:
-             {" '{{department}}', '{{group}}', '{{week_of}}', '{{month}}', '{{day_1}}' to '{{day_7}}', and '{{data_start}}'."}
+            {"Upload an .xlsx file. The system will look for the following placeholders to replace: '{{group}}', '{{week_of}}', '{{month}}', '{{day_1}}' to '{{day_7}}', and '{{data_start}}'."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
