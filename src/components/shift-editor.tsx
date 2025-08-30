@@ -68,6 +68,7 @@ type ShiftEditorProps = {
   setShiftTemplates: React.Dispatch<React.SetStateAction<ShiftTemplate[]>>;
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  currentUser: Employee;
 };
 
 const roleColors: { [key: string]: string } = {
@@ -91,7 +92,7 @@ const shiftColorOptions = [
 ];
 
 
-export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees, shiftTemplates, setShiftTemplates, tasks, setTasks }: ShiftEditorProps) {
+export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees, shiftTemplates, setShiftTemplates, tasks, setTasks, currentUser }: ShiftEditorProps) {
   const { toast } = useToast();
   const [editingTemplate, setEditingTemplate] = useState<ShiftTemplate | null>(null);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
@@ -159,7 +160,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   const handleSaveTask = () => {
     if (!taskTitle || !shift?.id) return;
-    const taskData = {
+    const taskData: Partial<Task> = {
         title: taskTitle,
         description: taskDescription,
     };
@@ -170,8 +171,11 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         const newTask: Task = {
             id: `task-${Date.now()}`,
             shiftId: shift.id,
+            scope: 'shift',
             status: 'pending',
-            ...taskData
+            createdBy: currentUser.id,
+            title: taskTitle,
+            description: taskDescription,
         };
         setTasks([...tasks, newTask]);
         toast({ title: "Task Added" });

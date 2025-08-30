@@ -22,9 +22,10 @@ export const leave: Leave[] = initialDb.leave.map(l => ({
     date: new Date(l.date),
 }));
 
-export const tasks: Task[] = initialDb.tasks.map(t => ({
+export const tasks: Task[] = initialDb.tasks.map((t: any) => ({
     ...t,
     completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
+    dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
 }));
 
 export const communicationAllowances: CommunicationAllowance[] = initialDb.communicationAllowances;
@@ -32,7 +33,7 @@ export const communicationAllowances: CommunicationAllowance[] = initialDb.commu
 export const initialGroups: string[] = initialDb.groups;
 export const initialShiftTemplates = initialDb.shiftTemplates;
 export const initialLeaveTypes = initialDb.leaveTypes;
-export const initialTasks: Task[] = [];
+export const initialTasks: Task[] = tasks;
 
 export const initialNotes: Note[] = initialDb.notes.map(n => ({
     ...n,

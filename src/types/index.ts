@@ -72,11 +72,15 @@ export type Holiday = {
 
 export type Task = {
   id: string;
-  shiftId: string;
+  shiftId?: string | null; // Optional: for shift-specific tasks
+  assigneeId?: string | null; // Optional: for personal tasks
+  scope: 'personal' | 'global' | 'shift';
   title: string;
   description: string;
   status: 'pending' | 'completed';
   completedAt?: Date;
+  dueDate?: Date;
+  createdBy: string; // Employee ID
 };
 
 export type CommunicationAllowance = {

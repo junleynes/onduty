@@ -32,9 +32,10 @@ import HolidaysView from '@/components/holidays-view';
 import OndutyView from '@/components/onduty-view';
 import MyTasksView from '@/components/my-tasks-view';
 import AllowanceView from '@/components/allowance-view';
+import TaskManagerView from '@/components/task-manager-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager';
 
 
 function AppContent() {
@@ -225,7 +226,7 @@ function AppContent() {
 
     setShifts(prev => prev.filter(s => s.employeeId !== employeeId));
     setLeave(prev => prev.filter(l => l.employeeId !== employeeId));
-    setTasks(prev => prev.filter(t => !shiftIdsForEmployee.has(t.shiftId)));
+    setTasks(prev => prev.filter(t => (t.shiftId && shiftIdsForEmployee.has(t.shiftId)) || t.assigneeId === employeeId));
     setAllowances(prev => prev.filter(a => a.employeeId !== employeeId));
 
     toast({ title: 'User Removed', description: 'All associated shifts, tasks, and allowances have been removed.', variant: 'destructive' });
@@ -396,6 +397,8 @@ function AppContent() {
         return <MyScheduleView shifts={shiftsForView} employeeId={currentUser.id} employees={employees} />;
       case 'my-tasks':
         return <MyTasksView tasks={tasks} setTasks={setTasks} shifts={shifts} currentUser={currentUser} />;
+      case 'task-manager':
+        return <TaskManagerView tasks={tasks} setTasks={setTasks} currentUser={currentUser} employees={employees} />;
       case 'admin':
         return (
             <AdminPanel 

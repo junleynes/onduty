@@ -41,7 +41,7 @@ type ScheduleViewProps = {
   setHolidays: React.Dispatch<React.SetStateAction<Holiday[]>>;
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
-  currentUser: Employee | null;
+  currentUser: Employee;
   onPublish: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
   onViewNote: (note: Note | Holiday | Partial<Note>) => void;
@@ -907,6 +907,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         setShiftTemplates={setShiftTemplates}
         tasks={tasks}
         setTasks={setTasks}
+        currentUser={currentUser}
       />
       <LeaveEditor
         isOpen={isLeaveEditorOpen}
@@ -939,6 +940,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   );
 
     
+
 
 
 

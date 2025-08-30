@@ -58,7 +58,8 @@ const TaskSection = ({ title, icon: Icon, tasks, shifts, onToggle, emptyMessage,
 }) => {
      const getShiftForTask = (taskId: string): Shift | undefined => {
         const task = tasks.find(t => t.id === taskId);
-        return shifts.find(s => s.id === task?.shiftId);
+        if (!task || !task.shiftId) return undefined;
+        return shifts.find(s => s.id === task.shiftId);
     }
     
     return (
@@ -94,7 +95,7 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
     return (
       <Card>
         <CardHeader>
-          <CardTitle>My Tasks</CardTitle>
+          <CardTitle>My Shift Tasks</CardTitle>
         </CardHeader>
         <CardContent>
           <p>Loading user data...</p>
@@ -104,26 +105,26 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
   }
 
   const myShiftIds = new Set(shifts.filter(s => s.employeeId === currentUser.id).map(s => s.id));
-  const myTasks = tasks.filter(task => myShiftIds.has(task.shiftId));
+  const myShiftTasks = tasks.filter(task => task.scope === 'shift' && task.shiftId && myShiftIds.has(task.shiftId));
   
   const shiftsById = new Map(shifts.map(s => [s.id, s]));
   const today = startOfDay(new Date());
 
-  const pendingTasks = myTasks.filter(task => task.status === 'pending');
-  const completedTasks = myTasks.filter(task => task.status === 'completed');
+  const pendingTasks = myShiftTasks.filter(task => task.status === 'pending');
+  const completedTasks = myShiftTasks.filter(task => task.status === 'completed');
 
   const todaysTasks = pendingTasks.filter(task => {
-    const shift = shiftsById.get(task.shiftId);
+    const shift = task.shiftId ? shiftsById.get(task.shiftId) : undefined;
     return shift && isToday(new Date(shift.date));
   });
 
   const upcomingTasks = pendingTasks.filter(task => {
-      const shift = shiftsById.get(task.shiftId);
+      const shift = task.shiftId ? shiftsById.get(task.shiftId) : undefined;
       return shift && isFuture(new Date(shift.date));
   });
 
   const overdueTasks = pendingTasks.filter(task => {
-      const shift = shiftsById.get(task.shiftId);
+      const shift = task.shiftId ? shiftsById.get(task.shiftId) : undefined;
       return shift && isPast(new Date(shift.date)) && !isToday(new Date(shift.date));
   })
 
@@ -140,7 +141,7 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My Tasks</CardTitle>
+        <CardTitle>My Shift Tasks</CardTitle>
         <CardDescription>A list of tasks assigned to your shifts. Check them off as you complete them.</CardDescription>
       </CardHeader>
       <CardContent>

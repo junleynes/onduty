@@ -19,7 +19,8 @@ import {
     Headphones,
     ClipboardList,
     PlusCircle,
-    Smartphone
+    Smartphone,
+    ListChecks
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
@@ -53,7 +54,8 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             label: 'General',
             items: [
                 { view: 'my-schedule', label: 'My Schedule', icon: Calendar, iconColor: 'bg-blue-500' },
-                { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
+                { view: 'my-tasks', label: 'My Shift Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
+                { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
         {
@@ -79,7 +81,8 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             label: 'General',
             items: [
                 { view: 'my-schedule', label: 'My Schedule', icon: Calendar, iconColor: 'bg-blue-500' },
-                { view: 'my-tasks', label: 'My Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
+                { view: 'my-tasks', label: 'My Shift Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
+                { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
         {
