@@ -82,6 +82,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(() => getInitialState('shiftTemplates', initialShiftTemplates));
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const dateRange = useMemo(() => {
     switch (viewMode) {
@@ -1048,7 +1053,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         setIsOpen={setIsTemplateImporterOpen}
         onImport={handleImportTemplates}
       />
-      {isEmailDialogOpen && (
+      {isClient && isEmailDialogOpen && (
         <EmailDialog
             isOpen={isEmailDialogOpen}
             setIsOpen={setIsEmailDialogOpen}

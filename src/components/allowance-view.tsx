@@ -158,6 +158,11 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'lastName', direction: 'asc' });
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   if (!currentUser) {
     return null;
@@ -622,7 +627,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         </Card>
     </div>
     
-    {isEmailDialogOpen && (
+    {isClient && isEmailDialogOpen && (
         <EmailDialog
             isOpen={isEmailDialogOpen}
             setIsOpen={setIsEmailDialogOpen}
