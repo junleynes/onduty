@@ -617,9 +617,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
             const trimmedValue = cell.v.trim();
             
-            if (trimmedValue === `{{group_${index + 1}}}`) {
-                 ws[currentCellRef].v = nameFilled ? (employee.group || '') : '';
-            } else if (trimmedValue === `{{position_${index + 1}}}`) {
+            if (trimmedValue === `{{position_${index + 1}}}`) {
                 ws[currentCellRef].v = nameFilled ? employee.position : '';
             }
         }
@@ -1307,6 +1305,7 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     
 
     
+
 
 
 
