@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DatePicker } from './ui/date-picker';
+import { Separator } from './ui/separator';
 
 type AllowanceViewProps = {
   employees: Employee[];
@@ -22,6 +23,88 @@ type AllowanceViewProps = {
   setAllowances: React.Dispatch<React.SetStateAction<CommunicationAllowance[]>>;
   currentUser: Employee;
 };
+
+const Dashboard = ({ membersInGroup, allowances, currentDate }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date }) => {
+    const currentYear = currentDate.getFullYear();
+    const lastYear = currentYear - 1;
+
+    const yearlyData = useMemo(() => {
+        return membersInGroup.map(employee => {
+            const currentYearAllowances = allowances.filter(a => a.employeeId === employee.id && a.year === currentYear);
+            const lastYearAllowances = allowances.filter(a => a.employeeId === employee.id && a.year === lastYear);
+            
+            const totalLoadedCurrentYear = currentYearAllowances.reduce((sum, a) => sum + a.balance, 0);
+            const totalLoadedLastYear = lastYearAllowances.reduce((sum, a) => sum + a.balance, 0);
+
+            return {
+                employeeId: employee.id,
+                name: `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
+                totalLoadedCurrentYear,
+                totalLoadedLastYear
+            };
+        });
+    }, [membersInGroup, allowances, currentYear, lastYear]);
+
+    const groupAllocation = useMemo(() => {
+        return membersInGroup.reduce((sum, e) => sum + (e.loadAllocation || 0), 0);
+    }, [membersInGroup]);
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Yearly Report</CardTitle>
+                    <CardDescription>Individual load totals for the current and previous year.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Recipient</TableHead>
+                                <TableHead>Total Loaded ({lastYear})</TableHead>
+                                <TableHead>Total Loaded ({currentYear})</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {yearlyData.map(data => (
+                                <TableRow key={data.employeeId}>
+                                    <TableCell className="font-medium">{data.name}</TableCell>
+                                    <TableCell>{data.totalLoadedLastYear.toFixed(2)}</TableCell>
+                                    <TableCell>{data.totalLoadedCurrentYear.toFixed(2)}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+            <Card>
+                 <CardHeader>
+                    <CardTitle>Group Allocation Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Year</TableHead>
+                                <TableHead>Total Group Allocation</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow>
+                                <TableCell>{lastYear}</TableCell>
+                                <TableCell>{groupAllocation.toFixed(2)}</TableCell>
+                            </TableRow>
+                             <TableRow>
+                                <TableCell>{currentYear}</TableCell>
+                                <TableCell>{groupAllocation.toFixed(2)}</TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
 
 export default function AllowanceView({ employees, allowances, setAllowances, currentUser }: AllowanceViewProps) {
   const { toast } = useToast();
@@ -50,7 +133,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
     return allMembersInGroup.filter(employee => {
         // Always include the current user
         if (employee.id === currentUser.id) return true;
-        // Include other members only if they have an allowance entry for the current month
+        // Include other members only if they have an allowance entry for the current month with a non-null balance
         const allowance = getEmployeeAllowance(employee.id);
         return allowance && allowance.balance !== undefined && allowance.balance !== null;
     });
@@ -133,14 +216,14 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
         
         let willReceiveText = '';
-        if (balance !== undefined) {
+        if (balance !== undefined && balance !== null) {
             willReceiveText = balance <= limit ? 'Yes' : 'No';
         }
         
         return {
             "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
             "Load Allocation": allocation.toFixed(2),
-            "Load Balance": balance !== undefined ? balance.toFixed(2) : 'N/A',
+            "Load Balance": balance !== undefined && balance !== null ? balance.toFixed(2) : 'N/A',
             "Balance as of": allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'yyyy-MM-dd') : 'N/A',
             "Limit": limit.toFixed(2),
             "Excess in Allocation": excess > 0 ? excess.toFixed(2) : '',
@@ -168,144 +251,150 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                 Monitor monthly communication allowances for your team.
             </CardDescription>
           </div>
-          {isManager && (
-            <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleDownloadReport}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Report
-                </Button>
-                <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                    <DialogTrigger asChild>
-                        <Button variant="outline" size="icon">
-                            <Settings className="h-4 w-4" />
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                        <DialogTitle>Global Settings</DialogTitle>
-                        <DialogDescription>
-                            Set the global load limit and member editing window.
-                        </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="loadLimit" className="text-right col-span-2">
-                                Global Load Limit (%)
-                                </Label>
-                                <Input
-                                    id="loadLimit"
-                                    type="number"
-                                    value={loadLimitPercentage}
-                                    onChange={handleLimitChange}
-                                    className="col-span-2"
-                                />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label className="text-right col-span-2">
-                                    Editing Window (Day)
-                                </Label>
-                                <div className="col-span-2 grid grid-cols-2 gap-2">
-                                <Input
-                                    id="startDay"
-                                    type="number"
-                                    min="1"
-                                    max="31"
-                                    placeholder="Start"
-                                    value={editableStartDay}
-                                    onChange={handleStartDayChange}
-                                />
-                                 <Input
-                                    id="endDay"
-                                    type="number"
-                                    min="1"
-                                    max="31"
-                                    placeholder="End"
-                                    value={editableEndDay}
-                                    onChange={handleEndDayChange}
-                                />
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button onClick={handleSaveSettings}>Save changes</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </div>
-          )}
-        </div>
-        <div className="flex justify-between items-center mt-4">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <h2 className="text-xl font-bold text-center">
-                    {format(currentDate, 'MMMM yyyy')}
-                </h2>
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={!isManager && isFuture(startOfMonth(addMonths(currentDate, 1)))}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Recipient</TableHead>
-              <TableHead>Load Allocation</TableHead>
-              <TableHead>Load Balance</TableHead>
-              <TableHead>Balance as of</TableHead>
-              <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
-              <TableHead>Excess in Allocation</TableHead>
-              <TableHead>Will receive load?</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {membersInGroup.map((employee) => {
-              const allocation = employee.loadAllocation || 0;
-              const allowance = getEmployeeAllowance(employee.id);
-              const balance = allowance?.balance;
-              const limit = allocation * (loadLimitPercentage / 100);
-              const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
-              
-              const willReceive = balance !== undefined ? balance <= limit : undefined;
-              
-              const isCurrentUser = employee.id === currentUser.id;
-              const isCurrentMonth = isSameMonth(currentDate, new Date());
-              const today = new Date();
-              const dayOfMonth = getDate(today);
-              const isWithinEditingWindow = dayOfMonth >= editableStartDay && dayOfMonth <= editableEndDay;
-
-              const canEdit = isManager || (isCurrentUser && isCurrentMonth && isWithinEditingWindow);
-
-              return (
-                <TableRow key={employee.id}>
-                  <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
-                  <TableCell>{allocation.toFixed(2)}</TableCell>
-                  <TableCell>
+      <CardContent className="space-y-8">
+        <Dashboard membersInGroup={membersInGroup} allowances={allowances} currentDate={currentDate} />
+        
+        <Separator />
+        
+        <div>
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <h2 className="text-xl font-bold text-center">
+                        {format(currentDate, 'MMMM yyyy')}
+                    </h2>
+                    <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={!isManager && isFuture(startOfMonth(addMonths(currentDate, 1)))}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+                 {isManager && (
                     <div className="flex items-center gap-2">
-                        <span>{balance !== undefined ? balance.toFixed(2) : 'N/A'}</span>
-                        {canEdit && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id)}>
-                                <Pencil className="h-4 w-4" />
-                            </Button>
-                        )}
+                        <Button variant="outline" onClick={handleDownloadReport}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download Report
+                        </Button>
+                        <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                <DialogTitle>Global Settings</DialogTitle>
+                                <DialogDescription>
+                                    Set the global load limit and member editing window.
+                                </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="loadLimit" className="text-right col-span-2">
+                                        Global Load Limit (%)
+                                        </Label>
+                                        <Input
+                                            id="loadLimit"
+                                            type="number"
+                                            value={loadLimitPercentage}
+                                            onChange={handleLimitChange}
+                                            className="col-span-2"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label className="text-right col-span-2">
+                                            Editing Window (Day)
+                                        </Label>
+                                        <div className="col-span-2 grid grid-cols-2 gap-2">
+                                        <Input
+                                            id="startDay"
+                                            type="number"
+                                            min="1"
+                                            max="31"
+                                            placeholder="Start"
+                                            value={editableStartDay}
+                                            onChange={handleStartDayChange}
+                                        />
+                                         <Input
+                                            id="endDay"
+                                            type="number"
+                                            min="1"
+                                            max="31"
+                                            placeholder="End"
+                                            value={editableEndDay}
+                                            onChange={handleEndDayChange}
+                                        />
+                                        </div>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={handleSaveSettings}>Save changes</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
-                  </TableCell>
-                   <TableCell>
-                      {allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'MMM d, yyyy') : 'N/A'}
-                  </TableCell>
-                  <TableCell>{limit.toFixed(2)}</TableCell>
-                  <TableCell>{excess > 0 ? excess.toFixed(2) : ''}</TableCell>
-                  <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
-                    {willReceive !== undefined ? (willReceive ? 'Yes' : 'No') : ''}
-                  </TableCell>
+                  )}
+            </div>
+            <Table className="mt-4">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Recipient</TableHead>
+                  <TableHead>Load Allocation</TableHead>
+                  <TableHead>Load Balance</TableHead>
+                  <TableHead>Balance as of</TableHead>
+                  <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
+                  <TableHead>Excess in Allocation</TableHead>
+                  <TableHead>Will receive load?</TableHead>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {membersInGroup.map((employee) => {
+                  const allocation = employee.loadAllocation || 0;
+                  const allowance = getEmployeeAllowance(employee.id);
+                  const balance = allowance?.balance;
+                  const limit = allocation * (loadLimitPercentage / 100);
+                  const excess = balance !== undefined && balance !== null && balance > allocation ? balance - allocation : 0;
+                  
+                  const willReceive = (balance !== undefined && balance !== null) ? balance <= limit : undefined;
+                  
+                  const isCurrentUser = employee.id === currentUser.id;
+                  const isCurrentMonth = isSameMonth(currentDate, new Date());
+                  const today = new Date();
+                  const dayOfMonth = getDate(today);
+                  const isWithinEditingWindow = dayOfMonth >= editableStartDay && dayOfMonth <= editableEndDay;
+
+                  const canEdit = isManager || (isCurrentUser && isCurrentMonth && isWithinEditingWindow);
+
+                  return (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
+                      <TableCell>{allocation.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                            <span>{(balance !== undefined && balance !== null) ? balance.toFixed(2) : 'N/A'}</span>
+                            {canEdit && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id)}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                      </TableCell>
+                       <TableCell>
+                          {allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'MMM d, yyyy') : 'N/A'}
+                      </TableCell>
+                      <TableCell>{limit.toFixed(2)}</TableCell>
+                      <TableCell>{excess > 0 ? excess.toFixed(2) : ''}</TableCell>
+                      <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
+                        {willReceive !== undefined ? (willReceive ? 'Yes' : 'No') : ''}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+        </div>
       </CardContent>
     </Card>
     
