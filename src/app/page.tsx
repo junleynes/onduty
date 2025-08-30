@@ -102,7 +102,7 @@ function AppContent() {
     } else {
       router.push('/login');
     }
-  }, [router, employees]);
+  }, [router]);
   
   const role: UserRole = currentUser?.role || 'member';
   
