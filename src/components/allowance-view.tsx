@@ -144,7 +144,10 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   }
 
   const membersInGroup = React.useMemo(() => {
-    const allMembersInGroup = employees.filter(e => e.group === currentUser.group);
+    const allMembersInGroup = employees
+        .filter(e => e.group === currentUser.group)
+        .sort((a,b) => a.lastName.localeCompare(b.lastName));
+
     if (isManager) {
         return allMembersInGroup;
     }

@@ -70,6 +70,11 @@ export default function OndutyPage() {
     return acc;
   }, {} as Record<string, ActiveShift[]>);
 
+  // Sort employees within each group
+  for (const groupName in groupedActiveShifts) {
+    groupedActiveShifts[groupName].sort((a, b) => a.employee.lastName.localeCompare(b.employee.lastName));
+  }
+
   const groupOrder = Object.keys(groupedActiveShifts).sort();
 
   return (

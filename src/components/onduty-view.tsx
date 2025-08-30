@@ -74,6 +74,11 @@ export default function OndutyView({ employees, shifts, currentUser }: OndutyVie
     acc[groupName].push({ employee, shift });
     return acc;
   }, {} as Record<string, ActiveShift[]>);
+  
+  // Sort employees within each group
+  for (const groupName in groupedActiveShifts) {
+    groupedActiveShifts[groupName].sort((a, b) => a.employee.lastName.localeCompare(b.employee.lastName));
+  }
 
   const groupOrder = Object.keys(groupedActiveShifts).sort();
 
