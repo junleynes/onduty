@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance } from '@/types';
-import { format, subMonths, addMonths, isSameMonth } from 'date-fns';
+import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Download, Settings, Pencil } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -27,6 +27,9 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
+  const [editableStartDay, setEditableStartDay] = useState<number>(() => getInitialState('editableStartDay', 15));
+  const [editableEndDay, setEditableEndDay] = useState<number>(() => getInitialState('editableEndDay', 20));
+  
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBalanceEditorOpen, setIsBalanceEditorOpen] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
@@ -51,7 +54,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         const allowance = getEmployeeAllowance(employee.id);
         return allowance && allowance.balance !== undefined && allowance.balance !== null;
     });
-  }, [employees, currentUser, isManager, getEmployeeAllowance]);
+  }, [employees, currentUser, isManager, allowances, currentDate]);
 
 
   const handleOpenBalanceEditor = (employeeId: string) => {
@@ -96,12 +99,28 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
           setLoadLimitPercentage(value);
       }
   }
+  
+  const handleStartDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseInt(e.target.value, 10);
+      if (!isNaN(value) && value >= 1 && value <= 31) {
+          setEditableStartDay(value);
+      }
+  }
+
+  const handleEndDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = parseInt(e.target.value, 10);
+      if (!isNaN(value) && value >= 1 && value <= 31) {
+          setEditableEndDay(value);
+      }
+  }
 
   const handleSaveSettings = () => {
       if (typeof window !== 'undefined') {
           localStorage.setItem('globalLoadLimit', JSON.stringify(loadLimitPercentage));
+          localStorage.setItem('editableStartDay', JSON.stringify(editableStartDay));
+          localStorage.setItem('editableEndDay', JSON.stringify(editableEndDay));
       }
-      toast({ title: "Global limit updated." });
+      toast({ title: "Global settings updated." });
       setIsSettingsOpen(false);
   }
 
@@ -161,7 +180,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                         <DialogHeader>
                         <DialogTitle>Global Settings</DialogTitle>
                         <DialogDescription>
-                            Set the global load limit percentage for all team members.
+                            Set the global load limit and member editing window.
                         </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
@@ -176,6 +195,31 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                                     onChange={handleLimitChange}
                                     className="col-span-2"
                                 />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right col-span-2">
+                                    Editing Window (Day)
+                                </Label>
+                                <div className="col-span-2 grid grid-cols-2 gap-2">
+                                <Input
+                                    id="startDay"
+                                    type="number"
+                                    min="1"
+                                    max="31"
+                                    placeholder="Start"
+                                    value={editableStartDay}
+                                    onChange={handleStartDayChange}
+                                />
+                                 <Input
+                                    id="endDay"
+                                    type="number"
+                                    min="1"
+                                    max="31"
+                                    placeholder="End"
+                                    value={editableEndDay}
+                                    onChange={handleEndDayChange}
+                                />
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>
@@ -194,7 +238,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                 <h2 className="text-xl font-bold text-center">
                     {format(currentDate, 'MMMM yyyy')}
                 </h2>
-                <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')}>
+                <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={!isManager && isFuture(startOfMonth(addMonths(currentDate, 1)))}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>
@@ -224,7 +268,11 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
               
               const isCurrentUser = employee.id === currentUser.id;
               const isCurrentMonth = isSameMonth(currentDate, new Date());
-              const canEdit = isManager || (isCurrentUser && isCurrentMonth);
+              const today = new Date();
+              const dayOfMonth = getDate(today);
+              const isWithinEditingWindow = dayOfMonth >= editableStartDay && dayOfMonth <= editableEndDay;
+
+              const canEdit = isManager || (isCurrentUser && isCurrentMonth && isWithinEditingWindow);
 
               return (
                 <TableRow key={employee.id}>
