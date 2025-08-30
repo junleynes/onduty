@@ -20,8 +20,8 @@
     {
       "id": "emp-sr-manager-01",
       "employeeNumber": "002",
-      "firstName": "Senior",
-      "lastName": "Manager",
+      "firstName": "Albus",
+      "lastName": "Dumbledore",
       "email": "sr.manager@onduty.local",
       "phone": "123-456-7891",
       "password": "P@ssw0rd",
@@ -35,8 +35,8 @@
     {
       "id": "emp-manager-01",
       "employeeNumber": "003",
-      "firstName": "Manager",
-      "lastName": "One",
+      "firstName": "Severus",
+      "lastName": "Snape",
       "email": "manager.one@onduty.local",
       "phone": "123-456-7892",
       "password": "P@ssw0rd",
@@ -50,8 +50,8 @@
     {
       "id": "emp-member-01",
       "employeeNumber": "004",
-      "firstName": "Member",
-      "lastName": "One",
+      "firstName": "Harry",
+      "lastName": "Potter",
       "email": "member.one@onduty.local",
       "phone": "123-456-7893",
       "password": "P@ssw0rd",
