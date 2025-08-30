@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Employee, UserRole } from '@/types';
@@ -12,6 +12,9 @@ import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from './ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+
 
 type AdminPanelProps = {
   users: Employee[];
@@ -20,18 +23,45 @@ type AdminPanelProps = {
   onAddMember: () => void;
   onEditMember: (employee: Employee) => void;
   onDeleteMember: (employeeId: string) => void;
+  onBatchDelete: (employeeIds: string[]) => void;
   onImportMembers: () => void;
   onManageGroups: () => void;
 };
 
-export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onImportMembers, onManageGroups }: AdminPanelProps) {
+export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups }: AdminPanelProps) {
   const { toast } = useToast();
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     setUsers(users.map(user => 
       user.id === userId ? { ...user, role: newRole } : user
     ));
     toast({ title: 'User Role Updated' });
   };
+  
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+        setSelectedRowIds(users.map(u => u.id));
+    } else {
+        setSelectedRowIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string, checked: boolean) => {
+    if (checked) {
+        setSelectedRowIds(prev => [...prev, id]);
+    } else {
+        setSelectedRowIds(prev => prev.filter(rowId => rowId !== id));
+    }
+  };
+
+  const numSelected = selectedRowIds.length;
+  const rowCount = users.length;
+  
+  const handleBatchDelete = () => {
+    onBatchDelete(selectedRowIds);
+    setSelectedRowIds([]);
+  }
 
   return (
     <Card>
@@ -41,24 +71,57 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
             <CardDescription>Manage users, roles, and group assignments.</CardDescription>
         </div>
          <div className="flex gap-2">
-            <Button variant="outline" onClick={onManageGroups}>
-                <Users className="h-4 w-4 mr-2" />
-                Manage Groups
-            </Button>
-            <Button variant="outline" onClick={onImportMembers}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import Users
-            </Button>
-            <Button onClick={onAddMember}>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add User
-            </Button>
+            {numSelected > 0 ? (
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Selected ({numSelected})
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete {numSelected} user(s)
+                            and all of their associated data from the servers.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBatchDelete}>Continue</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            ) : (
+                <>
+                    <Button variant="outline" onClick={onManageGroups}>
+                        <Users className="h-4 w-4 mr-2" />
+                        Manage Groups
+                    </Button>
+                    <Button variant="outline" onClick={onImportMembers}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Import Users
+                    </Button>
+                    <Button onClick={onAddMember}>
+                        <PlusCircle className="h-4 w-4 mr-2" />
+                        Add User
+                    </Button>
+                </>
+            )}
         </div>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead padding="checkbox">
+                 <Checkbox
+                    checked={numSelected > 0 && numSelected === rowCount}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    aria-label="Select all"
+                  />
+              </TableHead>
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Group</TableHead>
@@ -68,7 +131,14 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
           </TableHeader>
           <TableBody>
             {users.map((user) => (
-              <TableRow key={user.id}>
+              <TableRow key={user.id} data-state={selectedRowIds.includes(user.id) && "selected"}>
+                 <TableCell padding="checkbox">
+                  <Checkbox
+                    checked={selectedRowIds.includes(user.id)}
+                    onCheckedChange={(checked) => handleSelectRow(user.id, !!checked)}
+                    aria-label="Select row"
+                  />
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-4">
                     <Avatar>

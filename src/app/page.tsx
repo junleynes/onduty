@@ -231,6 +231,25 @@ function AppContent() {
 
     toast({ title: 'User Removed', description: 'All associated shifts, tasks, and allowances have been removed.', variant: 'destructive' });
   };
+  
+  const handleBatchDeleteMembers = (employeeIds: string[]) => {
+    const idsToDelete = new Set(employeeIds);
+    setEmployees(prev => prev.filter(emp => !idsToDelete.has(emp.id)));
+
+    const shiftsForEmployees = shifts.filter(s => s.employeeId && idsToDelete.has(s.employeeId));
+    const shiftIdsForEmployees = new Set(shiftsForEmployees.map(s => s.id));
+    
+    setShifts(prev => prev.filter(s => !s.employeeId || !idsToDelete.has(s.employeeId)));
+    setLeave(prev => prev.filter(l => !idsToDelete.has(l.employeeId)));
+    setTasks(prev => prev.filter(t => 
+        !(t.shiftId && shiftIdsForEmployees.has(t.shiftId)) && 
+        !(t.assigneeId && idsToDelete.has(t.assigneeId))
+    ));
+    setAllowances(prev => prev.filter(a => !idsToDelete.has(a.employeeId)));
+
+    toast({ title: `${employeeIds.length} Users Removed`, description: 'All associated data has been removed.', variant: 'destructive' });
+  };
+
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
     // Check if adding a new user or editing an existing one
@@ -408,6 +427,7 @@ function AppContent() {
                 onAddMember={() => handleAddMember('admin')}
                 onEditMember={(emp) => handleEditMember(emp, 'admin')}
                 onDeleteMember={handleDeleteMember}
+                onBatchDelete={handleBatchDeleteMembers}
                 onImportMembers={() => setIsImporterOpen(true)}
                 onManageGroups={() => setIsGroupEditorOpen(true)}
             />
