@@ -46,6 +46,21 @@
       "avatar": "",
       "loadAllocation": 600,
       "reportsTo": "emp-sr-manager-01"
+    },
+    {
+      "id": "emp-member-01",
+      "employeeNumber": "004",
+      "firstName": "Member",
+      "lastName": "One",
+      "email": "member.one@onduty.local",
+      "phone": "123-456-7893",
+      "password": "P@ssw0rd",
+      "position": "Support Staff",
+      "role": "member",
+      "group": "MAMS Support",
+      "avatar": "",
+      "loadAllocation": 500,
+      "reportsTo": "emp-manager-01"
     }
   ],
   "shifts": [],
