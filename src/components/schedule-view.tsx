@@ -24,7 +24,7 @@ import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx';
 import { sendEmail } from '@/app/actions';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
 import { Label } from './ui/label';
@@ -581,9 +581,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             const cell_ref = XLSX.utils.encode_cell(cell_address);
             const cell = ws[cell_ref];
             if (cell && typeof cell.v === 'string') {
-                 if (placeholderMap[cell.v]) {
-                    cell.v = placeholderMap[cell.v];
-                 } else if (cell.v === '{{data_start}}') {
+                const trimmedValue = cell.v.trim();
+                 if (placeholderMap[trimmedValue]) {
+                    cell.v = placeholderMap[trimmedValue];
+                 } else if (trimmedValue === '{{data_start}}') {
                     dataStartRow = R;
                     dataStartCol = C;
                     cell.v = ''; // Clear the placeholder
@@ -633,8 +634,22 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       return row;
     });
 
-    // Write data to sheet
-    XLSX.utils.sheet_add_aoa(ws, dataRows, { origin: { r: dataStartRow, c: dataStartCol } });
+    // Write data to sheet cell by cell to preserve formatting
+    dataRows.forEach((rowData, rowIndex) => {
+        rowData.forEach((cellValue, colIndex) => {
+            const cellAddress = { r: dataStartRow + rowIndex, c: dataStartCol + colIndex };
+            const cellRef = XLSX.utils.encode_cell(cellAddress);
+            
+            // Get existing cell to preserve style
+            const existingCell = ws[cellRef] || {};
+            
+            // Update only the value
+            existingCell.v = cellValue;
+            existingCell.t = 's'; // Set cell type to string
+            
+            ws[cellRef] = existingCell;
+        });
+    });
 
     const newWb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(newWb, ws, wsName);
@@ -1257,3 +1272,6 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     );
 }
 
+
+
+    
