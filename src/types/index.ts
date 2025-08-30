@@ -19,7 +19,6 @@ export type Employee = {
   avatar?: string;
   signature?: string;
   loadAllocation?: number;
-  loadLimitPercentage?: number;
 };
 
 export type Shift = {

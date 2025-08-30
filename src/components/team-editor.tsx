@@ -41,7 +41,6 @@ const employeeSchema = z.object({
   avatar: z.string().optional(),
   signature: z.string().optional(),
   loadAllocation: z.coerce.number().optional(),
-  loadLimitPercentage: z.coerce.number().optional(),
 });
 
 
@@ -85,7 +84,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       avatar: '',
       signature: '',
       loadAllocation: 500,
-      loadLimitPercentage: 150,
     }
   });
 
@@ -113,7 +111,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             avatar: '',
             signature: '',
             loadAllocation: 500,
-            loadLimitPercentage: 150,
         };
         form.reset(defaultValues);
         setAvatarPreview(employee?.avatar || null);
@@ -412,19 +409,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Load Allocation</FormLabel>
-                                        <FormControl>
-                                            <Input type="number" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="loadLimitPercentage"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Load Limit (%)</FormLabel>
                                         <FormControl>
                                             <Input type="number" {...field} />
                                         </FormControl>
