@@ -71,6 +71,8 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
             if (!['admin', 'manager', 'member'].includes(role)) {
                 console.warn(`Invalid role "${row['Role']}" for user ${row['First Name']}. Defaulting to 'member'.`);
             }
+            
+            const loadAllocationValue = parseFloat(row['Load Allocation']);
 
             return {
               firstName: row['First Name'] || '',
@@ -85,6 +87,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
               employeeNumber: row['Employee Number'] || '',
               password: row['Password'] || 'password', // Default password if not provided
               role: ['admin', 'manager', 'member'].includes(role) ? role : 'member',
+              loadAllocation: !isNaN(loadAllocationValue) ? loadAllocationValue : 0,
             };
           });
 
@@ -112,7 +115,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
         <DialogHeader>
           <DialogTitle>Import Members from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Phone, Employee Number, Password, Role.
+            Upload a CSV file with member data. Required headers are: First Name, Last Name, Email. Other supported headers are M.I., Position, Birth Date, Start Date, Group, Phone, Employee Number, Password, Role, Load Allocation.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
