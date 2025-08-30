@@ -32,7 +32,7 @@ const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentag
                     const willReceive = (allowance.balance !== undefined && allowance.balance !== null) ? allowance.balance <= limit : undefined;
 
                     if (willReceive) {
-                        return sum + (allowance.balance || 0);
+                        return sum + (employee.loadAllocation || 0);
                     }
                     return sum;
                 }, 0);
