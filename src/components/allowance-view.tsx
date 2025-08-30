@@ -372,7 +372,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                 <TableHead>Balance as of</TableHead>
                 <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
                 <TableHead>Excess in Allocation</TableHead>
-                <TableHead>Will receive load?</TableHead>
+                <TableHead>Receives Load?</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
