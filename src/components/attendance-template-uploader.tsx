@@ -87,18 +87,18 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                     <li><b>Header Placeholders:</b>
                         <ul className="list-disc pl-5">
-                             <li>`{{month}}` - The current month and year (e.g., October 2024).</li>
-                             <li>`{{group}}` - The name of the current user's group.</li>
-                             <li>`{{day_1}}`...`{{day_7}}` - The day number for each day of the week.</li>
+                             <li>{'`{{month}}`'} - The current month and year (e.g., October 2024).</li>
+                             <li>{'`{{group}}`'} - The name of the current user's group.</li>
+                             <li>{'`{{day_1}}`'}...{`{{day_7}}`} - The day number for each day of the week.</li>
                         </ul>
                     </li>
                      <li><b>Row Placeholders (repeat for each employee):</b>
                         <ul className="list-disc pl-5">
-                            <li>`{{employee_1}}`, `{{employee_2}}`, etc.</li>
-                             <li>You can place `{{group}}` in the group column for each row if needed.</li>
-                            <li>`{{position_1}}`, `{{position_2}}`, etc.</li>
-                            <li>`{{schedule_1_1}}` to `{{schedule_1_7}}` for the first employee's 7 days of schedule codes.</li>
-                            <li>`{{schedule_2_1}}` to `{{schedule_2_7}}` for the second employee.</li>
+                            <li>{`{{employee_1}}`}, {`{{employee_2}}`}, etc.</li>
+                            <li>You can place {'`{{group}}`'} in the group column for each row if needed.</li>
+                            <li>{`{{position_1}}`}, {`{{position_2}}`}, etc.</li>
+                            <li>{`{{schedule_1_1}}`} to {`{{schedule_1_7}}`} for the first employee's 7 days of schedule codes.</li>
+                            <li>{`{{schedule_2_1}}`} to {`{{schedule_2_7}}`} for the second employee.</li>
                         </ul>
                     </li>
                 </ul>
