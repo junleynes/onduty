@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance } from '@/types';
 import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth } from 'date-fns';
-import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as XLSX from 'xlsx-js-style';
 import { Label } from './ui/label';
@@ -130,6 +130,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isBalanceEditorOpen, setIsBalanceEditorOpen] = useState(false);
   const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   if (!currentUser) {
     return null;
@@ -146,7 +147,10 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const membersInGroup = React.useMemo(() => {
     const allMembersInGroup = employees
         .filter(e => e.group === currentUser.group)
-        .sort((a,b) => a.lastName.localeCompare(b.lastName));
+        .sort((a,b) => {
+            const compare = a.lastName.localeCompare(b.lastName);
+            return sortOrder === 'asc' ? compare : -compare;
+        });
 
     if (isManager) {
         return allMembersInGroup;
@@ -156,7 +160,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         const allowance = getEmployeeAllowance(employee.id);
         return allowance && allowance.balance !== undefined && allowance.balance !== null;
     });
-  }, [employees, currentUser, isManager, allowances, currentDate]);
+  }, [employees, currentUser, isManager, allowances, currentDate, sortOrder]);
 
 
   const handleOpenBalanceEditor = (employeeId: string) => {
@@ -296,6 +300,9 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                     </h2>
                     <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={!isManager && isFuture(startOfMonth(addMonths(currentDate, 1)))}>
                     <ChevronRight className="h-4 w-4" />
+                    </Button>
+                     <Button variant="outline" size="icon" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
+                        <ArrowUpDown className="h-4 w-4" />
                     </Button>
                 </div>
                 {isManager && (
