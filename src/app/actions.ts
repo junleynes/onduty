@@ -18,18 +18,19 @@ export async function sendEmail(
         return { success: false, error: 'SMTP settings are not fully configured.' };
     }
 
-    const transporter = nodemailer.createTransport({
-        host: smtpSettings.host,
-        port: smtpSettings.port,
-        secure: smtpSettings.secure,
-        auth: (smtpSettings.user && smtpSettings.pass) ? {
-            user: smtpSettings.user,
-            pass: smtpSettings.pass,
-        } : undefined,
-    });
-
     try {
+        const transporter = nodemailer.createTransport({
+            host: smtpSettings.host,
+            port: smtpSettings.port,
+            secure: smtpSettings.secure,
+            auth: (smtpSettings.user && smtpSettings.pass) ? {
+                user: smtpSettings.user,
+                pass: smtpSettings.pass,
+            } : undefined,
+        });
+
         await transporter.verify();
+        
         await transporter.sendMail({
             from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
             to,
@@ -42,7 +43,9 @@ export async function sendEmail(
                 contentType: att.contentType,
             }))
         });
+        
         return { success: true };
+
     } catch (error) {
         console.error('Email sending failed:', error);
         return { success: false, error: (error as Error).message };

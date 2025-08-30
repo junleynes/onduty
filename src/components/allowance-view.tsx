@@ -623,8 +623,8 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                         </TableCell>
                         <TableCell>{currency}{limit.toFixed(2)}</TableCell>
                         <TableCell>{excess > 0 ? `${currency}${excess.toFixed(2)}` : ''}</TableCell>
-                        <TableCell className={cn(!willReceive && 'bg-red-200 text-black font-bold')}>
-                            {willReceive ? 'Yes' : 'No'}
+                        <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
+                            {willReceive === undefined ? 'N/A' : (willReceive ? 'Yes' : 'No')}
                         </TableCell>
                         </TableRow>
                     );
@@ -767,11 +767,11 @@ function EmailDialog({
 
                 const result = await sendEmail({ to, subject, htmlBody, attachments }, smtpSettings);
 
-                if (result.success) {
+                if (result?.success) {
                     toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
                     setIsOpen(false);
                 } else {
-                    toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
+                    toast({ variant: 'destructive', title: 'Email Failed', description: result?.error || 'An unknown error occurred.' });
                 }
             } catch(e: any) {
                 toast({ variant: 'destructive', title: 'Failed to generate report', description: e.message });
