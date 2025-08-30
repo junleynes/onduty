@@ -361,36 +361,6 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
       setIsSettingsOpen(false);
   }
 
-    const generateReportHTML = () => {
-        const today = new Date();
-        const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
-
-        let tableHTML = `<table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr>
-                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Recipient</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Load Allocation</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #FFFF00;">${balanceHeader}</th>
-                </tr>
-            </thead>
-            <tbody>`;
-        
-        membersInGroup.forEach(employee => {
-            const allocation = employee.loadAllocation || 0;
-            const allowance = getEmployeeAllowance(employee.id);
-            const balance = allowance?.balance;
-            
-            tableHTML += `<tr>
-                <td style="border: 1px solid #ddd; padding: 8px;">${`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${currency}${allocation.toFixed(2)}</td>
-                <td style="border: 1px solid #ddd; padding: 8px;">${balance !== undefined && balance !== null ? `${currency}${balance.toFixed(2)}` : 'N/A'}</td>
-            </tr>`;
-        });
-
-        tableHTML += '</tbody></table>';
-        return tableHTML;
-    }
-
   const handleDownloadReport = () => {
     const today = new Date();
     const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
@@ -656,8 +626,10 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         isOpen={isEmailDialogOpen}
         setIsOpen={setIsEmailDialogOpen}
         subject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
-        htmlBody={generateReportHTML()}
         smtpSettings={smtpSettings}
+        membersInGroup={membersInGroup}
+        getEmployeeAllowance={getEmployeeAllowance}
+        currency={currency}
     />
 
     <Dialog open={isBalanceEditorOpen} onOpenChange={setIsBalanceEditorOpen}>
@@ -739,16 +711,65 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
   );
 }
 
-function EmailDialog({ isOpen, setIsOpen, subject, htmlBody, smtpSettings }: {
+type EmailDialogProps = {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     subject: string;
-    htmlBody: string;
     smtpSettings: SmtpSettings;
-}) {
+    membersInGroup: Employee[];
+    getEmployeeAllowance: (employeeId: string) => CommunicationAllowance | undefined;
+    currency: string;
+};
+
+function EmailDialog({ 
+    isOpen, 
+    setIsOpen, 
+    subject, 
+    smtpSettings, 
+    membersInGroup, 
+    getEmployeeAllowance, 
+    currency 
+}: EmailDialogProps) {
     const [to, setTo] = useState('');
     const [isSending, startTransition] = useTransition();
     const { toast } = useToast();
+    
+    const [htmlBody, setHtmlBody] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+             const generateReportHTML = () => {
+                const today = new Date();
+                const balanceHeader = `Load Balance as of ${format(today, 'MMMM d')}`;
+
+                let tableHTML = `<table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Recipient</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; background-color: #ADD8E6;">Load Allocation</th>
+                            <th style="border: 1px solid #ddd; padding: 8px; background-color: #FFFF00;">${balanceHeader}</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+                
+                membersInGroup.forEach(employee => {
+                    const allocation = employee.loadAllocation || 0;
+                    const allowance = getEmployeeAllowance(employee.id);
+                    const balance = allowance?.balance;
+                    
+                    tableHTML += `<tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${currency}${allocation.toFixed(2)}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">${balance !== undefined && balance !== null ? `${currency}${balance.toFixed(2)}` : 'N/A'}</td>
+                    </tr>`;
+                });
+
+                tableHTML += '</tbody></table>';
+                return tableHTML;
+            }
+            setHtmlBody(generateReportHTML());
+        }
+    }, [isOpen, membersInGroup, getEmployeeAllowance, currency]);
 
     const handleSend = async () => {
         if (!to) {
