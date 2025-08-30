@@ -454,6 +454,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                                 cell.value = cellText.replace(`{{employee_${employeeIndex}}}`, `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase());
                             }
                             
+                            // Group Name (per employee)
+                            if (cellText.includes(`{{group_${employeeIndex}}}`)) {
+                                cell.value = cellText.replace(`{{group_${employeeIndex}}}`, employee.group || '');
+                            }
+
                             // Position
                             if (cellText.includes(`{{position_${employeeIndex}}}`)) {
                                 cell.value = cellText.replace(`{{position_${employeeIndex}}}`, employee.position || '');
