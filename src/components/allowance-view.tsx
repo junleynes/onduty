@@ -623,8 +623,8 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                         </TableCell>
                         <TableCell>{currency}{limit.toFixed(2)}</TableCell>
                         <TableCell>{excess > 0 ? `${currency}${excess.toFixed(2)}` : ''}</TableCell>
-                        <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
-                            {willReceive !== undefined ? 'Yes' : 'No'}
+                        <TableCell className={cn(!willReceive && 'bg-red-200 text-black font-bold')}>
+                            {willReceive ? 'Yes' : 'No'}
                         </TableCell>
                         </TableRow>
                     );
