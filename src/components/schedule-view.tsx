@@ -557,7 +557,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const wsName = wb.SheetNames[0];
     const ws = wb.Sheets[wsName];
 
-    // Find and replace placeholders in headers
     const placeholderMap: { [key: string]: string | number } = {
         '{{group}}': currentUser.group || '',
         '{{week_of}}': `For the week of ${format(dateRange.from, 'MMMM d, yyyy')}`,
@@ -596,15 +595,26 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     
     const groupEmployees = employees.filter(e => e.group === currentUser.group);
 
-    // Get style from the template row
-    const templateRowStyles: any[] = [];
-    const numColsToCopy = 10; // Name, Position, 7 days, Comments
+    // Deep copy the style of each cell in the template data row
+    const templateRowStyles: (XLSX.CellStyle | undefined)[] = [];
+    const numColsToCopy = 10; // Adjust as needed
     for (let C = 0; C < numColsToCopy; ++C) {
         const templateCellRef = XLSX.utils.encode_cell({ r: dataStartRow, c: dataStartCol + C });
-        templateRowStyles.push(ws[templateCellRef]?.s || {});
+        const templateCell = ws[templateCellRef];
+        // Deep copy style object
+        templateRowStyles.push(templateCell?.s ? JSON.parse(JSON.stringify(templateCell.s)) : undefined);
+    }
+    
+    // Clear the placeholder row itself but keep its row height
+    for (let C = 0; C < numColsToCopy; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ r: dataStartRow, c: dataStartCol + C });
+        if(ws[cellRef]) {
+            ws[cellRef].v = '';
+            ws[cellRef].t = 's';
+        }
     }
 
-    // Write data using the cloned styles
+    // Write data and apply styles
     groupEmployees.forEach((emp, rowIndex) => {
         const rowData = [
             `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
@@ -637,15 +647,21 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         });
         rowData.push(''); // Comments column
 
+        const currentRow = dataStartRow + rowIndex;
         rowData.forEach((cellValue, colIndex) => {
-            const cellAddress = { r: dataStartRow + rowIndex, c: dataStartCol + colIndex };
+            const cellAddress = { r: currentRow, c: dataStartCol + colIndex };
             const cellRef = XLSX.utils.encode_cell(cellAddress);
             ws[cellRef] = {
                 v: cellValue,
                 t: 's',
-                s: templateRowStyles[colIndex] || {}
+                s: templateRowStyles[colIndex]
             };
         });
+        // Ensure row height is copied if it exists on the template row
+        if (ws['!rows'] && ws['!rows'][dataStartRow]) {
+             if(!ws['!rows'][currentRow]) ws['!rows'][currentRow] = {};
+             Object.assign(ws['!rows'][currentRow], ws['!rows'][dataStartRow]);
+        }
     });
 
     const newWb = XLSX.utils.book_new();
@@ -1272,4 +1288,5 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
     
 
     
+
 
