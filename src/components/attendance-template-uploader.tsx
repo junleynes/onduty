@@ -77,28 +77,26 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <DialogHeader>
           <DialogTitle>Upload Attendance Sheet Template</DialogTitle>
           <DialogDescription>
-            Upload your formatted .xlsx file. The system will find and replace placeholders to fill in the data while preserving your formatting.
+            Upload your formatted .xlsx file. The system will inject data starting from the `{{data_start}}` placeholder.
           </DialogDescription>
         </DialogHeader>
         <Alert>
-            <AlertTitle>Available Placeholders</AlertTitle>
+            <AlertTitle>Template Instructions</AlertTitle>
             <AlertDescription>
-                <p className="text-xs mt-2">Use these placeholders in your Excel template. The system will replace them with the correct data.</p>
+                <p className="text-xs mt-2">The system will find placeholders and replace them with data, while cloning the formatting of your first data row for all employees.</p>
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                     <li><b>Header Placeholders:</b>
                         <ul className="list-disc pl-5">
-                             <li>{'`{{month}}`'} - The current month and year (e.g., October 2024).</li>
-                             <li>{'`{{group}}`'} - The name of the current user's group.</li>
-                             <li>{'`{{day_1}}`'}...{`{{day_7}}`} - The day number for each day of the week.</li>
+                             <li>`{'{{month}}'}` - The current month and year (e.g., October 2024).</li>
+                             <li>`{'{{group}}'}` - The name of the current user's group.</li>
+                             <li>`{'{{day_1}}'}`...`{'{{day_7}}'}` - The day number for each day of the week.</li>
                         </ul>
                     </li>
-                     <li><b>Row Placeholders (repeat for each employee):</b>
+                     <li><b>Data Start Placeholder:</b>
                         <ul className="list-disc pl-5">
-                            <li>{`{{employee_1}}`}, {`{{employee_2}}`}, etc.</li>
-                            <li>You can place {'`{{group}}`'} in the group column for each row if needed.</li>
-                            <li>{`{{position_1}}`}, {`{{position_2}}`}, etc.</li>
-                            <li>{`{{schedule_1_1}}`} to {`{{schedule_1_7}}`} for the first employee's 7 days of schedule codes.</li>
-                            <li>{`{{schedule_2_1}}`} to {`{{schedule_2_7}}`} for the second employee.</li>
+                            <li>Place `{'{{data_start}}'}` in the first cell where employee data should begin (e.g., the cell for the first employee's name).</li>
+                            <li>Format this single row exactly how you want all employee rows to appear. The system will copy this style for all employees.</li>
+                             <li>The data columns generated are: `Name`, `Position`, and 7 `Schedule Code` columns. Ensure your template row has enough columns to match.</li>
                         </ul>
                     </li>
                 </ul>
