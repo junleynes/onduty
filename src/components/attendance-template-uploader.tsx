@@ -83,7 +83,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
         <Alert>
             <AlertTitle>Template Instructions</AlertTitle>
             <AlertDescription>
-                <p className="text-xs mt-2">The system will find placeholders and replace them with data, while cloning the formatting of your first data row for all employees.</p>
+                <p className="text-xs mt-2">The system clones the formatting from your first data row for all employees. Placeholders are case-sensitive.</p>
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                     <li><b>Header Placeholders:</b>
                         <ul className="list-disc pl-5">
@@ -96,7 +96,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
                         <ul className="list-disc pl-5">
                             <li>Place {'\'{{data_start}}\''} in the first cell where employee data should begin (e.g., the cell for the first employee's name).</li>
                             <li>Format this single row exactly how you want all employee rows to appear. The system will copy this style for all employees.</li>
-                             <li>The data columns generated are: `Name`, `Position`, and 7 `Schedule Code` columns. Ensure your template row has enough columns to match.</li>
+                             <li>The data columns generated are: `Name`, and 7 `Schedule Code` columns. Ensure your template row has enough columns for the name and the 7 days.</li>
                         </ul>
                     </li>
                 </ul>

@@ -8,7 +8,7 @@ import type { Employee, Shift, Leave, Notification, Note, Holiday, Task, SmtpSet
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper, Mail, Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn, getInitials, getBackgroundColor, getFullName, getInitialState } from '@/lib/utils';
@@ -422,8 +422,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:Z100');
 
             let dataStartRow = -1;
-            let dataStartCol = -1;
             let rowStyles: any[] = [];
+            let rowHeight;
 
 
             // --- 1. Find placeholders and data start, and read template row style ---
@@ -441,16 +441,19 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         for (let i = 0; i < 7; i++) {
                             const dayPlaceholder = new RegExp(`{{day_${i + 1}}}`, 'g');
                             if (cellValue.match(dayPlaceholder) && displayedDays[i]) {
-                                cell.v = cellValue.replace(dayPlaceholder, format(displayedDays[i], 'd'));
+                                cell.v = cellValue.replace(dayPlaceholder, String(getDate(displayedDays[i])));
                             }
                         }
 
                         if (cellValue.includes('{{data_start}}')) {
                             dataStartRow = R;
-                            dataStartCol = C;
                             // Capture the style of the entire template row
                             for(let col = range.s.c; col <= range.e.c; col++){
                                 rowStyles.push(ws[XLSX.utils.encode_cell({c: col, r: R})]?.s || {});
+                            }
+                            // Capture row height
+                            if (ws['!rows'] && ws['!rows'][R]) {
+                                rowHeight = ws['!rows'][R].hpt;
                             }
                             cell.v = ''; // Clear the placeholder
                         }
@@ -459,7 +462,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             }
 
             if (dataStartRow === -1) {
-                throw new Error("Could not find the {{data_start}} placeholder in the template.");
+                throw new Error("Could not find the '{{data_start}}' placeholder in the template.");
             }
 
             // --- 2. Generate data array and write it to the sheet ---
@@ -480,7 +483,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
                 return [
                     `${emp.lastName}, ${emp.firstName} ${emp.middleInitial || ''}`.toUpperCase(),
-                    emp.position || '',
                     ...scheduleCodes
                 ];
             });
@@ -488,19 +490,22 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             // Write new data row by row, applying the template style
             dataToInsert.forEach((rowData, rowIndex) => {
                  const currentRow = dataStartRow + rowIndex;
+                 // Find the placeholder cell and start writing from its column
+                 const startCol = ws[XLSX.utils.encode_cell({r:dataStartRow, c:0})] ? 0 : 1; // Basic assumption, may need refinement
+                 
                  rowData.forEach((cellData, colIndex) => {
-                    const currentCol = dataStartCol + colIndex;
+                    const currentCol = startCol + colIndex;
                     const cellRef = XLSX.utils.encode_cell({ r: currentRow, c: currentCol });
-                    ws[cellRef] = {
-                        t: 's', // string type
-                        v: cellData,
-                        s: rowStyles[colIndex] || {} // Apply style from template row
-                    };
+                    // Ensure the cell object exists before assigning properties
+                    if (!ws[cellRef]) ws[cellRef] = {};
+                    ws[cellRef].t = 's';
+                    ws[cellRef].v = cellData;
+                    ws[cellRef].s = rowStyles[colIndex] || {};
                  });
-                 // Ensure row height is preserved if specified
-                 if(ws['!rows'] && ws['!rows'][dataStartRow]) {
-                    if(!ws['!rows'][currentRow]) ws['!rows'][currentRow] = {};
-                    ws['!rows'][currentRow].hpt = ws['!rows'][dataStartRow].hpt;
+                 
+                 if (rowHeight) {
+                    if(!ws['!rows']) ws['!rows'] = [];
+                    ws['!rows'][currentRow] = { hpt: rowHeight };
                  }
             });
             
@@ -510,7 +515,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 range.e.r = newRangeEndRow;
                 ws['!ref'] = XLSX.utils.encode_range(range);
             }
-
 
             const excelBase64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
             return excelBase64;
@@ -1117,5 +1121,3 @@ function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelDa
         </Dialog>
     );
 }
-
-    
