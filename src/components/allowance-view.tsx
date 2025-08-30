@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, Download, Settings } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 import { Label } from './ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 type AllowanceViewProps = {
   employees: Employee[];
@@ -25,9 +26,13 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
-  const membersInGroup = employees.filter(e => e.group === currentUser.group);
+  const membersInGroup = isManager 
+    ? employees.filter(e => e.group === currentUser.group)
+    : employees.filter(e => e.id === currentUser.id);
+
 
   const handleBalanceChange = (employeeId: string, newBalance: string) => {
     const balanceValue = parseFloat(newBalance);
@@ -70,11 +75,15 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
       const value = parseInt(e.target.value, 10);
       if (!isNaN(value)) {
           setLoadLimitPercentage(value);
-          if (typeof window !== 'undefined') {
-              localStorage.setItem('globalLoadLimit', JSON.stringify(value));
-          }
-          toast({ title: "Global limit updated." });
       }
+  }
+
+  const handleSaveSettings = () => {
+      if (typeof window !== 'undefined') {
+          localStorage.setItem('globalLoadLimit', JSON.stringify(loadLimitPercentage));
+      }
+      toast({ title: "Global limit updated." });
+      setIsSettingsOpen(false);
   }
 
   const handleDownloadReport = () => {
@@ -89,7 +98,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
             "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
             "Load Allocation": allocation.toFixed(2),
             "Load Balance": balance !== undefined ? balance.toFixed(2) : 'N/A',
-            "150% Limit": limit.toFixed(2),
+            "Limit": limit.toFixed(2),
             "Excess in Allocation": excess > 0 ? excess.toFixed(2) : '',
             "Will receive load?": balance !== undefined ? (willReceive ? 'Yes' : 'No') : 'Yes'
         };
@@ -114,12 +123,46 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                 Monitor monthly communication allowances for your team.
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-             <Button variant="outline" onClick={handleDownloadReport}>
-                <Download className="h-4 w-4 mr-2" />
-                Download Report
-            </Button>
-          </div>
+          {isManager && (
+            <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleDownloadReport}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Report
+                </Button>
+                <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" size="icon">
+                            <Settings className="h-4 w-4" />
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                        <DialogTitle>Global Settings</DialogTitle>
+                        <DialogDescription>
+                            Set the global load limit percentage for all team members.
+                        </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="loadLimit" className="text-right col-span-2">
+                                Global Load Limit (%)
+                                </Label>
+                                <Input
+                                    id="loadLimit"
+                                    type="number"
+                                    value={loadLimitPercentage}
+                                    onChange={handleLimitChange}
+                                    className="col-span-2"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button onClick={handleSaveSettings}>Save changes</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+          )}
         </div>
         <div className="flex justify-between items-center mt-4">
             <div className="flex items-center gap-4">
@@ -133,23 +176,6 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                   <ChevronRight className="h-4 w-4" />
                 </Button>
             </div>
-            {isManager && (
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="loadLimit" className="flex items-center gap-2 font-semibold">
-                        <Settings className="h-4 w-4" />
-                        Global Load Limit
-                    </Label>
-                    <Input
-                        id="loadLimit"
-                        type="number"
-                        value={loadLimitPercentage}
-                        onChange={handleLimitChange}
-                        className="w-24"
-                        placeholder="e.g., 150"
-                    />
-                    <span className="font-semibold">%</span>
-                </div>
-            )}
         </div>
       </CardHeader>
       <CardContent>
@@ -159,7 +185,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
               <TableHead>Recipient</TableHead>
               <TableHead>Load Allocation</TableHead>
               <TableHead>Load Balance</TableHead>
-              <TableHead>{loadLimitPercentage}% Limit</TableHead>
+              <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
               <TableHead>Excess in Allocation</TableHead>
               <TableHead>Will receive load?</TableHead>
             </TableRow>
