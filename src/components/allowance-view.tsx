@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance } from '@/types';
-import { format, subMonths, addMonths } from 'date-fns';
+import { format, subMonths, addMonths, isSameMonth } from 'date-fns';
 import { ChevronLeft, ChevronRight, Download, Settings, Pencil } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as XLSX from 'xlsx';
@@ -34,7 +34,8 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
   const membersInGroup = isManager 
     ? employees.filter(e => e.group === currentUser.group)
-    : employees.filter(e => e.id === currentUser.id);
+    : employees.filter(e => e.group === currentUser.group);
+
 
   const handleOpenBalanceEditor = (employeeId: string) => {
     const year = currentDate.getFullYear();
@@ -209,7 +210,9 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
               const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
               const willReceive = balance !== undefined ? balance <= limit : true;
               
-              const canEdit = isManager;
+              const isCurrentUser = employee.id === currentUser.id;
+              const isCurrentMonth = isSameMonth(currentDate, new Date());
+              const canEdit = isManager || (isCurrentUser && isCurrentMonth);
 
               return (
                 <TableRow key={employee.id}>
