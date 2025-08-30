@@ -84,4 +84,6 @@ export type CommunicationAllowance = {
   year: number;
   month: number; // 0-11
   balance: number;
+  asOfDate?: Date;
+  screenshot?: string; // base64 string
 };

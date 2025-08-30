@@ -9,11 +9,12 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance } from '@/types';
 import { format, subMonths, addMonths } from 'date-fns';
-import { ChevronLeft, ChevronRight, Download, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Settings, Pencil } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as XLSX from 'xlsx';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DatePicker } from './ui/date-picker';
 
 type AllowanceViewProps = {
   employees: Employee[];
@@ -27,44 +28,49 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isBalanceEditorOpen, setIsBalanceEditorOpen] = useState(false);
+  const [editingAllowance, setEditingAllowance] = useState<Partial<CommunicationAllowance> | null>(null);
   
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
   const membersInGroup = isManager 
     ? employees.filter(e => e.group === currentUser.group)
     : employees.filter(e => e.id === currentUser.id);
 
-
-  const handleBalanceChange = (employeeId: string, newBalance: string) => {
-    const balanceValue = parseFloat(newBalance);
-    if (isNaN(balanceValue)) return;
-
+  const handleOpenBalanceEditor = (employeeId: string) => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
+    const existingAllowance = allowances.find(a => a.employeeId === employeeId && a.year === year && a.month === month);
+    setEditingAllowance(existingAllowance || { employeeId, year, month });
+    setIsBalanceEditorOpen(true);
+  }
 
+  const handleSaveBalance = () => {
+    if (!editingAllowance) return;
+    
     setAllowances(prev => {
-      const existingIndex = prev.findIndex(a => a.employeeId === employeeId && a.year === year && a.month === month);
-      if (existingIndex !== -1) {
-        const updated = [...prev];
-        updated[existingIndex].balance = balanceValue;
-        return updated;
-      } else {
-        const newAllowance: CommunicationAllowance = {
-          id: `ca-${employeeId}-${year}-${month}`,
-          employeeId,
-          year,
-          month,
-          balance: balanceValue,
-        };
-        return [...prev, newAllowance];
-      }
+        const existingIndex = prev.findIndex(a => a.id === editingAllowance.id || (a.employeeId === editingAllowance.employeeId && a.year === editingAllowance.year && a.month === editingAllowance.month));
+        if (existingIndex !== -1) {
+            const updated = [...prev];
+            updated[existingIndex] = { ...updated[existingIndex], ...editingAllowance } as CommunicationAllowance;
+            return updated;
+        } else {
+            const newAllowance: CommunicationAllowance = {
+                id: `ca-${editingAllowance.employeeId}-${editingAllowance.year}-${editingAllowance.month}`,
+                balance: 0,
+                ...editingAllowance,
+            } as CommunicationAllowance;
+            return [...prev, newAllowance];
+        }
     });
+    toast({ title: 'Balance Updated'});
+    setIsBalanceEditorOpen(false);
+    setEditingAllowance(null);
   };
   
-  const getEmployeeBalance = (employeeId: string): number | undefined => {
+  const getEmployeeAllowance = (employeeId: string): CommunicationAllowance | undefined => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    const allowance = allowances.find(a => a.employeeId === employeeId && a.year === year && a.month === month);
-    return allowance?.balance;
+    return allowances.find(a => a.employeeId === employeeId && a.year === year && a.month === month);
   }
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -89,7 +95,8 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
   const handleDownloadReport = () => {
     const dataForReport = membersInGroup.map(employee => {
         const allocation = employee.loadAllocation || 0;
-        const balance = getEmployeeBalance(employee.id);
+        const allowance = getEmployeeAllowance(employee.id);
+        const balance = allowance?.balance;
         const limit = allocation * (loadLimitPercentage / 100);
         const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
         const willReceive = balance !== undefined ? balance <= limit : true;
@@ -98,6 +105,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
             "Recipient": `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
             "Load Allocation": allocation.toFixed(2),
             "Load Balance": balance !== undefined ? balance.toFixed(2) : 'N/A',
+            "Balance as of": allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'yyyy-MM-dd') : 'N/A',
             "Limit": limit.toFixed(2),
             "Excess in Allocation": excess > 0 ? excess.toFixed(2) : '',
             "Will receive load?": balance !== undefined ? (willReceive ? 'Yes' : 'No') : 'Yes'
@@ -114,6 +122,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
 
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
@@ -185,6 +194,7 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
               <TableHead>Recipient</TableHead>
               <TableHead>Load Allocation</TableHead>
               <TableHead>Load Balance</TableHead>
+              <TableHead>Balance as of</TableHead>
               <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
               <TableHead>Excess in Allocation</TableHead>
               <TableHead>Will receive load?</TableHead>
@@ -193,12 +203,12 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
           <TableBody>
             {membersInGroup.map((employee) => {
               const allocation = employee.loadAllocation || 0;
-              const balance = getEmployeeBalance(employee.id);
+              const allowance = getEmployeeAllowance(employee.id);
+              const balance = allowance?.balance;
               const limit = allocation * (loadLimitPercentage / 100);
               const excess = balance !== undefined && balance > allocation ? balance - allocation : 0;
               const willReceive = balance !== undefined ? balance <= limit : true;
               
-              // Member can edit their own, Manager can edit their own.
               const canEdit = employee.id === currentUser.id;
 
               return (
@@ -206,18 +216,17 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
                   <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
                   <TableCell>{allocation.toFixed(2)}</TableCell>
                   <TableCell>
-                    {canEdit ? (
-                         <Input
-                            type="number"
-                            step="0.01"
-                            value={balance ?? ''}
-                            onChange={(e) => handleBalanceChange(employee.id, e.target.value)}
-                            className="w-32"
-                            placeholder="Enter balance"
-                         />
-                    ) : (
+                    <div className="flex items-center gap-2">
                         <span>{balance !== undefined ? balance.toFixed(2) : 'N/A'}</span>
-                    )}
+                        {canEdit && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id)}>
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+                  </TableCell>
+                   <TableCell>
+                      {allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'MMM d, yyyy') : 'N/A'}
                   </TableCell>
                   <TableCell>{limit.toFixed(2)}</TableCell>
                   <TableCell>{excess > 0 ? excess.toFixed(2) : ''}</TableCell>
@@ -231,5 +240,58 @@ export default function AllowanceView({ employees, allowances, setAllowances, cu
         </Table>
       </CardContent>
     </Card>
+    
+    <Dialog open={isBalanceEditorOpen} onOpenChange={setIsBalanceEditorOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Update Load Balance</DialogTitle>
+                <DialogDescription>
+                    Enter the details for your current load balance for {format(currentDate, 'MMMM yyyy')}.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="balance">Load Balance</Label>
+                    <Input 
+                        id="balance"
+                        type="number"
+                        step="0.01"
+                        value={editingAllowance?.balance ?? ''}
+                        onChange={(e) => setEditingAllowance(prev => ({ ...prev, balance: parseFloat(e.target.value) }))}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>Load balance as of</Label>
+                    <DatePicker 
+                        date={editingAllowance?.asOfDate ? new Date(editingAllowance.asOfDate) : undefined}
+                        onDateChange={(date) => setEditingAllowance(prev => ({...prev, asOfDate: date}))}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="screenshot">Screenshot (optional)</Label>
+                    <Input 
+                        id="screenshot"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                    setEditingAllowance(prev => ({...prev, screenshot: reader.result as string}));
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        }}
+                    />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsBalanceEditorOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveBalance}>Save</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
