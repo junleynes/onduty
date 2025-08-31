@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -100,41 +100,29 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   const [taskDescription, setTaskDescription] = useState('');
   const [activeTab, setActiveTab] = useState('details');
 
-  const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-  const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : '';
-
   const form = useForm<z.infer<typeof shiftSchema>>({
     resolver: zodResolver(shiftSchema),
-    defaultValues: {
-      id: shift?.id || undefined,
-      employeeId: shift?.employeeId || null,
-      label: shift?.label || '',
-      date: shift?.date || new Date(),
-      startTime: shift?.startTime || '',
-      endTime: shift?.endTime || '',
-      color: shift?.color || defaultColor,
-      isDayOff: shift?.isDayOff || false,
-      isHolidayOff: shift?.isHolidayOff || false,
-    },
   });
 
   useEffect(() => {
-    const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : shiftColorOptions[1].value;
-    if (!editingTemplate) {
+    if (isOpen) {
+        const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
+        const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : shiftColorOptions[1].value;
+        
         form.reset({
-        id: shift?.id || undefined,
-        employeeId: shift?.employeeId || null,
-        label: shift?.label || '',
-        date: shift?.date || new Date(),
-        startTime: shift?.startTime || '',
-        endTime: shift?.endTime || '',
-        color: shift?.color || defaultColor,
-        isDayOff: shift?.isDayOff || false,
-        isHolidayOff: shift?.isHolidayOff || false,
+            id: shift?.id || undefined,
+            employeeId: shift?.employeeId || null,
+            label: shift?.label || '',
+            date: shift?.date || new Date(),
+            startTime: shift?.startTime || '',
+            endTime: shift?.endTime || '',
+            color: shift?.color || defaultColor,
+            isDayOff: shift?.isDayOff || false,
+            isHolidayOff: shift?.isHolidayOff || false,
         });
     }
-  }, [shift, form, employees, editingTemplate]);
+  }, [isOpen, shift, employees, form]);
+
 
   useEffect(() => {
     if (editingTask) {
@@ -149,10 +137,13 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   const handleEditTemplate = (template: ShiftTemplate) => {
     setEditingTemplate(template);
-    form.setValue('label', template.label);
-    form.setValue('startTime', template.startTime);
-    form.setValue('endTime', template.endTime);
-    form.setValue('color', template.color);
+    form.reset({
+        ...form.getValues(),
+        label: template.label,
+        startTime: template.startTime,
+        endTime: template.endTime,
+        color: template.color,
+    });
     setActiveTab('details');
   };
   
@@ -235,10 +226,13 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   const isHolidayOff = form.watch('isHolidayOff');
 
   const handleTemplateClick = (template: typeof shiftTemplates[0]) => {
-    form.setValue('label', template.label);
-    form.setValue('startTime', template.startTime);
-    form.setValue('endTime', template.endTime);
-    form.setValue('color', template.color);
+    form.reset({
+      ...form.getValues(),
+      label: template.label,
+      startTime: template.startTime,
+      endTime: template.endTime,
+      color: template.color,
+    });
     toast({ title: 'Template Applied', description: `The "${template.name}" template has been applied.`});
   }
 
@@ -272,6 +266,8 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   const cancelEditTemplate = () => {
     setEditingTemplate(null);
+    const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
+    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : shiftColorOptions[1].value;
     form.reset({
         id: shift?.id || undefined,
         employeeId: shift?.employeeId || null,
