@@ -267,7 +267,10 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                               endTime,
                               label: matchedTemplate ? matchedTemplate.label : 'Shift',
                               color: matchedTemplate ? matchedTemplate.color : '#9b59b6',
-                              status: 'draft'
+                              status: 'draft',
+                              breakStartTime: matchedTemplate?.breakStartTime,
+                              breakEndTime: matchedTemplate?.breakEndTime,
+                              isUnpaidBreak: matchedTemplate?.isUnpaidBreak,
                           });
                       }
                   });
