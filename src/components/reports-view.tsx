@@ -82,12 +82,8 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
             if (!templateRowData || templateRowNumber === -1) {
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
-
-            const originalTemplateRow = worksheet.getRow(templateRowNumber);
-            originalTemplateRow.hidden = true;
-
-
-            let currentRowIndex = templateRowNumber + 1;
+            
+            let currentRowIndex = templateRowNumber;
             
             groupEmployees.forEach((employee) => {
                  daysInInterval.forEach(day => {
@@ -116,13 +112,32 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
                     // Copy styles from the template row
                     const templateRow = worksheet.getRow(templateRowNumber);
                     const newRow = worksheet.getRow(currentRowIndex);
+                    newRow.height = templateRow.height;
                     templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                        newRow.getCell(colNumber).style = cell.style;
+                        const newCell = newRow.getCell(colNumber);
+                        newCell.style = cell.style;
+
+                        // Also copy merges
+                        const merge = (worksheet as any).getMerges().find(
+                            (m: any) => m.master === cell.address
+                        );
+                        if (merge) {
+                            worksheet.mergeCells(
+                                newRow.number,
+                                merge.left,
+                                newRow.number,
+                                merge.right
+                            );
+                        }
                     });
                      
                     currentRowIndex++;
                  });
             });
+
+            // Hide the original template row
+            worksheet.getRow(templateRowNumber).hidden = true;
+
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
