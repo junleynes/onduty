@@ -45,7 +45,7 @@ export const getInitialState = <T>(key: string, defaultValue: T): T => {
         const item = window.localStorage.getItem(key);
         
         // Special handling for the raw template string to avoid JSON parsing
-        if (key === 'attendanceSheetTemplate') {
+        if (key === 'attendanceSheetTemplate' || key === 'workScheduleTemplate' || key === 'wfhCertificationTemplate') {
             return (item || defaultValue) as T;
         }
 

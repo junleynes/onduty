@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Employee, Shift, Leave, Holiday, TardyRecord } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from './ui/button';
@@ -13,6 +13,7 @@ import { cn, getFullName, getInitialState } from '@/lib/utils';
 import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
+import { WfhCertificationTemplateUploader } from './wfh-certification-template-uploader';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useToast } from '@/hooks/use-toast';
@@ -20,7 +21,6 @@ import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import type { ShiftTemplate } from './shift-editor';
 import { ReportPreviewDialog } from './report-preview-dialog';
 import { TardyImporter } from './tardy-importer';
-import { Separator } from './ui/separator';
 
 
 type ReportsViewProps = {
@@ -42,15 +42,18 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [attendanceWeek, setAttendanceWeek] = useState<Date | undefined>();
     const [summaryDateRange, setSummaryDateRange] = useState<DateRange | undefined>();
     const [tardyDateRange, setTardyDateRange] = useState<DateRange | undefined>();
+    const [wfhCertMonth, setWfhCertMonth] = useState<Date | undefined>();
 
     const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>(() => getInitialState('tardyRecords', []));
 
 
     const [workScheduleTemplate, setWorkScheduleTemplate] = useState<string | null>(() => getInitialState('workScheduleTemplate', null));
     const [attendanceTemplate, setAttendanceTemplate] = useState<string | null>(() => getInitialState('attendanceSheetTemplate', null));
+    const [wfhCertTemplate, setWfhCertTemplate] = useState<string | null>(() => getInitialState('wfhCertificationTemplate', null));
 
     const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = useState(false);
     const [isAttendanceUploaderOpen, setIsAttendanceUploaderOpen] = useState(false);
+    const [isWfhCertUploaderOpen, setIsWfhCertUploaderOpen] = useState(false);
     const [isTardyImporterOpen, setIsTardyImporterOpen] = useState(false);
     
     const [previewData, setPreviewData] = useState<ReportData | null>(null);
@@ -65,6 +68,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const end = endOfWeek(attendanceWeek, { weekStartsOn: 1 });
         return { from: start, to: end };
     }, [attendanceWeek]);
+
+    const wfhCertDateRange = useMemo(() => {
+        if (!wfhCertMonth) return undefined;
+        const start = startOfMonth(wfhCertMonth);
+        const end = endOfMonth(wfhCertMonth);
+        return { from: start, to: end };
+    }, [wfhCertMonth]);
 
     // --- Data Generation Functions ---
 
@@ -112,12 +122,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             return { ...emptySchedule, day_status: 'OFF' };
         }
         
-        if (holidayOff) {
-             const defaultTemplate = getDefaultShiftTemplate(employee);
-             return { ...getScheduleFromTemplate(defaultTemplate), day_status: '' };
-        }
-
-        if (leaveEntry || holiday) {
+        if (holidayOff || leaveEntry || holiday) {
              const defaultTemplate = getDefaultShiftTemplate(employee);
              return { ...getScheduleFromTemplate(defaultTemplate), day_status: '' };
         }
@@ -562,10 +567,158 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         saveAs(blob, `Cumulative Tardy Report - ${format(tardyDateRange!.from!, 'yyyy-MM-dd')} to ${format(tardyDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
     };
 
+    // --- WFH Certification Functions ---
+    const generateWfhCertificationData = (): ReportData | null => {
+        if (!wfhCertDateRange || !wfhCertDateRange.from || !wfhCertDateRange.to) {
+            toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month for the report.' });
+            return null;
+        }
+
+        const daysInInterval = eachDayOfInterval({ start: wfhCertDateRange.from, end: wfhCertDateRange.to });
+        const headers = ['DATE', 'ATTENDANCE RENDERED', 'TOTAL HRS. SPENT', 'REMARKS'];
+        const rows: (string | number)[][] = [];
+
+        daysInInterval.forEach(day => {
+            const shift = shifts.find(s => s.employeeId === currentUser.id && isSameDay(new Date(s.date), day));
+            const leaveEntry = leave.find(l => l.employeeId === currentUser.id && isSameDay(new Date(l.date), day));
+
+            let attendanceRendered = '';
+            let totalHrs = '';
+            let remarks = '';
+
+            if (leaveEntry) {
+                attendanceRendered = 'ONLEAVE';
+                remarks = leaveEntry.type;
+            } else if (shift) {
+                if (shift.isDayOff || shift.isHolidayOff) {
+                    // Do nothing for day off/holiday off
+                } else {
+                    const shiftLabel = shift.label?.trim().toUpperCase();
+                    attendanceRendered = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'OFFICE-BASED';
+                    
+                    if (shift.startTime && shift.endTime) {
+                         const start = parse(shift.startTime, 'HH:mm', new Date());
+                        const end = parse(shift.endTime, 'HH:mm', new Date());
+                        let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                        if (diff < 0) diff += 24;
+
+                        let breakHours = 0;
+                        if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
+                            const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
+                            const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
+                            let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
+                            if (breakDiff < 0) breakDiff += 24;
+                            breakHours = breakDiff;
+                        }
+                        totalHrs = (diff - breakHours).toFixed(2);
+                    }
+                }
+            }
+
+            rows.push([
+                format(day, 'MM/dd/yyyy'),
+                attendanceRendered,
+                totalHrs,
+                remarks
+            ]);
+        });
+        
+        return { headers, rows };
+    };
+
+    const handleDownloadWfhCertification = async (data: ReportData | null) => {
+         if (!data) return;
+        if (!wfhCertTemplate) {
+            toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a WFH Certification template first.' });
+            return;
+        }
+        if (!wfhCertDateRange || !wfhCertDateRange.from) {
+             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month.' });
+            return;
+        }
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const buffer = Buffer.from(wfhCertTemplate, 'binary');
+            await workbook.xlsx.load(buffer);
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) throw new Error("Template worksheet not found.");
+            
+            const manager = employees.find(e => e.id === currentUser.reportsTo);
+
+            // Global placeholders
+            worksheet.eachRow({ includeEmpty: true }, (row) => {
+                row.eachCell({ includeEmpty: true }, (cell) => {
+                    if (cell.value && typeof cell.value === 'string') {
+                        let text = cell.value;
+                        text = text.replace(/{{first_day_of_month}}/g, format(startOfMonth(wfhCertDateRange.from!), 'MMMM d, yyyy'));
+                        text = text.replace(/{{last_day_of_month}}/g, format(endOfMonth(wfhCertDateRange.from!), 'MMMM d, yyyy'));
+                        text = text.replace(/{{employee_name}}/g, getFullName(currentUser));
+                        text = text.replace(/{{reports_to_manager}}/g, manager ? getFullName(manager) : 'N/A');
+                        cell.value = text;
+                    }
+                });
+            });
+
+            // Row placeholders
+            let templateRowData: { values: any[], styles: Partial<ExcelJS.Style>[], height: number } | null = null;
+            let templateRowNumber = -1;
+            worksheet.eachRow((row, rowNum) => {
+                row.eachCell((cell) => {
+                    if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
+                        if (!templateRowData) {
+                            const values: any[] = [];
+                            const styles: Partial<ExcelJS.Style>[] = [];
+                            row.eachCell({ includeEmpty: true }, (c) => {
+                                values[c.col] = c.value;
+                                styles[c.col] = c.style;
+                            });
+                            templateRowData = { values, styles, height: row.height };
+                            templateRowNumber = rowNum;
+                        }
+                    }
+                });
+            });
+
+            if (!templateRowData || templateRowNumber === -1) {
+                throw new Error("Template row with `{{DATE}}` placeholder not found.");
+            }
+
+            let currentRowIndex = templateRowNumber;
+            data.rows.forEach(rowData => {
+                const newRowValues = templateRowData!.values.map(cellValue => {
+                    if (typeof cellValue !== 'string') return cellValue;
+                    let text = cellValue;
+                    text = text.replace(/{{DATE}}/g, String(rowData[0]));
+                    text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
+                    text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
+                    text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
+                    return text;
+                });
+
+                worksheet.insertRow(currentRowIndex, newRowValues);
+                const newRow = worksheet.getRow(currentRowIndex);
+                newRow.height = templateRowData!.height;
+                templateRowData!.styles.forEach((style, colNumber) => {
+                    if (style) newRow.getCell(colNumber).style = style;
+                });
+                currentRowIndex++;
+            });
+            worksheet.spliceRows(currentRowIndex, 1);
+
+            const uint8Array = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `WFH Certification - ${getFullName(currentUser)} - ${format(wfhCertDateRange.from!, 'MMMM yyyy')}.xlsx`);
+
+        } catch(error) {
+            console.error("Error generating WFH cert:", error);
+            toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
+        }
+    };
     
     // --- Event Handlers ---
     
-    const handleViewReport = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy') => {
+    const handleViewReport = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh') => {
         let data: ReportData | null = null;
         let title = '';
         let generator: (() => Promise<void>) | null = null;
@@ -594,6 +747,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 title = `Cumulative Tardy Report (${format(tardyDateRange!.from!, 'LLL d')} - ${format(tardyDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadTardyReport(data);
             }
+        } else if (type === 'wfh') {
+            data = generateWfhCertificationData();
+            if (data) {
+                title = `WFH Certification - ${getFullName(currentUser)} (${format(wfhCertDateRange!.from!, 'MMMM yyyy')})`;
+                generator = () => handleDownloadWfhCertification(data);
+            }
         }
         
         if (data) {
@@ -604,7 +763,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
     }
 
-    const handleDirectDownload = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy') => {
+    const handleDirectDownload = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh') => {
         if (type === 'workSchedule') {
             handleDownloadWorkSchedule(generateWorkScheduleData());
         } else if (type === 'attendance') {
@@ -613,6 +772,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             handleDownloadUserSummary(generateUserSummaryData());
         } else if (type === 'tardy') {
             handleDownloadTardyReport(generateTardyReportData());
+        } else if (type === 'wfh') {
+            handleDownloadWfhCertification(generateWfhCertificationData());
         }
     };
     
@@ -880,6 +1041,58 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         </CardFooter>
                     </Card>
 
+                    {currentUser.role === 'manager' && (
+                        <Card className="p-6">
+                            <h3 className="font-semibold text-lg mb-2">Work From Home Certification</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Generate a WFH certification for the current user for a specific month.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                    <Button
+                                        id="wfh-cert-date"
+                                        variant={"outline"}
+                                        className={cn(
+                                        "w-full sm:w-[300px] justify-start text-left font-normal",
+                                        !wfhCertMonth && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {wfhCertMonth ? format(wfhCertMonth, "MMMM yyyy") : <span>Pick a month</span>}
+                                    </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        initialFocus
+                                        mode="single"
+                                        selected={wfhCertMonth}
+                                        onSelect={setWfhCertMonth}
+                                        pagedNavigation
+                                        captionLayout="dropdown-buttons"
+                                        fromYear={2020}
+                                        toYear={new Date().getFullYear() + 1}
+                                    />
+                                    </PopoverContent>
+                                </Popover>
+                                <Button variant="outline" onClick={() => setIsWfhCertUploaderOpen(true)}>
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Upload Template
+                                </Button>
+                            </div>
+                            <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                                <Button onClick={() => handleViewReport('wfh')} disabled={!wfhCertMonth}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Report
+                                </Button>
+                                <Button onClick={() => handleDirectDownload('wfh')} disabled={!wfhCertMonth || !wfhCertTemplate}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Generate & Download
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )}
+
                 </CardContent>
             </Card>
             <ReportTemplateUploader
@@ -891,6 +1104,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 isOpen={isAttendanceUploaderOpen}
                 setIsOpen={setIsAttendanceUploaderOpen}
                 onTemplateUpload={setAttendanceTemplate}
+            />
+            <WfhCertificationTemplateUploader
+                isOpen={isWfhCertUploaderOpen}
+                setIsOpen={setIsWfhCertUploaderOpen}
+                onTemplateUpload={setWfhCertTemplate}
             />
              <TardyImporter
                 isOpen={isTardyImporterOpen}
