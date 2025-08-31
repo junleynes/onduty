@@ -1,4 +1,5 @@
 
+
 'use client';
 import { 
     CalendarDays, 
@@ -21,7 +22,8 @@ import {
     Smartphone,
     ListChecks,
     Mail,
-    FileText
+    FileText,
+    Plane,
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
@@ -64,6 +66,7 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             items: [
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
+                { view: 'time-off', label: 'Time Off', icon: Plane, iconColor: 'bg-blue-500' },
                 { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
                 { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
@@ -97,7 +100,8 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
             items: [
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
-                 { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
+                { view: 'time-off', label: 'Time Off', icon: Plane, iconColor: 'bg-blue-500' },
+                { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
                  { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },

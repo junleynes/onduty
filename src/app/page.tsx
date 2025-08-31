@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -36,9 +37,10 @@ import TaskManagerView from '@/components/task-manager-view';
 import SmtpSettingsView from '@/components/smtp-settings-view';
 import { HolidayImporter } from '@/components/holiday-importer';
 import ReportsView from '@/components/reports-view';
+import TimeOffView from '@/components/time-off-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings' | 'reports';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings' | 'reports' | 'time-off';
 
 
 function AppContent() {
@@ -424,6 +426,13 @@ function AppContent() {
                   isManager={currentUser.role === 'manager' || currentUser.role === 'admin'}
                   onManageHolidays={() => setIsHolidayEditorOpen(true)}
                 />;
+       case 'time-off':
+        return <TimeOffView
+                  leaveRequests={leave}
+                  setLeaveRequests={setLeave}
+                  currentUser={currentUser}
+                  employees={employees}
+               />;
       case 'allowance':
         return <AllowanceView 
                   employees={employees}

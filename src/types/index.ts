@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'admin' | 'manager' | 'member';
 
 export type AppVisibility = {
@@ -47,6 +48,8 @@ export type Shift = {
 
 export type LeaveType = string;
 
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected';
+
 export type Leave = {
   id: string;
   employeeId: string;
@@ -56,6 +59,11 @@ export type Leave = {
   isAllDay: boolean;
   startTime?: string;
   endTime?: string;
+  status?: LeaveRequestStatus;
+  reason?: string;
+  requestedAt?: Date;
+  managedBy?: string; // ID of manager who approved/rejected
+  managedAt?: Date;
 };
 
 export type Notification = {

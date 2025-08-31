@@ -57,6 +57,7 @@
     { "type": "SL", "color": "#f97316" },
     { "type": "BL", "color": "#14b8a6" },
     { "type": "PL", "color": "#8b5cf6" },
-    { "type": "ML", "color": "#ec4899" }
+    { "type": "ML", "color": "#ec4899" },
+    { "type": "Work Extension", "color": "#3b82f6" }
   ]
 }

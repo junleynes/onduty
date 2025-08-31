@@ -17,10 +17,13 @@ export const shifts: Shift[] = initialDb.shifts.map(s => ({
     date: new Date(s.date),
 }));
 
-export const leave: Leave[] = initialDb.leave.map(l => ({
+export const leave: Leave[] = initialDb.leave.map((l: any) => ({
     ...l,
     date: new Date(l.date),
+    requestedAt: l.requestedAt ? new Date(l.requestedAt) : undefined,
+    managedAt: l.managedAt ? new Date(l.managedAt) : undefined,
 }));
+
 
 export const tasks: Task[] = initialDb.tasks.map((t: any) => ({
     ...t,
