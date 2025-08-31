@@ -38,17 +38,17 @@
     "MAMS Support"
   ],
   "shiftTemplates": [
-    { "name": "Morning Shift (06:00-14:00)", "label": "Morning Shift", "startTime": "06:00", "endTime": "14:00", "color": "hsl(var(--chart-2))" },
-    { "name": "Late Morning Shift (07:00-15:00)", "label": "Late Morning Shift", "startTime": "07:00", "endTime": "15:00", "color": "hsl(var(--chart-2))" },
-    { "name": "Afternoon Shift (14:00-22:00)", "label": "Afternoon Shift", "startTime": "14:00", "endTime": "22:00", "color": "#3498db" },
-    { "name": "Early-Afternoon Shift (12:00-20:00)", "label": "Early-Afternoon Shift", "startTime": "12:00", "endTime": "20:00", "color": "#3498db" },
-    { "name": "Night Shift (22:00-06:00)", "label": "Night Shift", "startTime": "22:00", "endTime": "06:00", "color": "#e91e63" },
-    { "name": "Early Mid Shift (08:00-16:00)", "label": "Early Mid Shift", "startTime": "08:00", "endTime": "16:00", "color": "#ffffff" },
-    { "name": "Mid Shift (10:00-18:00)", "label": "Mid Shift", "startTime": "10:00", "endTime": "18:00", "color": "#ffffff" },
-    { "name": "Manager Shift (10:00-19:00)", "label": "Manager Shift", "startTime": "10:00", "endTime": "19:00", "color": "hsl(var(--chart-1))" },
-    { "name": "Manager Shift (11:00-20:00)", "label": "Manager Shift", "startTime": "11:00", "endTime": "20:00", "color": "hsl(var(--chart-1))" },
-    { "name": "Manager Shift (12:00-21:00)", "label": "Manager Shift", "startTime": "12:00", "endTime": "21:00", "color": "hsl(var(--chart-1))" },
-    { "name": "Probationary Shift (09:00-18:00)", "label": "Probationary Shift", "startTime": "09:00", "endTime": "18:00", "color": "hsl(var(--chart-1))" }
+    { "name": "Morning Shift (06:00-14:00)", "label": "Morning Shift", "startTime": "06:00", "endTime": "14:00", "color": "hsl(var(--chart-2))", "breakStartTime": "10:00", "breakEndTime": "10:30", "isUnpaidBreak": false },
+    { "name": "Late Morning Shift (07:00-15:00)", "label": "Late Morning Shift", "startTime": "07:00", "endTime": "15:00", "color": "hsl(var(--chart-2))", "breakStartTime": "11:00", "breakEndTime": "11:30", "isUnpaidBreak": false },
+    { "name": "Afternoon Shift (14:00-22:00)", "label": "Afternoon Shift", "startTime": "14:00", "endTime": "22:00", "color": "#3498db", "breakStartTime": "18:00", "breakEndTime": "18:30", "isUnpaidBreak": false },
+    { "name": "Early-Afternoon Shift (12:00-20:00)", "label": "Early-Afternoon Shift", "startTime": "12:00", "endTime": "20:00", "color": "#3498db", "breakStartTime": "16:00", "breakEndTime": "16:30", "isUnpaidBreak": false },
+    { "name": "Night Shift (22:00-06:00)", "label": "Night Shift", "startTime": "22:00", "endTime": "06:00", "color": "#e91e63", "breakStartTime": "02:00", "breakEndTime": "02:30", "isUnpaidBreak": false },
+    { "name": "Early Mid Shift (08:00-16:00)", "label": "Early Mid Shift", "startTime": "08:00", "endTime": "16:00", "color": "#ffffff", "breakStartTime": "12:00", "breakEndTime": "12:30", "isUnpaidBreak": false },
+    { "name": "Mid Shift (10:00-18:00)", "label": "Mid Shift", "startTime": "10:00", "endTime": "18:00", "color": "#ffffff", "breakStartTime": "14:00", "breakEndTime": "14:30", "isUnpaidBreak": false },
+    { "name": "Manager Shift (10:00-19:00)", "label": "Manager Shift", "startTime": "10:00", "endTime": "19:00", "color": "hsl(var(--chart-1))", "breakStartTime": "14:00", "breakEndTime": "15:00", "isUnpaidBreak": true },
+    { "name": "Manager Shift (11:00-20:00)", "label": "Manager Shift", "startTime": "11:00", "endTime": "20:00", "color": "hsl(var(--chart-1))", "breakStartTime": "15:00", "breakEndTime": "16:00", "isUnpaidBreak": true },
+    { "name": "Manager Shift (12:00-21:00)", "label": "Manager Shift", "startTime": "12:00", "endTime": "21:00", "color": "hsl(var(--chart-1))", "breakStartTime": "16:00", "breakEndTime": "17:00", "isUnpaidBreak": true },
+    { "name": "Probationary Shift (09:00-18:00)", "label": "Probationary Shift", "startTime": "09:00", "endTime": "18:00", "color": "hsl(var(--chart-1))", "breakStartTime": "13:00", "breakEndTime": "14:00", "isUnpaidBreak": true }
   ],
   "leaveTypes": [
     { "type": "VL", "color": "#6b7280" },
