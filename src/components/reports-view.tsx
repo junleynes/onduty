@@ -10,7 +10,7 @@ import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn, getFullName, getInitialState } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval } from 'date-fns';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import * as ExcelJS from 'exceljs';
@@ -20,6 +20,7 @@ import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import type { ShiftTemplate } from './shift-editor';
 import { ReportPreviewDialog } from './report-preview-dialog';
 import { TardyImporter } from './tardy-importer';
+import { Separator } from './ui/separator';
 
 
 type ReportsViewProps = {
@@ -42,7 +43,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [summaryDateRange, setSummaryDateRange] = useState<DateRange | undefined>();
     const [tardyDateRange, setTardyDateRange] = useState<DateRange | undefined>();
 
-    const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>([]);
+    const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>(() => getInitialState('tardyRecords', []));
 
 
     const [workScheduleTemplate, setWorkScheduleTemplate] = useState<string | null>(() => getInitialState('workScheduleTemplate', null));
@@ -112,31 +113,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
         
         if (holidayOff) {
-            return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
+             const defaultTemplate = getDefaultShiftTemplate(employee);
+             return { ...getScheduleFromTemplate(defaultTemplate), day_status: '' };
         }
 
         if (leaveEntry || holiday) {
-             let defaultTemplate: ShiftTemplate | undefined;
-             if (employee.position?.toLowerCase().includes('manager')) {
-                defaultTemplate = initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
-            } else {
-                defaultTemplate = initialShiftTemplates.find(t => t.name === "Mid Shift (10:00-18:00)");
-            }
-
-            if (defaultTemplate) {
-                 return {
-                    day_status: '',
-                    schedule_start: defaultTemplate.startTime,
-                    schedule_end: defaultTemplate.endTime,
-                    unpaidbreak_start: defaultTemplate.isUnpaidBreak ? defaultTemplate.breakStartTime || '' : '',
-                    unpaidbreak_end: defaultTemplate.isUnpaidBreak ? defaultTemplate.breakEndTime || '' : '',
-                    paidbreak_start: !defaultTemplate.isUnpaidBreak ? defaultTemplate.breakStartTime || '' : '',
-                    paidbreak_end: !defaultTemplate.isUnpaidBreak ? defaultTemplate.breakEndTime || '' : '',
-                };
-            }
-            return { ...emptySchedule, day_status: '' };
+             const defaultTemplate = getDefaultShiftTemplate(employee);
+             return { ...getScheduleFromTemplate(defaultTemplate), day_status: '' };
         }
-
 
         if (shift) {
              return {
@@ -152,6 +136,27 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         return { ...emptySchedule, day_status: '' };
     }
+    
+    const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
+        if (employee.position?.toLowerCase().includes('manager')) {
+            return initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
+        }
+        return initialShiftTemplates.find(t => t.name === "Mid Shift (10:00-18:00)");
+    };
+
+    const getScheduleFromTemplate = (template: ShiftTemplate | undefined) => {
+        if (!template) {
+             return { schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+        }
+        return {
+            schedule_start: template.startTime,
+            schedule_end: template.endTime,
+            unpaidbreak_start: template.isUnpaidBreak ? template.breakStartTime || '' : '',
+            unpaidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
+            paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
+            paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
+        };
+    };
 
 
     const handleDownloadWorkSchedule = async (data: ReportData | null) => {
@@ -609,6 +614,26 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         } else if (type === 'tardy') {
             handleDownloadTardyReport(generateTardyReportData());
         }
+    };
+    
+    const setSemiMonthlyRange = (period: 'first-half' | 'second-half', monthOffset: 0 | -1) => {
+        const today = new Date();
+        const targetMonth = addMonths(today, monthOffset);
+        const year = targetMonth.getFullYear();
+        const month = targetMonth.getMonth();
+        
+        let from: Date;
+        let to: Date;
+        
+        if (period === 'first-half') {
+            from = new Date(year, month, 1);
+            to = new Date(year, month, 15);
+        } else { // second-half
+            from = new Date(year, month, 16);
+            to = endOfMonth(targetMonth);
+        }
+        
+        setWorkScheduleDateRange({ from, to });
     }
 
 
@@ -653,15 +678,22 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                     )}
                                 </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={workScheduleDateRange?.from}
-                                    selected={workScheduleDateRange}
-                                    onSelect={setWorkScheduleDateRange}
-                                    numberOfMonths={2}
-                                />
+                                <PopoverContent className="w-auto p-0 flex" align="start">
+                                    <div className="flex flex-col space-y-2 p-4 border-r">
+                                        <h4 className="font-medium text-sm">Presets</h4>
+                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('first-half', 0)}>This Month (1-15)</Button>
+                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('second-half', 0)}>This Month (16-EOM)</Button>
+                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('first-half', -1)}>Last Month (1-15)</Button>
+                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('second-half', -1)}>Last Month (16-EOM)</Button>
+                                    </div>
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={workScheduleDateRange?.from}
+                                        selected={workScheduleDateRange}
+                                        onSelect={setWorkScheduleDateRange}
+                                        numberOfMonths={2}
+                                    />
                                 </PopoverContent>
                             </Popover>
                             <Button variant="outline" onClick={() => setIsWorkScheduleUploaderOpen(true)}>
@@ -863,7 +895,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
              <TardyImporter
                 isOpen={isTardyImporterOpen}
                 setIsOpen={setIsTardyImporterOpen}
-                onImport={setTardyRecords}
+                onImport={(data) => {
+                    setTardyRecords(data)
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('tardyRecords', JSON.stringify(data));
+                    }
+                }}
                 employees={employees}
             />
             <ReportPreviewDialog 
