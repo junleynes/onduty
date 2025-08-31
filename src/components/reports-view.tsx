@@ -1068,7 +1068,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                         mode="single"
                                         selected={wfhCertMonth}
                                         onSelect={setWfhCertMonth}
-                                        pagedNavigation
                                         captionLayout="dropdown-buttons"
                                         fromYear={2020}
                                         toYear={new Date().getFullYear() + 1}
@@ -1131,3 +1130,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
