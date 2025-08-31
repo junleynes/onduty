@@ -89,6 +89,7 @@ export function WfhCertificationTemplateUploader({ isOpen, setIsOpen, onTemplate
                              <li>`{'{{last_day_of_month}}'}`</li>
                              <li>`{'{{employee_name}}'}`</li>
                              <li>`{'{{reports_to_manager}}'}`</li>
+                              <li>`{'{{employee_signature}}'}` - Place this in the cell where you want the signature image to be inserted.</li>
                         </ul>
                     </li>
                      <li><b>Row Placeholders:</b> Create one row in your template that contains these placeholders. The system will duplicate this row for each day in the selected month.

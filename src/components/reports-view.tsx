@@ -585,16 +585,19 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             let attendanceRendered = '';
             let totalHrs = '';
             let remarks = '';
+            let includeRow = false;
 
             if (leaveEntry) {
                 attendanceRendered = 'ONLEAVE';
                 remarks = leaveEntry.type;
+                includeRow = true;
             } else if (shift) {
                 if (shift.isDayOff || shift.isHolidayOff) {
-                    // Do nothing for day off/holiday off
+                    // Do not include row for day off/holiday off
                 } else {
                     const shiftLabel = shift.label?.trim().toUpperCase();
                     attendanceRendered = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'OFFICE-BASED';
+                    includeRow = true;
                     
                     if (shift.startTime && shift.endTime) {
                          const start = parse(shift.startTime, 'HH:mm', new Date());
@@ -615,12 +618,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 }
             }
 
-            rows.push([
-                format(day, 'MM/dd/yyyy'),
-                attendanceRendered,
-                totalHrs,
-                remarks
-            ]);
+            if (includeRow) {
+                rows.push([
+                    format(day, 'MM/dd/yyyy'),
+                    attendanceRendered,
+                    totalHrs,
+                    remarks
+                ]);
+            }
         });
         
         return { headers, rows };
@@ -645,6 +650,27 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             if (!worksheet) throw new Error("Template worksheet not found.");
             
             const manager = employees.find(e => e.id === currentUser.reportsTo);
+
+            // Add signature image if available
+            if (currentUser.signature) {
+                const signatureImageId = workbook.addImage({
+                    base64: currentUser.signature,
+                    extension: 'png',
+                });
+                
+                // Find cell with placeholder and replace it with the image
+                worksheet.eachRow((row, rowNumber) => {
+                    row.eachCell((cell, colNumber) => {
+                        if (cell.value === '{{employee_signature}}') {
+                            worksheet.addImage(signatureImageId, {
+                                tl: { col: colNumber - 1, row: rowNumber - 1 },
+                                ext: { width: 100, height: 40 } // Adjust size as needed
+                            });
+                            cell.value = ''; // Clear placeholder
+                        }
+                    });
+                });
+            }
 
             // Global placeholders
             worksheet.eachRow({ includeEmpty: true }, (row) => {
@@ -1130,4 +1156,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
