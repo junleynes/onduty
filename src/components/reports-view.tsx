@@ -104,8 +104,7 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
 
                         let text = cellValue;
                         text = text.replace(/{{employee_name}}/g, `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase());
-                        text = text.replace(/{{date_from}}/g, format(day, 'M/d/yyyy'));
-                        text = text.replace(/{{date_to}}/g, format(day, 'M/d/yyyy'));
+                        text = text.replace(/{{date}}/g, format(day, 'M/d/yyyy'));
                         text = text.replace(/{{schedule_start}}/g, dayData.schedule_start);
                         text = text.replace(/{{schedule_end}}/g, dayData.schedule_end);
                         text = text.replace(/{{unpaidbreak_start}}/g, dayData.unpaidbreak_start);
@@ -157,8 +156,12 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
         if (dayOff) {
             return { ...emptySchedule, day_status: 'OFF' };
         }
+        
+        if (holidayOff) {
+            return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
+        }
 
-        if (holidayOff || leaveEntry) {
+        if (leaveEntry) {
             let defaultTemplate: ShiftTemplate | undefined;
             if (employee.position?.toLowerCase().includes('manager')) {
                 defaultTemplate = initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
@@ -178,7 +181,7 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
                 };
             }
              // Fallback if templates aren't found
-            return emptySchedule;
+            return { ...emptySchedule, day_status: '' };
         }
 
         if (shift) {

@@ -83,7 +83,7 @@ export function ReportTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }: 
             <AlertTitle>Template Placeholders</AlertTitle>
             <AlertDescription>
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
-                    <li><b>Global Placeholders:</b> These can be anywhere in the sheet.
+                    <li><b>Global Placeholders:</b> These can be anywhere in the sheet, typically in a title or header area.
                         <ul className="list-disc pl-5">
                              <li>`{'{{start_date}}'}` - The start of the covered period.</li>
                              <li>`{'{{end_date}}'}` - The end of the covered period.</li>
@@ -92,12 +92,12 @@ export function ReportTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }: 
                      <li><b>Row Placeholders:</b> Create one row in your template that contains these placeholders. The system will duplicate this row for each employee for each day in your selected date range.
                         <ul className="list-disc pl-5">
                             <li>`{'{{employee_name}}'}` - Full name of the employee. (This is required to identify the template row).</li>
-                            <li>`{'{{date_from}}'}` / `{'{{date_to}}'}` - The date for the specific row.</li>
+                            <li>`{'{{date}}'}` - The date for the specific row.</li>
                             <li>`{'{{schedule_start}}'}` - Shift start time.</li>
                             <li>`{'{{schedule_end}}'}` - Shift end time.</li>
                             <li>`{'{{unpaidbreak_start}}'}` / `{'{{unpaidbreak_end}}'}`</li>
                             <li>`{'{{paidbreak_start}}'}` / `{'{{paidbreak_end}}'}`</li>
-                             <li>`{'{{day_status}}'}` - Will show status like "OFF", "HOLIDAY OFF", or the leave type (e.g., "VL").</li>
+                             <li>`{'{{day_status}}'}` - Will show status like "OFF", "HOLIDAY OFF", or be empty.</li>
                         </ul>
                      </li>
                 </ul>
