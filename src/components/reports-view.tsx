@@ -2,15 +2,15 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { Employee, Shift, Leave, Holiday } from '@/types';
+import type { Employee, Shift, Leave, Holiday, TardyRecord } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from './ui/button';
 import { Download, Upload, Calendar as CalendarIcon, Eye } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { cn, getInitialState } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse } from 'date-fns';
+import { cn, getFullName, getInitialState } from '@/lib/utils';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import * as ExcelJS from 'exceljs';
@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import type { ShiftTemplate } from './shift-editor';
 import { ReportPreviewDialog } from './report-preview-dialog';
+import { TardyImporter } from './tardy-importer';
 
 
 type ReportsViewProps = {
@@ -39,6 +40,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
     const [attendanceWeek, setAttendanceWeek] = useState<Date | undefined>();
     const [summaryDateRange, setSummaryDateRange] = useState<DateRange | undefined>();
+    const [tardyDateRange, setTardyDateRange] = useState<DateRange | undefined>();
+
+    const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>([]);
 
 
     const [workScheduleTemplate, setWorkScheduleTemplate] = useState<string | null>(() => getInitialState('workScheduleTemplate', null));
@@ -46,6 +50,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
     const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = useState(false);
     const [isAttendanceUploaderOpen, setIsAttendanceUploaderOpen] = useState(false);
+    const [isTardyImporterOpen, setIsTardyImporterOpen] = useState(false);
     
     const [previewData, setPreviewData] = useState<ReportData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -106,7 +111,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             return { ...emptySchedule, day_status: 'OFF' };
         }
         
-        if (holidayOff || leaveEntry || holiday) {
+        if (holidayOff) {
+            return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
+        }
+
+        if (leaveEntry || holiday) {
              let defaultTemplate: ShiftTemplate | undefined;
              if (employee.position?.toLowerCase().includes('manager')) {
                 defaultTemplate = initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
@@ -116,7 +125,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             if (defaultTemplate) {
                  return {
-                    day_status: holidayOff ? 'HOLIDAY OFF' : '',
+                    day_status: '',
                     schedule_start: defaultTemplate.startTime,
                     schedule_end: defaultTemplate.endTime,
                     unpaidbreak_start: defaultTemplate.isUnpaidBreak ? defaultTemplate.breakStartTime || '' : '',
@@ -125,7 +134,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     paidbreak_end: !defaultTemplate.isUnpaidBreak ? defaultTemplate.breakEndTime || '' : '',
                 };
             }
-            return { ...emptySchedule, day_status: holidayOff ? 'HOLIDAY OFF' : '' };
+            return { ...emptySchedule, day_status: '' };
         }
 
 
@@ -468,10 +477,90 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         saveAs(blob, `User Summary - ${format(summaryDateRange!.from!, 'yyyy-MM-dd')} to ${format(summaryDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
     };
+
+    // --- Cumulative Tardy Report ---
+    const generateTardyReportData = (): ReportData | null => {
+        if (!tardyDateRange || !tardyDateRange.from || !tardyDateRange.to) {
+             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the summary.' });
+            return null;
+        }
+
+        // 1. Get TARDY leave requests
+        const tardyLeave = leave
+            .filter(l => l.type === 'TARDY' && isWithinInterval(new Date(l.date), {start: tardyDateRange.from!, end: tardyDateRange.to!}))
+            .map(l => {
+                const employee = employees.find(e => e.id === l.employeeId);
+                const shift = shifts.find(s => s.employeeId === l.employeeId && isSameDay(new Date(s.date), new Date(l.date)));
+                return {
+                    employeeId: l.employeeId,
+                    employeeName: employee ? getFullName(employee) : 'Unknown',
+                    date: new Date(l.date),
+                    schedule: shift ? `${shift.startTime}-${shift.endTime}` : 'N/A',
+                    timeIn: l.startTime || '',
+                    timeOut: l.endTime || '',
+                    remarks: l.reason || 'Applied via App'
+                };
+            });
+        
+        // 2. Filter imported records by date
+        const filteredImportedRecords = tardyRecords.filter(r => 
+            isWithinInterval(new Date(r.date), {start: tardyDateRange.from!, end: tardyDateRange.to!})
+        );
+        
+        // 3. Combine and de-duplicate (imported takes precedence)
+        const combinedRecords = [...filteredImportedRecords];
+        const importedKeys = new Set(filteredImportedRecords.map(r => `${r.employeeId}-${format(new Date(r.date), 'yyyy-MM-dd')}`));
+        
+        tardyLeave.forEach(l => {
+            const key = `${l.employeeId}-${format(new Date(l.date), 'yyyy-MM-dd')}`;
+            if (!importedKeys.has(key)) {
+                combinedRecords.push(l);
+            }
+        });
+
+        // 4. Sort and format for the table
+        combinedRecords.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.employeeName.localeCompare(b.employeeName));
+
+        const headers = ['Employee', 'Date', 'Schedule', 'In/Out', 'Remarks'];
+        const rows = combinedRecords.map(r => [
+            r.employeeName,
+            format(new Date(r.date), 'MM/dd/yyyy'),
+            r.schedule,
+            r.timeIn && r.timeOut ? `${r.timeIn}-${r.timeOut}` : '',
+            r.remarks
+        ]);
+
+        return { headers, rows };
+    };
+
+    const handleDownloadTardyReport = async (data: ReportData | null) => {
+        if (!data) return;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Cumulative Tardy Report');
+
+        worksheet.columns = data.headers.map(header => ({
+            header: header,
+            key: header.toLowerCase().replace(/ /g, '_'),
+            width: header === 'Employee' ? 30 : header === 'Remarks' ? 40 : 20,
+        }));
+        
+        worksheet.addRows(data.rows);
+        
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        saveAs(blob, `Cumulative Tardy Report - ${format(tardyDateRange!.from!, 'yyyy-MM-dd')} to ${format(tardyDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+    };
+
     
     // --- Event Handlers ---
     
-    const handleViewReport = (type: 'workSchedule' | 'attendance' | 'userSummary') => {
+    const handleViewReport = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy') => {
         let data: ReportData | null = null;
         let title = '';
         let generator: (() => Promise<void>) | null = null;
@@ -494,6 +583,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 title = `User Summary (${format(summaryDateRange!.from!, 'LLL d')} - ${format(summaryDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadUserSummary(data);
             }
+        } else if (type === 'tardy') {
+            data = generateTardyReportData();
+            if (data) {
+                title = `Cumulative Tardy Report (${format(tardyDateRange!.from!, 'LLL d')} - ${format(tardyDateRange!.to!, 'LLL d, y')})`;
+                generator = () => handleDownloadTardyReport(data);
+            }
         }
         
         if (data) {
@@ -504,13 +599,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
     }
 
-    const handleDirectDownload = (type: 'workSchedule' | 'attendance' | 'userSummary') => {
+    const handleDirectDownload = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy') => {
         if (type === 'workSchedule') {
             handleDownloadWorkSchedule(generateWorkScheduleData());
         } else if (type === 'attendance') {
             handleDownloadAttendanceSheet(generateAttendanceSheetData());
         } else if (type === 'userSummary') {
             handleDownloadUserSummary(generateUserSummaryData());
+        } else if (type === 'tardy') {
+            handleDownloadTardyReport(generateTardyReportData());
         }
     }
 
@@ -691,6 +788,65 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             </Button>
                         </CardFooter>
                     </Card>
+                    
+                    <Card className="p-6">
+                        <h3 className="font-semibold text-lg mb-2">Cumulative Tardy Report</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Combines tardiness data from leave requests and manual CSV uploads.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    id="tardy-date"
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full sm:w-[300px] justify-start text-left font-normal",
+                                    !tardyDateRange && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {tardyDateRange?.from ? (
+                                    tardyDateRange.to ? (
+                                        <>
+                                        {format(tardyDateRange.from, "LLL dd, y")} -{" "}
+                                        {format(tardyDateRange.to, "LLL dd, y")}
+                                        </>
+                                    ) : (
+                                        format(tardyDateRange.from, "LLL dd, y")
+                                    )
+                                    ) : (
+                                    <span>Pick a date range</span>
+                                    )}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={tardyDateRange?.from}
+                                    selected={tardyDateRange}
+                                    onSelect={setTardyDateRange}
+                                    numberOfMonths={2}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                            <Button variant="outline" onClick={() => setIsTardyImporterOpen(true)}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Import Tardy Data
+                            </Button>
+                        </div>
+                         <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                             <Button onClick={() => handleViewReport('tardy')} disabled={!tardyDateRange}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Report
+                            </Button>
+                            <Button onClick={() => handleDirectDownload('tardy')} disabled={!tardyDateRange}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Generate & Download
+                            </Button>
+                        </CardFooter>
+                    </Card>
 
                 </CardContent>
             </Card>
@@ -703,6 +859,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 isOpen={isAttendanceUploaderOpen}
                 setIsOpen={setIsAttendanceUploaderOpen}
                 onTemplateUpload={setAttendanceTemplate}
+            />
+             <TardyImporter
+                isOpen={isTardyImporterOpen}
+                setIsOpen={setIsTardyImporterOpen}
+                onImport={setTardyRecords}
+                employees={employees}
             />
             <ReportPreviewDialog 
                 isOpen={isPreviewOpen}

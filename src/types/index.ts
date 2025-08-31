@@ -120,3 +120,13 @@ export type SmtpSettings = {
   fromEmail?: string;
   fromName?: string;
 };
+
+export type TardyRecord = {
+  employeeId: string;
+  employeeName: string;
+  date: Date;
+  schedule: string;
+  timeIn: string;
+  timeOut: string;
+  remarks: string;
+}
