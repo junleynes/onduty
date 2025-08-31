@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,7 +17,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X, PlusCircle, ClipboardCheck } from 'lucide-react';
+import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X, PlusCircle } from 'lucide-react';
 import { getFullName } from '@/lib/utils';
 import type { Employee, Shift, Task } from '@/types';
 import { Checkbox } from './ui/checkbox';
@@ -40,6 +40,9 @@ const shiftSchema = z.object({
   id: z.string().optional(),
   isDayOff: z.boolean().default(false),
   isHolidayOff: z.boolean().default(false),
+  breakStartTime: z.string().optional(),
+  breakEndTime: z.string().optional(),
+  isUnpaidBreak: z.boolean().optional(),
 }).refine(data => {
     if (data.isDayOff || data.isHolidayOff) return true;
     return !!data.label && !!data.startTime && !!data.endTime;
@@ -55,6 +58,9 @@ export type ShiftTemplate = {
   startTime: string;
   endTime: string;
   color: string;
+  breakStartTime?: string;
+  breakEndTime?: string;
+  isUnpaidBreak?: boolean;
 };
 
 type ShiftEditorProps = {
@@ -91,8 +97,7 @@ const shiftColorOptions = [
     { label: 'Dark Grayish Blue', value: '#6b7280' },
 ];
 
-
-export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employees, shiftTemplates, setShiftTemplates, tasks, setTasks, currentUser }: ShiftEditorProps) {
+function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees, shiftTemplates, setShiftTemplates, tasks, setTasks, currentUser }: ShiftEditorProps) {
   const { toast } = useToast();
   const [editingTemplate, setEditingTemplate] = useState<ShiftTemplate | null>(null);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
@@ -100,29 +105,26 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   const [taskDescription, setTaskDescription] = useState('');
   const [activeTab, setActiveTab] = useState('details');
 
+  const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
+  const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : shiftColorOptions[1].value;
+
   const form = useForm<z.infer<typeof shiftSchema>>({
     resolver: zodResolver(shiftSchema),
+    defaultValues: {
+        id: shift?.id || undefined,
+        employeeId: shift?.employeeId || null,
+        label: shift?.label || '',
+        date: shift?.date ? new Date(shift.date) : new Date(),
+        startTime: shift?.startTime || '',
+        endTime: shift?.endTime || '',
+        color: shift?.color || defaultColor,
+        isDayOff: shift?.isDayOff || false,
+        isHolidayOff: shift?.isHolidayOff || false,
+        breakStartTime: shift?.breakStartTime || '',
+        breakEndTime: shift?.breakEndTime || '',
+        isUnpaidBreak: shift?.isUnpaidBreak || false,
+    },
   });
-
-  useEffect(() => {
-    if (isOpen) {
-        const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-        const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : shiftColorOptions[1].value;
-        
-        form.reset({
-            id: shift?.id || undefined,
-            employeeId: shift?.employeeId || null,
-            label: shift?.label || '',
-            date: shift?.date || new Date(),
-            startTime: shift?.startTime || '',
-            endTime: shift?.endTime || '',
-            color: shift?.color || defaultColor,
-            isDayOff: shift?.isDayOff || false,
-            isHolidayOff: shift?.isHolidayOff || false,
-        });
-    }
-  }, [isOpen, shift, employees, form]);
-
 
   useEffect(() => {
     if (editingTask) {
@@ -143,6 +145,9 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         startTime: template.startTime,
         endTime: template.endTime,
         color: template.color,
+        breakStartTime: template.breakStartTime,
+        breakEndTime: template.breakEndTime,
+        isUnpaidBreak: template.isUnpaidBreak,
     });
     setActiveTab('details');
   };
@@ -182,13 +187,16 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   const onSubmit = (values: z.infer<typeof shiftSchema>) => {
     if (editingTemplate) {
         const formValues = form.getValues();
-        const updatedTemplate = {
+        const updatedTemplate: ShiftTemplate = {
             ...editingTemplate,
             name: `${formValues.label} (${formValues.startTime}-${formValues.endTime})`,
             label: formValues.label || editingTemplate.label,
             startTime: formValues.startTime || editingTemplate.startTime,
             endTime: formValues.endTime || editingTemplate.endTime,
             color: formValues.color || editingTemplate.color,
+            breakStartTime: formValues.breakStartTime,
+            breakEndTime: formValues.breakEndTime,
+            isUnpaidBreak: formValues.isUnpaidBreak,
         };
         setShiftTemplates(prev => 
             prev.map(t => t.name === editingTemplate.name ? updatedTemplate : t)
@@ -225,13 +233,16 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
   const isDayOff = form.watch('isDayOff');
   const isHolidayOff = form.watch('isHolidayOff');
 
-  const handleTemplateClick = (template: typeof shiftTemplates[0]) => {
+  const handleTemplateClick = (template: ShiftTemplate) => {
     form.reset({
       ...form.getValues(),
       label: template.label,
       startTime: template.startTime,
       endTime: template.endTime,
       color: template.color,
+      breakStartTime: template.breakStartTime || '',
+      breakEndTime: template.breakEndTime || '',
+      isUnpaidBreak: template.isUnpaidBreak || false,
     });
     toast({ title: 'Template Applied', description: `The "${template.name}" template has been applied.`});
   }
@@ -253,12 +264,15 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
         toast({ title: 'Cannot Save Template', description: 'Please provide a label, start time, and end time for a working shift.', variant: 'destructive' });
         return;
     }
-    const newTemplate = {
+    const newTemplate: ShiftTemplate = {
         name: `${currentValues.label} (${currentValues.startTime}-${currentValues.endTime})`,
         label: currentValues.label,
         startTime: currentValues.startTime,
         endTime: currentValues.endTime,
         color: currentValues.color || 'default',
+        breakStartTime: currentValues.breakStartTime,
+        breakEndTime: currentValues.breakEndTime,
+        isUnpaidBreak: currentValues.isUnpaidBreak,
     };
     setShiftTemplates(prev => [...prev, newTemplate]);
     toast({ title: 'Template Saved', description: `New template "${newTemplate.name}" has been created.` });
@@ -266,31 +280,24 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
 
   const cancelEditTemplate = () => {
     setEditingTemplate(null);
-    const selectedEmployee = employees.find(e => e.id === shift?.employeeId);
-    const defaultColor = selectedEmployee ? roleColors[selectedEmployee.position] : shiftColorOptions[1].value;
     form.reset({
         id: shift?.id || undefined,
         employeeId: shift?.employeeId || null,
         label: shift?.label || '',
-        date: shift?.date || new Date(),
+        date: shift?.date ? new Date(shift.date) : new Date(),
         startTime: shift?.startTime || '',
         endTime: shift?.endTime || '',
         color: shift?.color || defaultColor,
         isDayOff: shift?.isDayOff || false,
         isHolidayOff: shift?.isHolidayOff || false,
+        breakStartTime: shift?.breakStartTime || '',
+        breakEndTime: shift?.breakEndTime || '',
+        isUnpaidBreak: shift?.isUnpaidBreak || false,
     });
   }
 
   return (
     <>
-    <Dialog open={isOpen} onOpenChange={(open) => {
-        if(!open) {
-            setEditingTemplate(null);
-            cancelEditTemplate();
-        }
-        setIsOpen(open);
-    }}>
-      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{editingTemplate ? `Editing Template: ${editingTemplate.name}` : (shift?.id ? 'Edit Shift' : 'Add New Shift')}</DialogTitle>
           <DialogDescription>
@@ -395,7 +402,7 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                         )}
                         
 
-                        {(!isDayOff && !isHolidayOff || editingTemplate) && (
+                        {!isDayOff && !isHolidayOff && (
                         <>
                             <FormField
                             control={form.control}
@@ -438,6 +445,54 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                                     )}
                                 />
                             </div>
+                             <div className="space-y-2 rounded-md border p-4">
+                                <div className="flex items-center justify-between">
+                                    <FormLabel>Break Time</FormLabel>
+                                     <FormField
+                                        control={form.control}
+                                        name="isUnpaidBreak"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                                                <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                                <FormLabel className="text-sm font-normal">
+                                                    Unpaid Break
+                                                </FormLabel>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 pt-2">
+                                     <FormField
+                                        control={form.control}
+                                        name="breakStartTime"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs text-muted-foreground">Break Start</FormLabel>
+                                                <FormControl>
+                                                    <Input type="time" {...field} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="breakEndTime"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-xs text-muted-foreground">Break End</FormLabel>
+                                                <FormControl>
+                                                    <Input type="time" {...field} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                             </div>
                             <FormField
                             control={form.control}
                             name="color"
@@ -579,8 +634,20 @@ export function ShiftEditor({ isOpen, setIsOpen, shift, onSave, onDelete, employ
                 </ScrollArea>
             </TabsContent>
         </Tabs>
-      </DialogContent>
-    </Dialog>
     </>
   );
+}
+
+
+export function ShiftEditor(props: ShiftEditorProps) {
+    if (!props.isOpen) {
+        return null;
+    }
+    return (
+        <Dialog open={props.isOpen} onOpenChange={props.setIsOpen}>
+            <DialogContent className="sm:max-w-md">
+                <ShiftEditorForm {...props} />
+            </DialogContent>
+        </Dialog>
+    );
 }
