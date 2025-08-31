@@ -227,7 +227,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
             
-            // Add all the new rows based on the template
+            // Add all the new rows at the end of the sheet to avoid issues with shared formulas
+            const startingInsertRow = worksheet.rowCount + 1;
             data.rows.forEach(rowData => {
                 const newRowValues = [...templateRowData!.values];
                 newRowValues.forEach((cellValue, index) => {
@@ -256,7 +257,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
 
             // Remove the original template row
-            worksheet.spliceRows(templateRowNumber, 1);
+            if (templateRowNumber !== -1) {
+                worksheet.spliceRows(templateRowNumber, 1);
+            }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -645,15 +648,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             // Add signature image if available
             if (currentUser.signature) {
                 const signatureImageId = workbook.addImage({
-                    base64: currentUser.signature,
+                    base64: currentUser.signature.split(',')[1],
                     extension: 'png',
                 });
                 
                 // Find cell with placeholder and replace it with the image
                 worksheet.eachRow((row, rowNumber) => {
                     row.eachCell((cell, colNumber) => {
-                        if (cell.value === '{{employee_signature}}') {
-                            worksheet.addImage(signatureImageId, {
+                        if (typeof cell.value === 'string' && cell.value.includes('{{employee_signature}}')) {
+                             worksheet.addImage(signatureImageId, {
                                 tl: { col: colNumber - 1, row: rowNumber - 1 },
                                 ext: { width: 100, height: 40 } // Adjust size as needed
                             });
@@ -678,51 +681,40 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
 
             // Row placeholders
-            let templateRowData: { values: any[], styles: Partial<ExcelJS.Style>[], height: number } | null = null;
             let templateRowNumber = -1;
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
-                        if (!templateRowData) {
-                            const values: any[] = [];
-                            const styles: Partial<ExcelJS.Style>[] = [];
-                            row.eachCell({ includeEmpty: true }, (c) => {
-                                values[c.col] = c.value;
-                                styles[c.col] = c.style;
-                            });
-                            templateRowData = { values, styles, height: row.height };
-                            templateRowNumber = rowNum;
-                        }
+                       templateRowNumber = rowNum;
                     }
                 });
             });
 
-            if (!templateRowData || templateRowNumber === -1) {
+            if (templateRowNumber === -1) {
                 throw new Error("Template row with `{{DATE}}` placeholder not found.");
             }
 
-            // Add all the new rows based on the template
+            // Add all the new rows by duplicating the template row
             data.rows.forEach(rowData => {
-                const newRowValues = [...templateRowData!.values];
-                newRowValues.forEach((cellValue, index) => {
-                    if (typeof cellValue === 'string') {
-                         let text = cellValue;
+                worksheet.duplicateRow(templateRowNumber, 1, true);
+                const newRow = worksheet.getRow(templateRowNumber);
+
+                newRow.eachCell({ includeEmpty: true }, (cell) => {
+                    if (cell.value && typeof cell.value === 'string') {
+                        let text = cell.value;
                         text = text.replace(/{{DATE}}/g, String(rowData[0]));
                         text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
                         text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
                         text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
-                        newRowValues[index] = text;
+                        cell.value = text;
                     }
                 });
-                
-                const newRow = worksheet.addRow(newRowValues);
-                newRow.height = templateRowData!.height;
-                templateRowData!.styles.forEach((style, colNumber) => {
-                    if (style) newRow.getCell(colNumber).style = style;
-                });
             });
+            
             // Remove the original template row
-            worksheet.spliceRows(templateRowNumber, 1);
+            if (data.rows.length > 0) {
+                 worksheet.spliceRows(templateRowNumber + data.rows.length, 1);
+            }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -1148,4 +1140,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
