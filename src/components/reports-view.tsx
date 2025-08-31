@@ -15,6 +15,8 @@ import { ReportTemplateUploader } from './report-template-uploader';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useToast } from '@/hooks/use-toast';
+import { initialShiftTemplates } from '@/lib/data';
+import type { ShiftTemplate } from './shift-editor';
 
 type ReportsViewProps = {
     employees: Employee[];
@@ -95,13 +97,13 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
             
             groupEmployees.forEach((employee) => {
                  daysInInterval.forEach(day => {
-                    const dayData = findDataForDay(day, employee.id, shifts, leave);
+                    const dayData = findDataForDay(day, employee, shifts, leave);
                      
                     const newRowValues = templateRowData!.values.map(cellValue => {
                         if (typeof cellValue !== 'string') return cellValue;
 
                         let text = cellValue;
-                        text = text.replace(/{{employee_name}}/g, getFullName(employee));
+                        text = text.replace(/{{employee_name}}/g, `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase());
                         text = text.replace(/{{date_from}}/g, format(day, 'M/d/yyyy'));
                         text = text.replace(/{{date_to}}/g, format(day, 'M/d/yyyy'));
                         text = text.replace(/{{schedule_start}}/g, dayData.schedule_start);
@@ -144,34 +146,54 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
         }
     };
     
-    const findDataForDay = (day: Date, employeeId: string, allShifts: Shift[], allLeave: Leave[]) => {
-        const shift = allShifts.find(s => s.employeeId === employeeId && !s.isDayOff && !s.isHolidayOff && isSameDay(new Date(s.date), day));
-        const dayOff = allShifts.find(s => s.employeeId === employeeId && s.isDayOff && isSameDay(new Date(s.date), day));
-        const holidayOff = allShifts.find(s => s.employeeId === employeeId && s.isHolidayOff && isSameDay(new Date(s.date), day));
-        const leaveEntry = allLeave.find(l => l.employeeId === employeeId && isSameDay(new Date(l.date), day));
-        
-        let dayStatus = '';
-        if (dayOff) dayStatus = 'OFF';
-        if (holidayOff) dayStatus = 'HOLIDAY OFF';
-        // Leave entry no longer sets dayStatus
+    const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[]) => {
+        const shift = allShifts.find(s => s.employeeId === employee.id && !s.isDayOff && !s.isHolidayOff && isSameDay(new Date(s.date), day));
+        const dayOff = allShifts.find(s => s.employeeId === employee.id && s.isDayOff && isSameDay(new Date(s.date), day));
+        const holidayOff = allShifts.find(s => s.employeeId === employee.id && s.isHolidayOff && isSameDay(new Date(s.date), day));
+        const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
 
-        if (dayStatus) {
-            return { day_status: dayStatus, schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+        const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+        
+        if (dayOff) {
+            return { ...emptySchedule, day_status: 'OFF' };
         }
 
-        if (shift || leaveEntry) { // A shift or leave day means they are scheduled for something
-            return {
+        if (holidayOff || leaveEntry) {
+            let defaultTemplate: ShiftTemplate | undefined;
+            if (employee.position?.toLowerCase().includes('manager')) {
+                defaultTemplate = initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
+            } else {
+                defaultTemplate = initialShiftTemplates.find(t => t.name === "Mid Shift (10:00-18:00)");
+            }
+
+            if (defaultTemplate) {
+                 return {
+                    day_status: '',
+                    schedule_start: defaultTemplate.startTime,
+                    schedule_end: defaultTemplate.endTime,
+                    unpaidbreak_start: defaultTemplate.isUnpaidBreak ? defaultTemplate.breakStartTime || '' : '',
+                    unpaidbreak_end: defaultTemplate.isUnpaidBreak ? defaultTemplate.breakEndTime || '' : '',
+                    paidbreak_start: !defaultTemplate.isUnpaidBreak ? defaultTemplate.breakStartTime || '' : '',
+                    paidbreak_end: !defaultTemplate.isUnpaidBreak ? defaultTemplate.breakEndTime || '' : '',
+                };
+            }
+             // Fallback if templates aren't found
+            return emptySchedule;
+        }
+
+        if (shift) {
+             return {
                 day_status: '',
-                schedule_start: shift ? shift.startTime : '',
-                schedule_end: shift ? shift.endTime : '',
-                unpaidbreak_start: shift && shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                unpaidbreak_end: shift && shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
-                paidbreak_start: shift && !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                paidbreak_end: shift && !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                schedule_start: shift.startTime,
+                schedule_end: shift.endTime,
+                unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
             };
         }
 
-        return { day_status: 'Not Scheduled', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+        return { ...emptySchedule, day_status: 'Not Scheduled' };
     }
 
 
