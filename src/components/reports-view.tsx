@@ -269,11 +269,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const groupEmployees = employees.filter(e => e.group === currentUser.group);
         const displayedDays = eachDayOfInterval({ start: attendanceDateRange.from, end: attendanceDateRange.to });
 
-        const headers = ['Employee Name', 'Position', ...displayedDays.map(d => format(d, 'EEE, MMM d'))];
+        const headers = ['Employee Name', 'Group', 'Position', ...displayedDays.map(d => format(d, 'EEE, MMM d'))];
         const rows: (string|number)[][] = [];
 
         groupEmployees.forEach(employee => {
-            const row: (string|number)[] = [`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(), employee.position || ''];
+            const row: (string|number)[] = [
+                `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
+                employee.group || '',
+                employee.position || ''
+            ];
             
             displayedDays.forEach(day => {
                 const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
@@ -342,7 +346,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Find and replace employee data placeholders
             for (let i = 0; i < data.rows.length; i++) {
-                const employeeDataRow = data.rows[i]; // [Name, Position, Day1, Day2, ...]
+                const employeeDataRow = data.rows[i]; // [Name, Group, Position, Day1, Day2, ...]
                 const employeeIndex = i + 1; // 1-based index for placeholders
 
                 worksheet.eachRow((row) => {
@@ -353,13 +357,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             if (cellText.includes(`{{employee_${employeeIndex}}}`)) {
                                 cell.value = cellText.replace(`{{employee_${employeeIndex}}}`, String(employeeDataRow[0]));
                             }
+                             if (cellText.includes(`{{group_${employeeIndex}}}`)) {
+                                cell.value = cellText.replace(`{{group_${employeeIndex}}}`, String(employeeDataRow[1]));
+                            }
                             if (cellText.includes(`{{position_${employeeIndex}}}`)) {
-                                cell.value = cellText.replace(`{{position_${employeeIndex}}}`, String(employeeDataRow[1]));
+                                cell.value = cellText.replace(`{{position_${employeeIndex}}}`, String(employeeDataRow[2]));
                             }
 
                             for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
                                 if (cellText.includes(`{{schedule_${employeeIndex}_${dayIndex + 1}}}`)) {
-                                    const scheduleCode = String(employeeDataRow[2 + dayIndex]);
+                                    const scheduleCode = String(employeeDataRow[3 + dayIndex]);
                                     cell.value = cellText.replace(`{{schedule_${employeeIndex}_${dayIndex + 1}}}`, scheduleCode);
                                 }
                             }
@@ -707,5 +714,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-    

@@ -93,7 +93,7 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
                      <li><b>Employee Row Placeholders:</b> Create a row for each employee you want to appear in the report. The system will find and replace these placeholders for each employee.
                         <ul className="list-disc pl-5">
                             <li>`{'{{employee_1}}'}`, `{'{{employee_2}}'}`, etc.</li>
-                            <li>`{'{{group_1}}'}`, `{'{{group_2}}'}`, etc. (for employee-specific groups)</li>
+                            <li>`{'{{group_1}}'}`, `{'{{group_2}}'}`, etc.</li>
                             <li>`{'{{position_1}}'}`, `{'{{position_2}}'}`, etc.</li>
                             <li>`{'{{schedule_1_1}}'}` for Employee 1, Day 1.</li>
                             <li>`{'{{schedule_1_2}}'}` for Employee 1, Day 2, etc.</li>
