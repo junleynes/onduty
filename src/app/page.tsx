@@ -440,7 +440,7 @@ function AppContent() {
       case 'task-manager':
         return <TaskManagerView tasks={tasks} setTasks={setTasks} currentUser={currentUser} employees={employees} />;
       case 'reports':
-          return <ReportsView employees={employees} shifts={shifts} leave={leave} currentUser={currentUser} />;
+          return <ReportsView employees={employees} shifts={shifts} leave={leave} holidays={holidays} currentUser={currentUser} />;
       case 'admin':
         return (
             <AdminPanel 

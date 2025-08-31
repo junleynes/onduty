@@ -29,7 +29,6 @@ import { sendEmail } from '@/app/actions';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
-import { AttendanceTemplateUploader } from './attendance-template-uploader';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -66,9 +65,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [editingShift, setEditingShift] = useState<Shift | Partial<Shift> | null>(null);
   
   const [viewEmployeeOrder, setViewEmployeeOrder] = useState<string[] | null>(null);
-  const [isTemplateUploaderOpen, setIsTemplateUploaderOpen] = useState(false);
-  const [attendanceTemplate, setAttendanceTemplate] = useState<string | null>(() => getInitialState('attendanceSheetTemplate', null));
-
 
   useEffect(() => {
     // Reset the custom order when the view or date range changes significantly
@@ -83,16 +79,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
-  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(() => getInitialState('shiftTemplates', initialShiftTemplates));
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
   const { toast } = useToast();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   const dateRange = useMemo(() => {
     switch (viewMode) {
@@ -403,116 +393,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     toast({ title: "Draft Saved", description: "Your schedule changes have been saved." });
     // Data is already saved to local storage via useEffect, so this is just for user feedback.
   };
-
-    const generateExcelFromTemplate = async (): Promise<Buffer | null> => {
-        if (!attendanceTemplate) {
-            toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
-            return null;
-        }
-
-        try {
-            const groupEmployees = employees.filter(e => e.group === currentUser.group);
-            const workbook = new ExcelJS.Workbook();
-            const buffer = Buffer.from(attendanceTemplate, 'binary');
-            await workbook.xlsx.load(buffer);
-
-            const worksheet = workbook.worksheets[0];
-            if (!worksheet) throw new Error("Template worksheet not found.");
-
-            // Find and replace header placeholders
-            worksheet.eachRow((row) => {
-                row.eachCell((cell) => {
-                    if (cell.value && typeof cell.value === 'string') {
-                        let cellText = cell.value;
-                        if (cellText.includes('{{month}}')) {
-                            cell.value = cellText.replace('{{month}}', format(currentDate, 'MMMM').toUpperCase());
-                        }
-                        if (cellText.includes('{{group}}')) {
-                            cell.value = cellText.replace('{{group}}', currentUser.group || '');
-                        }
-                        for (let i = 0; i < 7; i++) {
-                            if (cellText.includes(`{{day_${i + 1}}}`) && displayedDays[i]) {
-                                cell.value = cellText.replace(`{{day_${i + 1}}}`, String(getDate(displayedDays[i])));
-                            }
-                        }
-                    }
-                });
-            });
-
-            // Find and replace employee data placeholders
-            for (let i = 0; i < groupEmployees.length; i++) {
-                const employee = groupEmployees[i];
-                const employeeIndex = i + 1; // 1-based index for placeholders
-
-                worksheet.eachRow((row) => {
-                    row.eachCell((cell) => {
-                        if (cell.value && typeof cell.value === 'string') {
-                            let cellText = cell.value;
-
-                            // Employee Name
-                            if (cellText.includes(`{{employee_${employeeIndex}}}`)) {
-                                cell.value = cellText.replace(`{{employee_${employeeIndex}}}`, `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase());
-                            }
-                            
-                            // Group Name (per employee)
-                            if (cellText.includes(`{{group_${employeeIndex}}}`)) {
-                                cell.value = cellText.replace(`{{group_${employeeIndex}}}`, employee.group || '');
-                            }
-
-                            // Position
-                            if (cellText.includes(`{{position_${employeeIndex}}}`)) {
-                                cell.value = cellText.replace(`{{position_${employeeIndex}}}`, employee.position || '');
-                            }
-
-                            // Schedule Codes
-                            for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-                                const day = displayedDays[dayIndex];
-                                if (cellText.includes(`{{schedule_${employeeIndex}_${dayIndex + 1}}}`)) {
-                                    const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-                                    const leaveEntry = leave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
-                                    const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-                                    
-                                    let scheduleCode = '';
-                                    if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) scheduleCode = 'HOL OFF';
-                                    else if (leaveEntry) scheduleCode = leaveEntry.type.toUpperCase();
-                                    else if (shift?.isDayOff) scheduleCode = 'OFF';
-                                    else if (shift) {
-                                       const shiftLabel = shift.label?.trim().toUpperCase();
-                                       scheduleCode = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
-                                    }
-                                    
-                                    cell.value = cellText.replace(`{{schedule_${employeeIndex}_${dayIndex + 1}}}`, scheduleCode);
-                                }
-                            }
-                        }
-                    });
-                });
-            }
-
-            const uint8Array = await workbook.xlsx.writeBuffer();
-            return Buffer.from(uint8Array);
-
-        } catch (error) {
-            console.error("Error generating Excel from template:", error);
-            toast({ variant: 'destructive', title: 'Template Error', description: (error as Error).message, duration: 8000 });
-            return null;
-        }
-    };
-
-
-  const handleDownload = async () => {
-    const buffer = await generateExcelFromTemplate();
-    if (!buffer) return;
-
-    const groupName = currentUser?.group || 'Team';
-    const fileName = `${groupName} Attendance Sheet - ${format(currentDate, 'MMMM yyyy')}.xlsx`;
-    
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    saveAs(blob, fileName);
-
-    toast({ title: 'Report Downloaded', description: 'The attendance report has been saved as an Excel file.' });
-  };
-
 
   // Shift/Item Drag and Drop Handlers
   const handleShiftDragStart = (e: React.DragEvent<HTMLDivElement>, item: Shift | Leave) => {
@@ -868,21 +748,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                          <DropdownMenuSeparator />
                          <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => setIsTemplateUploaderOpen(true)}>
-                                <Upload className="mr-2 h-4 w-4" />
-                                <span>Upload Attendance Template</span>
-                            </DropdownMenuItem>
-                             <DropdownMenuItem onClick={handleDownload} disabled={viewMode !== 'week'}>
-                                <Download className="mr-2 h-4 w-4" />
-                                <span>Download Attendance Sheet</span>
-                             </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => isClient && setIsEmailDialogOpen(true)} disabled={viewMode !== 'week'}>
-                                <Mail className="mr-2 h-4 w-4" />
-                                <span>Email Attendance Sheet</span>
-                             </DropdownMenuItem>
-                         </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                         <DropdownMenuGroup>
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={viewMode === 'month' ? handleClearMonth : handleClearWeek}>
                                 <CircleSlash className="mr-2 h-4 w-4" />
                                 <span>Clear {viewMode === 'month' ? 'Month' : 'Week'}</span>
@@ -1006,98 +871,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         setIsOpen={setIsTemplateImporterOpen}
         onImport={handleImportTemplates}
       />
-       <AttendanceTemplateUploader
-        isOpen={isTemplateUploaderOpen}
-        setIsOpen={setIsTemplateUploaderOpen}
-        onTemplateUpload={setAttendanceTemplate}
-      />
-      {isClient && isEmailDialogOpen && (
-        <EmailDialog
-            isOpen={isEmailDialogOpen}
-            setIsOpen={setIsEmailDialogOpen}
-            subject={`Attendance Sheet - ${format(dateRange.from, 'MMM d')} to ${format(dateRange.to, 'MMM d, yyyy')}`}
-            smtpSettings={smtpSettings}
-            generateExcelData={generateExcelFromTemplate}
-            fileName={`${currentUser.group} Attendance Sheet - ${format(dateRange.from, 'MM-dd-yyyy')}.xlsx`}
-        />
-      )}
     </Card>
   );
-}
-
-
-function EmailDialog({ isOpen, setIsOpen, subject, smtpSettings, generateExcelData, fileName }: {
-    isOpen: boolean;
-    setIsOpen: (isOpen: boolean) => void;
-    subject: string;
-    smtpSettings: SmtpSettings;
-    generateExcelData: () => Promise<Buffer | null>;
-    fileName: string;
-}) {
-    const [to, setTo] = useState('');
-    const [isSending, startTransition] = useTransition();
-    const { toast } = useToast();
-    
-    const htmlBody = `<p>Please find the attendance sheet attached.</p>`;
-
-    const handleSend = () => {
-        if (!to) {
-            toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
-            return;
-        }
-        
-        startTransition(async () => {
-            const excelBuffer = await generateExcelData();
-            if (!excelBuffer) {
-                 toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated. Please check your settings and try again.' });
-                 return;
-            }
-
-            const attachments = [{
-                filename: fileName,
-                content: excelBuffer.toString('base64'),
-                contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            }];
-
-            const result = await sendEmail({ to, subject, htmlBody, attachments }, smtpSettings);
-            if (result.success) {
-                toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
-                setIsOpen(false);
-            } else {
-                toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
-            }
-        });
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Send Report via Email</DialogTitle>
-                    <DialogDescription>The attendance sheet will be sent as an Excel attachment.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="recipientEmail">Recipient Email</Label>
-                        <Input id="recipientEmail" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="recipient@example.com" />
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Subject</Label>
-                        <Input value={subject} readOnly disabled />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Body</Label>
-                         <div className="h-24 rounded-md border p-2 text-sm" dangerouslySetInnerHTML={{ __html: htmlBody }} />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSend} disabled={isSending}>
-                        {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Send
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
 }
