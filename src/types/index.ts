@@ -40,6 +40,9 @@ export type Shift = {
   isDayOff?: boolean;
   isHolidayOff?: boolean;
   status?: 'draft' | 'published';
+  breakStartTime?: string;
+  breakEndTime?: string;
+  isUnpaidBreak?: boolean;
 };
 
 export type LeaveType = string;

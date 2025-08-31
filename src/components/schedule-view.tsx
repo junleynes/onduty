@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth, getDate } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth, getDate, parse } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Employee, Shift, Leave, Notification, Note, Holiday, Task, SmtpSettings } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -607,15 +607,25 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             const shiftsForDay = shifts.filter(shift => isSameDay(new Date(shift.date), day) && !shift.isDayOff && !shift.isHolidayOff);
             const totalShifts = shiftsForDay.length;
             const onDutyEmployees = new Set(shiftsForDay.map(shift => shift.employeeId)).size;
+            
             const totalHours = shiftsForDay.reduce((acc, shift) => {
-                if (shift.startTime && shift.endTime) {
-                    const start = new Date(`1970-01-01T${shift.startTime}`);
-                    const end = new Date(`1970-01-01T${shift.endTime}`);
-                    let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                    if (diff < 0) diff += 24; // Account for overnight shifts
-                    return acc + diff;
+                if (!shift.startTime || !shift.endTime) return acc;
+                
+                const start = parse(shift.startTime, 'HH:mm', new Date());
+                const end = parse(shift.endTime, 'HH:mm', new Date());
+                let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                if (diff < 0) diff += 24; // Account for overnight shifts
+                
+                let breakHours = 0;
+                if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
+                    const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
+                    const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
+                    let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
+                    if (breakDiff < 0) breakDiff += 24;
+                    breakHours = breakDiff;
                 }
-                return acc;
+                
+                return acc + (diff - breakHours);
             }, 0);
             
             const isMonthAndOutside = viewMode === 'month' && day.getMonth() !== currentDate.getMonth();
