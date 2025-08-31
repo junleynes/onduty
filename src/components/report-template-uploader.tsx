@@ -83,23 +83,23 @@ export function ReportTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }: 
             <AlertTitle>Template Placeholders</AlertTitle>
             <AlertDescription>
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
-                    <li><b>Global Placeholders:</b>
+                    <li><b>Global Placeholders:</b> These can be anywhere in the sheet.
                         <ul className="list-disc pl-5">
                              <li>`{'{{start_date}}'}` - The start of the covered period.</li>
                              <li>`{'{{end_date}}'}` - The end of the covered period.</li>
                         </ul>
                     </li>
-                     <li><b>Employee Row Placeholders:</b> Create a template row for employees. The system will duplicate this row for each employee in the group and replace the placeholders.
+                     <li><b>Row Placeholders:</b> Create one row in your template that contains these placeholders. The system will duplicate this row for each employee for each day in your selected date range.
                         <ul className="list-disc pl-5">
-                            <li>`{'{{employee_name}}'}` - Full name of the employee.</li>
+                            <li>`{'{{employee_name}}'}` - Full name of the employee. (This is required to identify the template row).</li>
+                            <li>`{'{{date_from}}'}` / `{'{{date_to}}'}` - The date for the specific row.</li>
                             <li>`{'{{schedule_start}}'}` - Shift start time.</li>
                             <li>`{'{{schedule_end}}'}` - Shift end time.</li>
                             <li>`{'{{unpaidbreak_start}}'}` / `{'{{unpaidbreak_end}}'}`</li>
                             <li>`{'{{paidbreak_start}}'}` / `{'{{paidbreak_end}}'}`</li>
-                             <li>`{'{{day_status}}'}` - Will show "OFF" if the employee has a day off or is on leave, otherwise empty.</li>
+                             <li>`{'{{day_status}}'}` - Will show status like "OFF", "HOLIDAY OFF", or the leave type (e.g., "VL").</li>
                         </ul>
                      </li>
-                     <li className="mt-2"><b>Note:</b> The system currently populates data based on the first day of the selected range. For daily breakdowns, you would need to structure your template accordingly (e.g., with columns for each day).</li>
                 </ul>
             </AlertDescription>
         </Alert>

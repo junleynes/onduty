@@ -64,54 +64,65 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
                 });
             });
 
-            // Find rows with employee placeholders to use as templates
-            const employeeRowTemplates: { [key: string]: { row: ExcelJS.Row, index: number } } = {};
-            worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
-                row.eachCell({ includeEmpty: true }, (cell) => {
+            // Find the template row
+            let templateRowData: { values: any[], index: number } | null = null;
+            let templateRowNumber = -1;
+
+            worksheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
+                 row.eachCell({ includeEmpty: true }, (cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
-                       // Store a copy of the template row, not the live one
-                       const newRow = worksheet.addRow(row.values as any[]);
-                       newRow.commit();
-                       const templateRow = worksheet.getRow(worksheet.rowCount);
-                       worksheet.removeRow(worksheet.rowCount);
-                       
-                       employeeRowTemplates[rowNumber] = { row: templateRow, index: rowNumber };
-                       row.hidden = true; // Hide the original template row
+                       if (!templateRowData) {
+                          templateRowData = { values: Array.from(row.values as ExcelJS.CellValue[]), index: rowNum };
+                          templateRowNumber = rowNum;
+                       }
                     }
-                });
+                 });
             });
-            
-             if (Object.keys(employeeRowTemplates).length === 0) {
-                throw new Error("No `{{employee_name}}` placeholder found in the template.");
+
+            if (!templateRowData || templateRowNumber === -1) {
+                throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
+
+            const originalTemplateRow = worksheet.getRow(templateRowNumber);
+            originalTemplateRow.hidden = true;
+
+
+            let currentRowIndex = templateRowNumber + 1;
             
-            let lastRow = worksheet.rowCount;
             groupEmployees.forEach((employee) => {
-                 for (const key in employeeRowTemplates) {
-                    const { row: templateRow } = employeeRowTemplates[key];
-                    const newRow = worksheet.addRow(templateRow.values as any[]);
+                 daysInInterval.forEach(day => {
+                    const dayData = findDataForDay(day, employee.id, shifts, leave);
+                     
+                    const newRowValues = templateRowData!.values.map(cellValue => {
+                        if (typeof cellValue !== 'string') return cellValue;
 
-                    newRow.eachCell({ includeEmpty: true }, (cell) => {
-                         if (typeof cell.value === 'string') {
-                            let text = cell.value;
-                            if (text.includes('{{employee_name}}')) text = text.replace('{{employee_name}}', getFullName(employee));
+                        let text = cellValue;
+                        text = text.replace(/{{employee_name}}/g, getFullName(employee));
+                        text = text.replace(/{{date_from}}/g, format(day, 'M/d/yyyy'));
+                        text = text.replace(/{{date_to}}/g, format(day, 'M/d/yyyy'));
+                        text = text.replace(/{{schedule_start}}/g, dayData.schedule_start);
+                        text = text.replace(/{{schedule_end}}/g, dayData.schedule_end);
+                        text = text.replace(/{{unpaidbreak_start}}/g, dayData.unpaidbreak_start);
+                        text = text.replace(/{{unpaidbreak_end}}/g, dayData.unpaidbreak_end);
+                        text = text.replace(/{{paidbreak_start}}/g, dayData.paidbreak_start);
+                        text = text.replace(/{{paidbreak_end}}/g, dayData.paidbreak_end);
+                        text = text.replace(/{{day_status}}/g, dayData.day_status);
 
-                            const dayData = findDataForDay(daysInInterval, employee.id, shifts, leave);
-                            
-                            if (text.includes('{{schedule_start}}')) text = text.replace('{{schedule_start}}', dayData.schedule_start);
-                            if (text.includes('{{schedule_end}}')) text = text.replace('{{schedule_end}}', dayData.schedule_end);
-                            if (text.includes('{{unpaidbreak_start}}')) text = text.replace('{{unpaidbreak_start}}', dayData.unpaidbreak_start);
-                            if (text.includes('{{unpaidbreak_end}}')) text = text.replace('{{unpaidbreak_end}}', dayData.unpaidbreak_end);
-                            if (text.includes('{{paidbreak_start}}')) text = text.replace('{{paidbreak_start}}', dayData.paidbreak_start);
-                            if (text.includes('{{paidbreak_end}}')) text = text.replace('{{paidbreak_end}}', dayData.paidbreak_end);
-                            if (text.includes('{{day_status}}')) text = text.replace('{{day_status}}', dayData.day_status);
-
-                            cell.value = text;
-                        }
+                        return text;
                     });
-                 }
+                    
+                    worksheet.insertRow(currentRowIndex, newRowValues);
+                    
+                    // Copy styles from the template row
+                    const templateRow = worksheet.getRow(templateRowNumber);
+                    const newRow = worksheet.getRow(currentRowIndex);
+                    templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                        newRow.getCell(colNumber).style = cell.style;
+                    });
+                     
+                    currentRowIndex++;
+                 });
             });
-
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -123,31 +134,31 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
         }
     };
     
-    // This is a simplified lookup. A real implementation would need to handle multiple days.
-    // The current template variable names suggest one set of values per employee.
-    const findDataForDay = (days: Date[], employeeId: string, shifts: Shift[], leave: Leave[]) => {
-         // For simplicity, we'll just check the first day of the range.
-         // A more complex report would iterate through rows for each day.
-        const day = days[0]; 
-        const shift = shifts.find(s => s.employeeId === employeeId && !s.isDayOff && !s.isHolidayOff && isSameDay(new Date(s.date), day));
-        const dayOff = shifts.find(s => s.employeeId === employeeId && (s.isDayOff || s.isHolidayOff) && isSameDay(new Date(s.date), day));
-        const leaveEntry = leave.find(l => l.employeeId === employeeId && isSameDay(new Date(l.date), day));
+    const findDataForDay = (day: Date, employeeId: string, allShifts: Shift[], allLeave: Leave[]) => {
+        const shift = allShifts.find(s => s.employeeId === employeeId && !s.isDayOff && !s.isHolidayOff && isSameDay(new Date(s.date), day));
+        const dayOff = allShifts.find(s => s.employeeId === employeeId && s.isDayOff && isSameDay(new Date(s.date), day));
+        const holidayOff = allShifts.find(s => s.employeeId === employeeId && s.isHolidayOff && isSameDay(new Date(s.date), day));
+        const leaveEntry = allLeave.find(l => l.employeeId === employeeId && isSameDay(new Date(l.date), day));
+        
+        let dayStatus = '';
+        if (dayOff) dayStatus = 'OFF';
+        if (holidayOff) dayStatus = 'HOLIDAY OFF';
+        if (leaveEntry) dayStatus = leaveEntry.type.toUpperCase();
 
-        if (dayOff || leaveEntry) {
-            return { day_status: 'OFF', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+
+        if (dayStatus) {
+            return { day_status: dayStatus, schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
         }
 
         if (shift) {
-            const unpaid = shift.isUnpaidBreak;
             return {
                 day_status: '',
                 schedule_start: shift.startTime,
                 schedule_end: shift.endTime,
-                unpaidbreak_start: unpaid ? shift.breakStartTime || '' : '',
-                unpaidbreak_end: unpaid ? shift.breakEndTime || '' : '',
-
-                paidbreak_start: !unpaid ? shift.breakStartTime || '' : '',
-                paidbreak_end: !unpaid ? shift.breakEndTime || '' : '',
+                unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
             };
         }
 
@@ -229,4 +240,3 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
         </>
     );
 }
-
