@@ -206,7 +206,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                           return;
                       }
 
-                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL'].includes(upperCellValue)) {
+                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL', 'TARDY'].includes(upperCellValue)) {
                           importedLeave.push({ id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, type: upperCellValue, isAllDay: true });
                           return;
                       }
