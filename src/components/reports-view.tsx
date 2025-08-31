@@ -157,13 +157,9 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
             return { ...emptySchedule, day_status: 'OFF' };
         }
         
-        if (holidayOff) {
-            return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
-        }
-
-        if (leaveEntry) {
+        if (holidayOff || leaveEntry) {
             let defaultTemplate: ShiftTemplate | undefined;
-            if (employee.position?.toLowerCase().includes('manager')) {
+             if (employee.position?.toLowerCase().includes('manager')) {
                 defaultTemplate = initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
             } else {
                 defaultTemplate = initialShiftTemplates.find(t => t.name === "Mid Shift (10:00-18:00)");
