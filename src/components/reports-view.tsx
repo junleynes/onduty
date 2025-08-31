@@ -223,28 +223,27 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                  });
             });
             
-
             if (!templateRowData || templateRowNumber === -1) {
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
             
             // Add all the new rows based on the template
             data.rows.forEach(rowData => {
-                const newRowValues = templateRowData!.values.map(cellValue => {
-                    if (typeof cellValue !== 'string') return cellValue;
-                    
-                    let text = cellValue;
-                    text = text.replace(/{{employee_name}}/g, String(rowData[0]));
-                    text = text.replace(/{{date}}/g, String(rowData[1]));
-                    text = text.replace(/{{day_status}}/g, String(rowData[2]));
-                    text = text.replace(/{{schedule_start}}/g, String(rowData[3]));
-                    text = text.replace(/{{schedule_end}}/g, String(rowData[4]));
-                    text = text.replace(/{{unpaidbreak_start}}/g, String(rowData[5]));
-                    text = text.replace(/{{unpaidbreak_end}}/g, String(rowData[6]));
-                    text = text.replace(/{{paidbreak_start}}/g, String(rowData[7]));
-                    text = text.replace(/{{paidbreak_end}}/g, String(rowData[8]));
-
-                    return text;
+                const newRowValues = [...templateRowData!.values];
+                newRowValues.forEach((cellValue, index) => {
+                    if (typeof cellValue === 'string') {
+                        let text = cellValue;
+                        text = text.replace(/{{employee_name}}/g, String(rowData[0]));
+                        text = text.replace(/{{date}}/g, String(rowData[1]));
+                        text = text.replace(/{{day_status}}/g, String(rowData[2]));
+                        text = text.replace(/{{schedule_start}}/g, String(rowData[3]));
+                        text = text.replace(/{{schedule_end}}/g, String(rowData[4]));
+                        text = text.replace(/{{unpaidbreak_start}}/g, String(rowData[5]));
+                        text = text.replace(/{{unpaidbreak_end}}/g, String(rowData[6]));
+                        text = text.replace(/{{paidbreak_start}}/g, String(rowData[7]));
+                        text = text.replace(/{{paidbreak_end}}/g, String(rowData[8]));
+                        newRowValues[index] = text;
+                    }
                 });
                 
                 const newRow = worksheet.addRow(newRowValues);
@@ -704,15 +703,18 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Add all the new rows based on the template
             data.rows.forEach(rowData => {
-                const newRowValues = templateRowData!.values.map(cellValue => {
-                    if (typeof cellValue !== 'string') return cellValue;
-                    let text = cellValue;
-                    text = text.replace(/{{DATE}}/g, String(rowData[0]));
-                    text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
-                    text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
-                    text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
-                    return text;
+                const newRowValues = [...templateRowData!.values];
+                newRowValues.forEach((cellValue, index) => {
+                    if (typeof cellValue === 'string') {
+                         let text = cellValue;
+                        text = text.replace(/{{DATE}}/g, String(rowData[0]));
+                        text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
+                        text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
+                        text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
+                        newRowValues[index] = text;
+                    }
                 });
+                
                 const newRow = worksheet.addRow(newRowValues);
                 newRow.height = templateRowData!.height;
                 templateRowData!.styles.forEach((style, colNumber) => {
@@ -1146,3 +1148,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
