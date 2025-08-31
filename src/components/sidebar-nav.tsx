@@ -20,7 +20,8 @@ import {
     PlusCircle,
     Smartphone,
     ListChecks,
-    Mail
+    Mail,
+    FileText
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole } from '@/types';
@@ -76,6 +77,12 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
                 { view: 'holidays', label: 'Holidays', icon: PartyPopper, iconColor: 'bg-yellow-500' },
             ]
         },
+        {
+            label: 'Reports',
+            items: [
+                { view: 'reports', label: 'Reports', icon: FileText, iconColor: 'bg-gray-500' },
+            ]
+        }
     ],
     member: [
          {

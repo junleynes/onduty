@@ -35,9 +35,10 @@ import AllowanceView from '@/components/allowance-view';
 import TaskManagerView from '@/components/task-manager-view';
 import SmtpSettingsView from '@/components/smtp-settings-view';
 import { HolidayImporter } from '@/components/holiday-importer';
+import ReportsView from '@/components/reports-view';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings';
+export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings' | 'reports';
 
 
 function AppContent() {
@@ -438,6 +439,8 @@ function AppContent() {
         return <MyTasksView tasks={tasks} setTasks={setTasks} shifts={shifts} currentUser={currentUser} />;
       case 'task-manager':
         return <TaskManagerView tasks={tasks} setTasks={setTasks} currentUser={currentUser} employees={employees} />;
+      case 'reports':
+          return <ReportsView employees={employees} shifts={shifts} leave={leave} currentUser={currentUser} />;
       case 'admin':
         return (
             <AdminPanel 
