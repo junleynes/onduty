@@ -65,19 +65,27 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
             });
 
             // Find the template row
-            let templateRowData: { values: any[], index: number } | null = null;
+            let templateRowData: { values: any[], styles: Partial<ExcelJS.Style>[], height: number } | null = null;
             let templateRowNumber = -1;
 
             worksheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
-                 row.eachCell({ includeEmpty: true }, (cell) => {
+                 row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
                        if (!templateRowData) {
-                          templateRowData = { values: Array.from(row.values as ExcelJS.CellValue[]), index: rowNum };
+                          const values: any[] = [];
+                          const styles: Partial<ExcelJS.Style>[] = [];
+                          row.eachCell({ includeEmpty: true }, c => {
+                            values[c.col] = c.value;
+                            styles[c.col] = c.style;
+                          });
+
+                          templateRowData = { values, styles, height: row.height };
                           templateRowNumber = rowNum;
                        }
                     }
                  });
             });
+            
 
             if (!templateRowData || templateRowNumber === -1) {
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
@@ -110,24 +118,11 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
                     worksheet.insertRow(currentRowIndex, newRowValues);
                     
                     // Copy styles from the template row
-                    const templateRow = worksheet.getRow(templateRowNumber);
                     const newRow = worksheet.getRow(currentRowIndex);
-                    newRow.height = templateRow.height;
-                    templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                        const newCell = newRow.getCell(colNumber);
-                        newCell.style = cell.style;
-
-                        // Also copy merges
-                        const merge = (worksheet as any).getMerges().find(
-                            (m: any) => m.master === cell.address
-                        );
-                        if (merge) {
-                            worksheet.mergeCells(
-                                newRow.number,
-                                merge.left,
-                                newRow.number,
-                                merge.right
-                            );
+                    newRow.height = templateRowData!.height;
+                    templateRowData!.styles.forEach((style, colNumber) => {
+                        if (style) {
+                           newRow.getCell(colNumber).style = style;
                         }
                     });
                      
@@ -135,8 +130,8 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
                  });
             });
 
-            // Hide the original template row
-            worksheet.getRow(templateRowNumber).hidden = true;
+            // Delete the original template row
+            worksheet.spliceRows(currentRowIndex, 1);
 
 
             const uint8Array = await workbook.xlsx.writeBuffer();
