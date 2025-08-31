@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -203,7 +204,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             // Find the template row
             let templateRowData: { values: any[], styles: Partial<ExcelJS.Style>[], height: number } | null = null;
             let templateRowNumber = -1;
-            let templateColCount = 0;
 
             worksheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
                  row.eachCell({ includeEmpty: true }, (cell) => {
@@ -211,13 +211,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                        if (!templateRowData) {
                           const values: any[] = [];
                           const styles: Partial<ExcelJS.Style>[] = [];
-                          templateColCount = row.actualCellCount;
                           row.eachCell({ includeEmpty: true }, (c, colIdx) => {
-                            // Ensure we only read up to the actual number of cells in template
-                             if (colIdx <= templateColCount) {
-                                values[c.col] = c.value;
-                                styles[c.col] = c.style;
-                             }
+                             values[c.col] = c.value;
+                             styles[c.col] = c.style;
                           });
 
                           templateRowData = { values, styles, height: row.height };
@@ -232,8 +228,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
             
-            let currentRowIndex = templateRowNumber;
-            
+            // Add all the new rows based on the template
             data.rows.forEach(rowData => {
                 const newRowValues = templateRowData!.values.map(cellValue => {
                     if (typeof cellValue !== 'string') return cellValue;
@@ -252,20 +247,17 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     return text;
                 });
                 
-                worksheet.insertRow(currentRowIndex, newRowValues);
-                
-                const newRow = worksheet.getRow(currentRowIndex);
+                const newRow = worksheet.addRow(newRowValues);
                 newRow.height = templateRowData!.height;
                 templateRowData!.styles.forEach((style, colNumber) => {
-                    if (style && colNumber <= templateColCount) {
+                    if (style) {
                        newRow.getCell(colNumber).style = style;
                     }
                 });
-                 
-                currentRowIndex++;
             });
 
-            worksheet.spliceRows(currentRowIndex, 1);
+            // Remove the original template row
+            worksheet.spliceRows(templateRowNumber, 1);
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -710,7 +702,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("Template row with `{{DATE}}` placeholder not found.");
             }
 
-            let currentRowIndex = templateRowNumber;
+            // Add all the new rows based on the template
             data.rows.forEach(rowData => {
                 const newRowValues = templateRowData!.values.map(cellValue => {
                     if (typeof cellValue !== 'string') return cellValue;
@@ -721,16 +713,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
                     return text;
                 });
-
-                worksheet.insertRow(currentRowIndex, newRowValues);
-                const newRow = worksheet.getRow(currentRowIndex);
+                const newRow = worksheet.addRow(newRowValues);
                 newRow.height = templateRowData!.height;
                 templateRowData!.styles.forEach((style, colNumber) => {
                     if (style) newRow.getCell(colNumber).style = style;
                 });
-                currentRowIndex++;
             });
-            worksheet.spliceRows(currentRowIndex, 1);
+            // Remove the original template row
+            worksheet.spliceRows(templateRowNumber, 1);
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
