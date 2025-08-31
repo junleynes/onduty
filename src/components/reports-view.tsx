@@ -10,13 +10,13 @@ import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn, getInitialState } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek } from 'date-fns';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useToast } from '@/hooks/use-toast';
-import { initialShiftTemplates } from '@/lib/data';
+import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import type { ShiftTemplate } from './shift-editor';
 import { ReportPreviewDialog } from './report-preview-dialog';
 
@@ -38,6 +38,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const { toast } = useToast();
     const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
     const [attendanceWeek, setAttendanceWeek] = useState<Date | undefined>();
+    const [summaryDateRange, setSummaryDateRange] = useState<DateRange | undefined>();
+
 
     const [workScheduleTemplate, setWorkScheduleTemplate] = useState<string | null>(() => getInitialState('workScheduleTemplate', null));
     const [attendanceTemplate, setAttendanceTemplate] = useState<string | null>(() => getInitialState('attendanceSheetTemplate', null));
@@ -106,7 +108,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
              return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
         }
         
-        if (leaveEntry) {
+        if (leaveEntry || isSameDay(day, holidays.find(h => isSameDay(h.date, day))?.date ?? -1)) {
             let defaultTemplate: ShiftTemplate | undefined;
              if (employee.position?.toLowerCase().includes('manager')) {
                 defaultTemplate = initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
@@ -377,35 +379,132 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
     };
     
+    // --- User Summary Functions ---
+
+    const generateUserSummaryData = (): ReportData | null => {
+        if (!summaryDateRange || !summaryDateRange.from || !summaryDateRange.to) {
+            toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the summary.' });
+            return null;
+        }
+
+        const groupEmployees = employees.filter(e => e.group === currentUser.group);
+        const leaveTypes = initialLeaveTypes.map(lt => lt.type);
+        const headers = ['Employee Name', 'Total Shifts', 'Total Hours', ...leaveTypes];
+        const rows: (string | number)[][] = [];
+        
+        const daysInInterval = eachDayOfInterval({ start: summaryDateRange.from, end: summaryDateRange.to });
+
+        groupEmployees.forEach(employee => {
+            const shiftsInRange = shifts.filter(s => 
+                s.employeeId === employee.id &&
+                !s.isDayOff && 
+                !s.isHolidayOff &&
+                daysInInterval.some(day => isSameDay(day, new Date(s.date)))
+            );
+            
+            const leaveInRange = leave.filter(l => 
+                l.employeeId === employee.id &&
+                daysInInterval.some(day => isSameDay(day, new Date(l.date)))
+            );
+
+            const totalHours = shiftsInRange.reduce((acc, shift) => {
+                if (!shift.startTime || !shift.endTime) return acc;
+                const start = parse(shift.startTime, 'HH:mm', new Date());
+                const end = parse(shift.endTime, 'HH:mm', new Date());
+                let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                if (diff < 0) diff += 24;
+
+                let breakHours = 0;
+                if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
+                    const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
+                    const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
+                    let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
+                    if (breakDiff < 0) breakDiff += 24;
+                    breakHours = breakDiff;
+                }
+                
+                return acc + (diff - breakHours);
+            }, 0);
+            
+            const leaveCounts = leaveTypes.map(type => 
+                leaveInRange.filter(l => l.type === type).length
+            );
+            
+            rows.push([
+                `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
+                shiftsInRange.length,
+                totalHours.toFixed(2),
+                ...leaveCounts
+            ]);
+        });
+        
+        return { headers, rows };
+    };
+
+    const handleDownloadUserSummary = async (data: ReportData | null) => {
+        if (!data) return;
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('User Summary');
+
+        worksheet.columns = data.headers.map(header => ({
+            header: header,
+            key: header.toLowerCase().replace(/ /g, '_'),
+            width: header === 'Employee Name' ? 30 : 15
+        }));
+        
+        worksheet.addRows(data.rows);
+        
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true };
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        saveAs(blob, `User Summary - ${format(summaryDateRange!.from!, 'yyyy-MM-dd')} to ${format(summaryDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+    };
+    
     // --- Event Handlers ---
     
-    const handleViewReport = (type: 'workSchedule' | 'attendance') => {
+    const handleViewReport = (type: 'workSchedule' | 'attendance' | 'userSummary') => {
+        let data: ReportData | null = null;
+        let title = '';
+        let generator: (() => Promise<void>) | null = null;
+
         if (type === 'workSchedule') {
-            const data = generateWorkScheduleData();
+            data = generateWorkScheduleData();
             if (data) {
-                setPreviewData(data);
-                setReportTitle(`Regular Work Schedule (${format(workScheduleDateRange!.from!, 'LLL d')} - ${format(workScheduleDateRange!.to!, 'LLL d, y')})`);
-                setReportGenerator(() => () => handleDownloadWorkSchedule(data));
-                setIsPreviewOpen(true);
+                title = `Regular Work Schedule (${format(workScheduleDateRange!.from!, 'LLL d')} - ${format(workScheduleDateRange!.to!, 'LLL d, y')})`;
+                generator = () => handleDownloadWorkSchedule(data);
             }
         } else if (type === 'attendance') {
-            const data = generateAttendanceSheetData();
+            data = generateAttendanceSheetData();
             if (data) {
-                setPreviewData(data);
-                setReportTitle(`Attendance Sheet (${format(attendanceDateRange!.from!, 'LLL d')} - ${format(attendanceDateRange!.to!, 'LLL d, y')})`);
-                setReportGenerator(() => () => handleDownloadAttendanceSheet(data));
-                setIsPreviewOpen(true);
+                title = `Attendance Sheet (${format(attendanceDateRange!.from!, 'LLL d')} - ${format(attendanceDateRange!.to!, 'LLL d, y')})`;
+                generator = () => handleDownloadAttendanceSheet(data);
             }
+        } else if (type === 'userSummary') {
+            data = generateUserSummaryData();
+            if (data) {
+                title = `User Summary (${format(summaryDateRange!.from!, 'LLL d')} - ${format(summaryDateRange!.to!, 'LLL d, y')})`;
+                generator = () => handleDownloadUserSummary(data);
+            }
+        }
+        
+        if (data) {
+            setPreviewData(data);
+            setReportTitle(title);
+            setReportGenerator(() => generator);
+            setIsPreviewOpen(true);
         }
     }
 
-    const handleDirectDownload = (type: 'workSchedule' | 'attendance') => {
+    const handleDirectDownload = (type: 'workSchedule' | 'attendance' | 'userSummary') => {
         if (type === 'workSchedule') {
-            const data = generateWorkScheduleData();
-            handleDownloadWorkSchedule(data);
+            handleDownloadWorkSchedule(generateWorkScheduleData());
         } else if (type === 'attendance') {
-            const data = generateAttendanceSheetData();
-            handleDownloadAttendanceSheet(data);
+            handleDownloadAttendanceSheet(generateAttendanceSheetData());
+        } else if (type === 'userSummary') {
+            handleDownloadUserSummary(generateUserSummaryData());
         }
     }
 
@@ -526,6 +625,61 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                 View Report
                             </Button>
                             <Button onClick={() => handleDirectDownload('attendance')} disabled={!attendanceDateRange || !attendanceTemplate}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Generate & Download
+                            </Button>
+                        </CardFooter>
+                    </Card>
+
+                    <Card className="p-6">
+                        <h3 className="font-semibold text-lg mb-2">Summary Per User</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            Generate an individual summary of shifts, hours, and leave for each employee.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    id="summary-date"
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full sm:w-[300px] justify-start text-left font-normal",
+                                    !summaryDateRange && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {summaryDateRange?.from ? (
+                                    summaryDateRange.to ? (
+                                        <>
+                                        {format(summaryDateRange.from, "LLL dd, y")} -{" "}
+                                        {format(summaryDateRange.to, "LLL dd, y")}
+                                        </>
+                                    ) : (
+                                        format(summaryDateRange.from, "LLL dd, y")
+                                    )
+                                    ) : (
+                                    <span>Pick a date range</span>
+                                    )}
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={summaryDateRange?.from}
+                                    selected={summaryDateRange}
+                                    onSelect={setSummaryDateRange}
+                                    numberOfMonths={2}
+                                />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                         <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                             <Button onClick={() => handleViewReport('userSummary')} disabled={!summaryDateRange}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Report
+                            </Button>
+                            <Button onClick={() => handleDirectDownload('userSummary')} disabled={!summaryDateRange}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Generate & Download
                             </Button>
