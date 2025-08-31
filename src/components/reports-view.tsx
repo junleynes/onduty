@@ -70,22 +70,22 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const groupEmployees = employees.filter(e => e.group === currentUser.group);
         const daysInInterval = eachDayOfInterval({ start: workScheduleDateRange.from, end: workScheduleDateRange.to });
 
-        const headers = ['Employee Name', 'Date', 'Schedule Start', 'Schedule End', 'Unpaid Break Start', 'Unpaid Break End', 'Paid Break Start', 'Paid Break End', 'Day Status'];
+        const headers = ['Employee Name', 'Date', 'Day Status', 'Schedule Start', 'Schedule End', 'Unpaid Break Start', 'Unpaid Break End', 'Paid Break Start', 'Paid Break End'];
         const rows: (string | number)[][] = [];
 
         groupEmployees.forEach((employee) => {
             daysInInterval.forEach(day => {
-                const dayData = findDataForDay(day, employee, shifts, leave);
+                const dayData = findDataForDay(day, employee, shifts, leave, holidays);
                 rows.push([
                     `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
                     format(day, 'M/d/yyyy'),
+                    dayData.day_status,
                     dayData.schedule_start,
                     dayData.schedule_end,
                     dayData.unpaidbreak_start,
                     dayData.unpaidbreak_end,
                     dayData.paidbreak_start,
                     dayData.paidbreak_end,
-                    dayData.day_status
                 ]);
             });
         });
@@ -93,23 +93,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         return { headers, rows };
     };
 
-    const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[]) => {
+    const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
         const shift = allShifts.find(s => s.employeeId === employee.id && !s.isDayOff && !s.isHolidayOff && isSameDay(new Date(s.date), day));
         const dayOff = allShifts.find(s => s.employeeId === employee.id && s.isDayOff && isSameDay(new Date(s.date), day));
         const holidayOff = allShifts.find(s => s.employeeId === employee.id && s.isHolidayOff && isSameDay(new Date(s.date), day));
         const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
+        const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
 
         const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
         
         if (dayOff) {
             return { ...emptySchedule, day_status: 'OFF' };
         }
-        if (holidayOff) {
-             return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
-        }
         
-        if (leaveEntry || isSameDay(day, holidays.find(h => isSameDay(h.date, day))?.date ?? -1)) {
-            let defaultTemplate: ShiftTemplate | undefined;
+        if (holidayOff || leaveEntry || holiday) {
+             let defaultTemplate: ShiftTemplate | undefined;
              if (employee.position?.toLowerCase().includes('manager')) {
                 defaultTemplate = initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
             } else {
@@ -118,7 +116,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             if (defaultTemplate) {
                  return {
-                    day_status: '',
+                    day_status: holidayOff ? 'HOLIDAY OFF' : '',
                     schedule_start: defaultTemplate.startTime,
                     schedule_end: defaultTemplate.endTime,
                     unpaidbreak_start: defaultTemplate.isUnpaidBreak ? defaultTemplate.breakStartTime || '' : '',
@@ -127,8 +125,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     paidbreak_end: !defaultTemplate.isUnpaidBreak ? defaultTemplate.breakEndTime || '' : '',
                 };
             }
-            return { ...emptySchedule, day_status: '' };
+            return { ...emptySchedule, day_status: holidayOff ? 'HOLIDAY OFF' : '' };
         }
+
 
         if (shift) {
              return {
@@ -223,13 +222,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     let text = cellValue;
                     text = text.replace(/{{employee_name}}/g, String(rowData[0]));
                     text = text.replace(/{{date}}/g, String(rowData[1]));
-                    text = text.replace(/{{schedule_start}}/g, String(rowData[2]));
-                    text = text.replace(/{{schedule_end}}/g, String(rowData[3]));
-                    text = text.replace(/{{unpaidbreak_start}}/g, String(rowData[4]));
-                    text = text.replace(/{{unpaidbreak_end}}/g, String(rowData[5]));
-                    text = text.replace(/{{paidbreak_start}}/g, String(rowData[6]));
-                    text = text.replace(/{{paidbreak_end}}/g, String(rowData[7]));
-                    text = text.replace(/{{day_status}}/g, String(rowData[8]));
+                    text = text.replace(/{{day_status}}/g, String(rowData[2]));
+                    text = text.replace(/{{schedule_start}}/g, String(rowData[3]));
+                    text = text.replace(/{{schedule_end}}/g, String(rowData[4]));
+                    text = text.replace(/{{unpaidbreak_start}}/g, String(rowData[5]));
+                    text = text.replace(/{{unpaidbreak_end}}/g, String(rowData[6]));
+                    text = text.replace(/{{paidbreak_start}}/g, String(rowData[7]));
+                    text = text.replace(/{{paidbreak_end}}/g, String(rowData[8]));
 
                     return text;
                 });
@@ -567,7 +566,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             </Button>
                         </div>
                          <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
-                             <Button onClick={() => handleViewReport('workSchedule')} disabled={!workScheduleDateRange || !workScheduleTemplate}>
+                             <Button onClick={() => handleViewReport('workSchedule')} disabled={!workScheduleDateRange}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Report
                             </Button>
@@ -620,7 +619,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             </Button>
                         </div>
                          <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
-                            <Button onClick={() => handleViewReport('attendance')} disabled={!attendanceDateRange || !attendanceTemplate}>
+                            <Button onClick={() => handleViewReport('attendance')} disabled={!attendanceDateRange}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Report
                             </Button>
@@ -708,3 +707,5 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    
