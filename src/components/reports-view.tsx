@@ -153,22 +153,21 @@ export default function ReportsView({ employees, shifts, leave, currentUser }: R
         let dayStatus = '';
         if (dayOff) dayStatus = 'OFF';
         if (holidayOff) dayStatus = 'HOLIDAY OFF';
-        if (leaveEntry) dayStatus = leaveEntry.type.toUpperCase();
-
+        // Leave entry no longer sets dayStatus
 
         if (dayStatus) {
             return { day_status: dayStatus, schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
         }
 
-        if (shift) {
+        if (shift || leaveEntry) { // A shift or leave day means they are scheduled for something
             return {
                 day_status: '',
-                schedule_start: shift.startTime,
-                schedule_end: shift.endTime,
-                unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
-                paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                schedule_start: shift ? shift.startTime : '',
+                schedule_end: shift ? shift.endTime : '',
+                unpaidbreak_start: shift && shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                unpaidbreak_end: shift && shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                paidbreak_start: shift && !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                paidbreak_end: shift && !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
             };
         }
 
