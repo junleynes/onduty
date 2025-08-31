@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Employee, Shift, Leave, Holiday } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from './ui/button';
@@ -10,7 +10,7 @@ import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn, getInitialState } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate } from 'date-fns';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import * as ExcelJS from 'exceljs';
@@ -30,13 +30,20 @@ type ReportsViewProps = {
 export default function ReportsView({ employees, shifts, leave, holidays, currentUser }: ReportsViewProps) {
     const { toast } = useToast();
     const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
-    const [attendanceDateRange, setAttendanceDateRange] = useState<DateRange | undefined>();
+    const [attendanceWeek, setAttendanceWeek] = useState<Date | undefined>();
 
     const [workScheduleTemplate, setWorkScheduleTemplate] = useState<string | null>(() => getInitialState('workScheduleTemplate', null));
     const [attendanceTemplate, setAttendanceTemplate] = useState<string | null>(() => getInitialState('attendanceSheetTemplate', null));
 
     const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = useState(false);
     const [isAttendanceUploaderOpen, setIsAttendanceUploaderOpen] = useState(false);
+    
+    const attendanceDateRange = useMemo(() => {
+        if (!attendanceWeek) return undefined;
+        const start = startOfWeek(attendanceWeek, { weekStartsOn: 1 });
+        const end = endOfWeek(attendanceWeek, { weekStartsOn: 1 });
+        return { from: start, to: end };
+    }, [attendanceWeek]);
 
 
     const handleDownloadWorkSchedule = async () => {
@@ -165,7 +172,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             return { ...emptySchedule, day_status: 'OFF' };
         }
         if (holidayOff) {
-            return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
+             return { ...emptySchedule, day_status: 'HOLIDAY OFF' };
         }
         
         if (leaveEntry) {
@@ -228,7 +235,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
 
     const generateAttendanceSheetExcel = async (dateRange: DateRange): Promise<Buffer | null> => {
-        if (!attendanceTemplate || !dateRange.from) {
+        if (!attendanceTemplate || !dateRange.from || !dateRange.to) {
             toast({ variant: 'destructive', title: 'No Template or Date', description: 'Please upload an attendance sheet template and select a date range.' });
             return null;
         }
@@ -242,7 +249,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             const worksheet = workbook.worksheets[0];
             if (!worksheet) throw new Error("Template worksheet not found.");
 
-            const displayedDays = eachDayOfInterval({ start: dateRange.from, end: dateRange.to || dateRange.from });
+            const displayedDays = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
 
             // Find and replace header placeholders
             worksheet.eachRow((row) => {
@@ -387,7 +394,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                      <Card className="p-6">
                         <h3 className="font-semibold text-lg mb-2">Attendance Sheet</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                            Generate a weekly attendance sheet based on a template.
+                            Generate a weekly attendance sheet (Mon-Sun) based on a template.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4">
                              <Popover>
@@ -402,27 +409,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                 >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                     {attendanceDateRange?.from ? (
-                                    attendanceDateRange.to ? (
                                         <>
                                         {format(attendanceDateRange.from, "LLL dd, y")} -{" "}
                                         {format(attendanceDateRange.to, "LLL dd, y")}
                                         </>
                                     ) : (
-                                        format(attendanceDateRange.from, "LLL dd, y")
-                                    )
-                                    ) : (
-                                    <span>Pick a date range</span>
+                                    <span>Pick a week</span>
                                     )}
                                 </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                 <Calendar
                                     initialFocus
-                                    mode="range"
-                                    defaultMonth={attendanceDateRange?.from}
-                                    selected={attendanceDateRange}
-                                    onSelect={setAttendanceDateRange}
-                                    numberOfMonths={2}
+                                    mode="single"
+                                    selected={attendanceWeek}
+                                    onSelect={setAttendanceWeek}
                                 />
                                 </PopoverContent>
                             </Popover>
