@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -152,8 +153,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
         
         if (holidayOff || leaveEntry || holiday) {
-             const defaultTemplate = getDefaultShiftTemplate(employee);
-             return { ...getScheduleFromTemplate(defaultTemplate), day_status: '' };
+             return { ...emptySchedule, day_status: holidayOff ? 'HOLIDAY OFF' : (leaveEntry?.type || holiday?.title || 'Time Off') };
         }
 
         if (shift) {
@@ -168,7 +168,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             };
         }
 
-        return { ...emptySchedule, day_status: '' };
+        return emptySchedule;
     }
     
     const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
@@ -242,21 +242,17 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
 
-            // Insert all the new rows first
-            if (data.length > 0) {
-                worksheet.insertRows(templateRowNumber + 1, data.slice(1));
-            }
+            // Insert new rows and populate them
+            let lastRowNumber = templateRowNumber;
+            data.forEach((rowData) => {
+                const newRow = worksheet.addRow(templateRow?.values); // Does not actually work this way, addRow adds at the end
+                worksheet.duplicateRow(templateRowNumber, 1, true);
+                lastRowNumber++;
+                const duplicatedRow = worksheet.getRow(lastRowNumber);
 
-            // Now populate the data
-            data.forEach((rowData, index) => {
-                const currentRow = worksheet.getRow(templateRowNumber + index);
-                currentRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    // Copy style and value from template cell
-                    const templateCell = templateRow!.getCell(colNumber);
-                    cell.style = { ...templateCell.style };
-                    
-                    if (templateCell.value && typeof templateCell.value === 'string') {
-                        let text = templateCell.value;
+                duplicatedRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    if (cell.value && typeof cell.value === 'string') {
+                        let text = cell.value;
                         text = text.replace(/{{employee_name}}/g, rowData.employee_name);
                         text = text.replace(/{{date}}/g, rowData.date);
                         text = text.replace(/{{day_status}}/g, rowData.day_status);
@@ -267,17 +263,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         text = text.replace(/{{paidbreak_start}}/g, rowData.paidbreak_start);
                         text = text.replace(/{{paidbreak_end}}/g, rowData.paidbreak_end);
                         cell.value = text;
-                    } else {
-                        // If template cell is not a string, copy its value directly
-                        cell.value = templateCell.value;
                     }
                 });
-                currentRow.commit();
+                duplicatedRow.commit();
             });
             
             // Remove the original template row if we added any data
             if(data.length > 0) {
-               worksheet.spliceRows(templateRowNumber + data.length, 1);
+               worksheet.spliceRows(templateRowNumber, 1);
             }
 
 
@@ -1172,6 +1165,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    
 
     
 
