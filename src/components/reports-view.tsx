@@ -96,9 +96,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
     const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
         if (employee.role === 'manager') {
-            return initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
+            return initialShiftTemplates.find(t => t.name.toLowerCase().includes("manager shift"));
         }
-        return initialShiftTemplates.find(t => t.name === "Mid Shift (10:00-18:00)");
+        return initialShiftTemplates.find(t => t.name.toLowerCase().includes("mid shift"));
     };
 
     const getScheduleFromTemplate = (template: ShiftTemplate | undefined) => {
@@ -120,15 +120,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
         const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
         const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
-        const defaultShiftTemplate = getDefaultShiftTemplate(employee);
-        const defaultSchedule = getScheduleFromTemplate(defaultShiftTemplate);
+        const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
 
         if (shift) {
             if (shift.isHolidayOff) {
-                 return {
-                    ...defaultSchedule,
-                    day_status: '', // Empty as requested
-                };
+                return { ...defaultSchedule, day_status: '' };
             }
             if (shift.isDayOff) {
                 return { ...emptySchedule, day_status: 'OFF' };
@@ -256,7 +252,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             
             const templateRow = worksheet.getRow(templateRowNumber);
             
-            // Map template headers to data keys
             const placeholderMap: { [key: string]: keyof WorkScheduleRowData } = {
                 '{{employee_name}}': 'employee_name',
                 '{{date}}': 'date',
@@ -269,35 +264,34 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 '{{paidbreak_end}}': 'paidbreak_end',
             };
 
-            const headerMapping: { col: number, dataKey: keyof WorkScheduleRowData | null }[] = [];
+            const headerMapping: { col: number, placeholder: string, dataKey: keyof WorkScheduleRowData }[] = [];
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 const cellValue = cell.value?.toString() || '';
-                let foundKey: keyof WorkScheduleRowData | null = null;
                 for (const placeholder in placeholderMap) {
                     if (cellValue.includes(placeholder)) {
-                        foundKey = placeholderMap[placeholder];
-                        break;
+                        headerMapping.push({ col: colNumber, placeholder, dataKey: placeholderMap[placeholder] });
                     }
                 }
-                headerMapping.push({ col: colNumber, dataKey: foundKey });
             });
 
 
             // Insert new rows
-            let lastRow = templateRowNumber;
+            let lastRowNumber = templateRowNumber;
             data.forEach((rowData) => {
-                const newRow = worksheet.insertRow(lastRow + 1, []);
-                templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    newRow.getCell(colNumber).style = cell.style;
+                worksheet.duplicateRow(templateRowNumber, 1, true);
+                const newRow = worksheet.getRow(templateRowNumber + 1);
+                
+                headerMapping.forEach(({ col, placeholder, dataKey }) => {
+                    const originalCell = templateRow.getCell(col);
+                    const newCell = newRow.getCell(col);
+                    
+                    const originalValue = originalCell.value?.toString() || '';
+                    newCell.value = originalValue.replace(placeholder, rowData[dataKey]);
                 });
                 
-                headerMapping.forEach(({ col, dataKey }) => {
-                    if (dataKey) {
-                        newRow.getCell(col).value = rowData[dataKey];
-                    }
-                });
-                lastRow++;
+                lastRowNumber++;
             });
+
 
             // Remove original template row
             worksheet.spliceRows(templateRowNumber, 1);
@@ -687,27 +681,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             
             const manager = employees.find(e => e.id === currentUser.reportsTo);
 
-            // Add signature image if available
-            if (currentUser.signature) {
-                const signatureImageId = workbook.addImage({
-                    base64: currentUser.signature.split(',')[1],
-                    extension: 'png',
-                });
-                
-                // Find cell with placeholder and replace it with the image
-                worksheet.eachRow((row, rowNumber) => {
-                    row.eachCell((cell, colNumber) => {
-                        if (typeof cell.value === 'string' && cell.value.includes('{{employee_signature}}')) {
-                             worksheet.addImage(signatureImageId, {
-                                tl: { col: colNumber - 1, row: rowNumber - 1 },
-                                ext: { width: 100, height: 40 } // Adjust size as needed
-                            });
-                            cell.value = ''; // Clear placeholder
-                        }
-                    });
-                });
-            }
-
             // Global placeholders
             worksheet.eachRow({ includeEmpty: true }, (row) => {
                 row.eachCell({ includeEmpty: true }, (cell) => {
@@ -738,14 +711,18 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             
             const templateRow = worksheet.getRow(templateRowNumber);
 
-            // Duplicate and populate rows
+            // Duplicate and populate rows in reverse to maintain order
             if (data.rows.length > 0) {
-                data.rows.forEach((rowData, index) => {
+                for (let i = data.rows.length - 1; i >= 0; i--) {
+                    const rowData = data.rows[i];
                     worksheet.duplicateRow(templateRowNumber, 1, true);
-                    const newRow = worksheet.getRow(templateRowNumber + 1);
+                    const newRow = worksheet.getRow(templateRowNumber);
 
                     newRow.eachCell({includeEmpty: true}, (cell, colNumber) => {
                         const templateCell = templateRow.getCell(colNumber);
+                        const newCellModel = { ...templateCell.model, address: cell.address };
+                        cell.model = newCellModel;
+
                         if (templateCell.value && typeof templateCell.value === 'string') {
                             let text = templateCell.value;
                             text = text.replace(/{{DATE}}/g, String(rowData[0]));
@@ -753,15 +730,45 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
                             text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
                             cell.value = text;
+                        } else {
+                            cell.value = templateCell.value;
                         }
                     });
-                    newRow.commit();
-                });
+                }
             }
             
             // Remove the original template row
             worksheet.spliceRows(templateRowNumber, 1);
             
+            // Signature placement after all rows are added
+            const lastRowNumber = templateRowNumber + data.rows.length -1;
+            if (currentUser.signature) {
+                const signatureImageId = workbook.addImage({
+                    base64: currentUser.signature.split(',')[1],
+                    extension: 'png',
+                });
+                
+                let sigRowNumber = -1;
+                let sigColNumber = -1;
+
+                worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+                    row.eachCell((cell, colNumber) => {
+                        if (typeof cell.value === 'string' && cell.value.includes('{{employee_signature}}')) {
+                            sigRowNumber = rowNumber;
+                            sigColNumber = colNumber;
+                            cell.value = ''; // Clear placeholder
+                        }
+                    });
+                });
+
+                if (sigRowNumber !== -1 && sigColNumber !== -1) {
+                     worksheet.addImage(signatureImageId, {
+                        tl: { col: sigColNumber - 1, row: sigRowNumber - 1 },
+                        ext: { width: 100, height: 40 }
+                    });
+                }
+            }
+
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -1194,6 +1201,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
 
     
+
 
 
 
