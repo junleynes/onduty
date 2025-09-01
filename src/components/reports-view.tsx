@@ -255,7 +255,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-
+            const templateRowValues = templateRow.values as ExcelJS.CellValue[];
+            
             const placeholderMap: { [key: string]: keyof WorkScheduleRowData } = {
                 '{{employee_name}}': 'employee_name',
                 '{{date}}': 'date',
@@ -267,7 +268,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 '{{paidbreak_start}}': 'paidbreak_start',
                 '{{paidbreak_end}}': 'paidbreak_end',
             };
-            
+
             const columnMapping: { col: number; dataKey: keyof WorkScheduleRowData }[] = [];
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 const cellValue = cell.text;
@@ -277,14 +278,20 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     }
                 }
             });
+
+            const sortedData = [...data].sort((a,b) => {
+                const nameComp = a.employee_name.localeCompare(b.employee_name);
+                if (nameComp !== 0) return nameComp;
+                return new Date(a.date).getTime() - new Date(b.date).getTime();
+            });
             
-            data.forEach((rowData, index) => {
-                const rowNumberToInsert = templateRowNumber + index;
-                if (index > 0) {
-                    worksheet.duplicateRow(templateRowNumber, 1, true);
-                }
-                const newRow = worksheet.getRow(rowNumberToInsert);
-                
+            // Insert rows from bottom to top to avoid shifting issues
+            for (let i = sortedData.length - 1; i >= 0; i--) {
+                worksheet.duplicateRow(templateRowNumber, 1, true);
+            }
+
+            sortedData.forEach((rowData, index) => {
+                const newRow = worksheet.getRow(templateRowNumber + index);
                 columnMapping.forEach(({ col, dataKey }) => {
                     newRow.getCell(col).value = rowData[dataKey];
                 });
@@ -593,7 +600,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
     // --- WFH Certification Functions ---
     const generateWfhCertificationData = (): WfhCertRowData[] | null => {
-        if (!wfhCertDateRange || !wfhCertDateRange.from || !wfhCertDateRange.to) {
+        if (!wfhCertDateRange || !wfhCertDateRange.from) {
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month for the report.' });
             return null;
         }
@@ -602,6 +609,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const rows: WfhCertRowData[] = [];
     
         daysInInterval.forEach(day => {
+            // This is the fix: strictly check if the day is in the selected month
             if (getMonth(day) !== getMonth(wfhCertDateRange.from!)) {
                 return;
             }
@@ -692,21 +700,40 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             });
     
-            const templateRowNumber = 9;
-            const templateRow = worksheet.getRow(templateRowNumber);
+            const templateRow = worksheet.getRow(9);
             if (!templateRow.values.some(v => typeof v === 'string' && v.includes('{{DATE}}'))) {
                  throw new Error("Template row with placeholder `{{DATE}}` not found on row 9.");
             }
+            
+            // This is the new, robust logic
+            const placeholderMap: { [key: string]: keyof WfhCertRowData } = {};
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const cellValue = cell.text;
+                if (cellValue.includes('{{DATE}}')) placeholderMap[colNumber] = 'DATE';
+                if (cellValue.includes('{{ATTENDANCE_RENDERED}}')) placeholderMap[colNumber] = 'ATTENDANCE_RENDERED';
+                if (cellValue.includes('{{TOTAL_HRS_SPENT}}')) placeholderMap[colNumber] = 'TOTAL_HRS_SPENT';
+                if (cellValue.includes('{{REMARKS}}')) placeholderMap[colNumber] = 'REMARKS';
+            });
+            
+            // Add all the data rows first
+            worksheet.insertRows(10, data.map(d => []));
 
-            const dataToInsert = data.map(d => [d.DATE, d.ATTENDANCE_RENDERED, d.TOTAL_HRS_SPENT, d.REMARKS]);
-            worksheet.spliceRows(templateRowNumber, 1, ...dataToInsert);
+            // Now, populate and style them
+            data.forEach((rowData, index) => {
+                const newRow = worksheet.getRow(10 + index);
+                for (const colStr in placeholderMap) {
+                    const col = parseInt(colStr, 10);
+                    const dataKey = placeholderMap[col];
+                    const newCell = newRow.getCell(col);
+                    newCell.value = rowData[dataKey];
+                    newCell.style = templateRow.getCell(col).style;
+                }
+                newRow.commit();
+            });
 
-            for (let i = 0; i < data.length; i++) {
-                const newRow = worksheet.getRow(templateRowNumber + i);
-                newRow.height = templateRow.height;
-                templateRow.eachCell({ includeEmpty: true }, (templateCell, colNumber) => {
-                    newRow.getCell(colNumber).style = templateCell.style;
-                });
+            // Clear the template row's placeholders
+            for (const colStr in placeholderMap) {
+                templateRow.getCell(parseInt(colStr, 10)).value = null;
             }
 
             let sigRowNumber = -1;
