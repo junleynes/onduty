@@ -130,18 +130,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         
         const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
 
-        // Logic for Holiday Off - treated as a working day with default schedule
         if (shift?.isHolidayOff) {
             return { ...defaultSchedule, day_status: '' };
         }
         
-        // Logic for Time Off (Leave)
         if (leaveEntry) {
             return { ...defaultSchedule, day_status: '' };
         }
-
-        // Logic for regular Holiday
-        if (holiday) {
+        
+        if (holiday && (!shift || shift.isDayOff)) {
              return { ...emptySchedule, day_status: 'HOLIDAY' };
         }
         
@@ -149,7 +146,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             if (shift.isDayOff) {
                 return { ...emptySchedule, day_status: 'OFF' };
             }
-            // Regular working shift
             return {
                 day_status: '',
                 schedule_start: shift.startTime,
@@ -283,23 +279,19 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     }
                 }
             });
-
-            // Insert new rows and populate them
-            let lastRowNumber = templateRowNumber;
-            data.forEach((rowData) => {
+            
+            let lastRowNumber = templateRowNumber -1;
+            data.forEach((rowData, index) => {
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(lastRowNumber + 1);
-                
+                const newRow = worksheet.getRow(templateRowNumber + index);
+
                 columnMapping.forEach(({ col, dataKey }) => {
                     newRow.getCell(col).value = rowData[dataKey];
                 });
-                
-                lastRowNumber++;
             });
 
-
             // Remove original template row
-            worksheet.spliceRows(templateRowNumber, 1);
+            worksheet.spliceRows(templateRowNumber + data.length, 1);
 
 
             const uint8Array = await workbook.xlsx.writeBuffer();
@@ -601,7 +593,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         saveAs(blob, `Cumulative Tardy Report - ${format(tardyDateRange!.from!, 'yyyy-MM-dd')} to ${format(tardyDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
     };
-
+    
     // --- WFH Certification Functions ---
     const generateWfhCertificationData = (): WfhCertRowData[] | null => {
         if (!wfhCertDateRange || !wfhCertDateRange.from || !wfhCertDateRange.to) {
@@ -613,6 +605,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const rows: WfhCertRowData[] = [];
     
         daysInInterval.forEach(day => {
+            // This is the fix: Ensure we only process days within the actual selected month
+            if (getMonth(day) !== getMonth(wfhCertDateRange.from!)) {
+                return;
+            }
+
             const shift = shifts.find(s => s.employeeId === currentUser.id && isSameDay(new Date(s.date), day));
             const leaveEntry = leave.find(l => l.employeeId === currentUser.id && isSameDay(new Date(l.date), day));
     
@@ -699,58 +696,61 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             });
     
-            // Find the template row
+            // Find the template row by looking for a required placeholder
             let templateRowNumber = -1;
-            const placeholderKeys = ['{{DATE}}', '{{ATTENDANCE_RENDERED}}', '{{TOTAL_HRS_SPENT}}', '{{REMARKS}}'];
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
-                    if (typeof cell.value === 'string' && placeholderKeys.some(key => cell.value!.toString().includes(key))) {
+                    if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
                         templateRowNumber = rowNum;
                     }
                 });
             });
     
             if (templateRowNumber === -1) {
-                throw new Error("Template row with placeholders not found.");
+                throw new Error("Template row with placeholder `{{DATE}}` not found.");
             }
     
             const templateRow = worksheet.getRow(templateRowNumber);
-            const columnMapping: { col: number; key: keyof WfhCertRowData }[] = [];
-            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                const cellText = cell.text.trim();
-                if (cellText.includes('{{DATE}}')) columnMapping.push({ col: colNumber, key: 'DATE' });
-                if (cellText.includes('{{ATTENDANCE_RENDERED}}')) columnMapping.push({ col: colNumber, key: 'ATTENDANCE_RENDERED' });
-                if (cellText.includes('{{TOTAL_HRS_SPENT}}')) columnMapping.push({ col: colNumber, key: 'TOTAL_HRS_SPENT' });
-                if (cellText.includes('{{REMARKS}}')) columnMapping.push({ col: colNumber, key: 'REMARKS' });
-            });
+            const placeholderMap: { [key: string]: keyof WfhCertRowData } = {
+                '{{DATE}}': 'DATE',
+                '{{ATTENDANCE_RENDERED}}': 'ATTENDANCE_RENDERED',
+                '{{TOTAL_HRS_SPENT}}': 'TOTAL_HRS_SPENT',
+                '{{REMARKS}}': 'REMARKS',
+            };
 
-            // Insert and populate data rows
-            if (data.length > 0) {
-                const rowsToAdd = data.map(rowData => 
-                    columnMapping.map(({ key }) => rowData[key])
-                );
-                
-                worksheet.spliceRows(templateRowNumber, 1, ...rowsToAdd);
-
-                // Re-apply styles from the template row to all new data rows
-                for(let i = 0; i < data.length; i++) {
-                    const newRow = worksheet.getRow(templateRowNumber + i);
-                    newRow.height = templateRow.height;
-                    templateRow.eachCell({ includeEmpty: true }, (templateCell, colNumber) => {
-                         const newCell = newRow.getCell(colNumber);
-                         newCell.style = templateCell.style;
-                         // If the template cell had a placeholder, we've already added the value.
-                         // If not, we copy the static value.
-                         if (templateCell.text && !placeholderKeys.some(key => templateCell.text.includes(key))) {
-                             newCell.value = templateCell.value;
-                         }
-                    });
-                }
-            } else {
-                 worksheet.spliceRows(templateRowNumber, 1);
+            // Pre-duplicate all rows needed
+            for (let i = 1; i < data.length; i++) {
+                worksheet.duplicateRow(templateRowNumber, 1, true);
             }
 
-            // Find signature cell and add image
+            // Populate the duplicated rows
+            data.forEach((rowData, index) => {
+                const currentRow = worksheet.getRow(templateRowNumber + index);
+                templateRow.eachCell({ includeEmpty: true }, (templateCell, col) => {
+                    const currentCell = currentRow.getCell(col);
+                    const templateText = templateCell.text;
+                    
+                    let newText = templateText;
+                    let replaced = false;
+                    for (const placeholder in placeholderMap) {
+                        if (templateText.includes(placeholder)) {
+                            newText = newText.replace(placeholder, String(rowData[placeholderMap[placeholder]]));
+                            replaced = true;
+                        }
+                    }
+
+                    if (replaced) {
+                        currentCell.value = newText;
+                    } else {
+                        // If it wasn't a placeholder cell, clear it to avoid duplication
+                        currentCell.value = null;
+                    }
+                     // Always copy style
+                    currentCell.style = templateCell.style;
+                });
+            });
+            
+            // Signature placement after all data is written
             let sigRowNumber = -1;
             let sigColNumber = -1;
             worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
