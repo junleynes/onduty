@@ -94,23 +94,41 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
     // --- Data Generation Functions ---
     
+    const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
+        if (employee.role === 'manager') {
+            return initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
+        }
+        return initialShiftTemplates.find(t => t.name === "Mid Shift (10:00-18:00)");
+    };
+
+    const getScheduleFromTemplate = (template: ShiftTemplate | undefined) => {
+        if (!template) {
+             return { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+        }
+        return {
+            schedule_start: template.startTime,
+            schedule_end: template.endTime,
+            unpaidbreak_start: template.isUnpaidBreak ? template.breakStartTime || '' : '',
+            unpaidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
+            paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
+            paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
+        };
+    };
+
     const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
         const shift = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
         const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
         const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
         const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+        const defaultShiftTemplate = getDefaultShiftTemplate(employee);
+        const defaultSchedule = getScheduleFromTemplate(defaultShiftTemplate);
 
         if (shift) {
             // It's a working holiday
             if (shift.isHolidayOff) {
                  return {
+                    ...defaultSchedule,
                     day_status: '', // Empty as requested
-                    schedule_start: shift.startTime,
-                    schedule_end: shift.endTime,
-                    unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                    unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
-                    paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                    paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
                 };
             }
 
@@ -131,7 +149,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
 
         if (leaveEntry) {
-            return { ...emptySchedule, day_status: leaveEntry.type || 'Time Off' };
+            return { ...defaultSchedule, day_status: '' };
         }
 
         if (holiday) {
@@ -190,26 +208,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         return { headers, rows };
     }
     
-    const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
-        if (employee.position?.toLowerCase().includes('manager')) {
-            return initialShiftTemplates.find(t => t.name === "Manager Shift (10:00-19:00)");
-        }
-        return initialShiftTemplates.find(t => t.name === "Mid Shift (10:00-18:00)");
-    };
-
-    const getScheduleFromTemplate = (template: ShiftTemplate | undefined) => {
-        if (!template) {
-             return { schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
-        }
-        return {
-            schedule_start: template.startTime,
-            schedule_end: template.endTime,
-            unpaidbreak_start: template.isUnpaidBreak ? template.breakStartTime || '' : '',
-            unpaidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
-            paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
-            paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
-        };
-    };
 
 
     const handleDownloadWorkSchedule = async (data: WorkScheduleRowData[] | null) => {
