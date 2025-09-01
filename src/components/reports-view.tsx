@@ -22,6 +22,7 @@ import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import type { ShiftTemplate } from './shift-editor';
 import { ReportPreviewDialog } from './report-preview-dialog';
 import { TardyImporter } from './tardy-importer';
+import { WorkExtensionTemplateUploader } from './work-extension-template-uploader';
 
 
 type ReportsViewProps = {
@@ -56,6 +57,18 @@ type WfhCertRowData = {
     REMARKS: string;
 }
 
+type WorkExtensionRowData = {
+    employee_name: string;
+    work_sched_date: string;
+    start_time: string;
+    end_time: string;
+    date_of_work_extended: string;
+    extended_start_time: string;
+    extended_end_time: string;
+    total_hours_extended: string;
+    reason: string;
+};
+
 
 export default function ReportsView({ employees, shifts, leave, holidays, currentUser }: ReportsViewProps) {
     const { toast } = useToast();
@@ -64,6 +77,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [summaryDateRange, setSummaryDateRange] = useState<DateRange | undefined>();
     const [tardyDateRange, setTardyDateRange] = useState<DateRange | undefined>();
     const [wfhCertMonth, setWfhCertMonth] = useState<Date | undefined>();
+    const [workExtensionWeek, setWorkExtensionWeek] = useState<Date | undefined>();
+
 
     const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>(() => getInitialState('tardyRecords', []));
 
@@ -71,11 +86,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [workScheduleTemplate, setWorkScheduleTemplate] = useState<string | null>(() => getInitialState('workScheduleTemplate', null));
     const [attendanceTemplate, setAttendanceTemplate] = useState<string | null>(() => getInitialState('attendanceSheetTemplate', null));
     const [wfhCertTemplate, setWfhCertTemplate] = useState<string | null>(() => getInitialState('wfhCertificationTemplate', null));
+    const [workExtensionTemplate, setWorkExtensionTemplate] = useState<string | null>(() => getInitialState('workExtensionTemplate', null));
+
 
     const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = useState(false);
     const [isAttendanceUploaderOpen, setIsAttendanceUploaderOpen] = useState(false);
     const [isWfhCertUploaderOpen, setIsWfhCertUploaderOpen] = useState(false);
     const [isTardyImporterOpen, setIsTardyImporterOpen] = useState(false);
+    const [isWorkExtensionUploaderOpen, setIsWorkExtensionUploaderOpen] = useState(false);
+
     
     const [previewData, setPreviewData] = useState<ReportData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -91,6 +110,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const end = endOfWeek(attendanceWeek, { weekStartsOn: 1 });
         return { from: start, to: end };
     }, [attendanceWeek]);
+
+    const workExtensionDateRange = useMemo(() => {
+        if (!workExtensionWeek) return undefined;
+        const start = startOfWeek(workExtensionWeek, { weekStartsOn: 1 });
+        const end = endOfWeek(workExtensionWeek, { weekStartsOn: 1 });
+        return { from: start, to: end };
+    }, [workExtensionWeek]);
 
     const wfhCertDateRange = useMemo(() => {
         if (!wfhCertMonth) return undefined;
@@ -802,9 +828,90 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
     };
     
+    // --- Work Extension Functions ---
+    const generateWorkExtensionData = (): WorkExtensionRowData[] | null => {
+         if (!workExtensionDateRange || !workExtensionDateRange.from || !workExtensionDateRange.to) {
+            toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a week for the report.' });
+            return null;
+        }
+
+        const extensionRequests = leave.filter(l => 
+            l.type === 'Work Extension' &&
+            isWithinInterval(new Date(l.date), { start: workExtensionDateRange.from!, end: workExtensionDateRange.to! })
+        );
+        
+        const data: WorkExtensionRowData[] = extensionRequests.map(req => {
+            const employee = employees.find(e => e.id === req.employeeId);
+            const originalShift = shifts.find(s => s.employeeId === req.employeeId && isSameDay(new Date(s.date), new Date(req.date)));
+            
+            let totalHours = '';
+            if (req.startTime && req.endTime) {
+                 const start = parse(req.startTime, 'HH:mm', new Date());
+                 const end = parse(req.endTime, 'HH:mm', new Date());
+                 let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                 if (diff < 0) diff += 24;
+                 totalHours = diff.toFixed(2);
+            }
+
+            return {
+                employee_name: employee ? getFullName(employee) : 'Unknown',
+                work_sched_date: format(new Date(req.date), 'MM/dd/yyyy'),
+                start_time: originalShift?.startTime || '',
+                end_time: originalShift?.endTime || '',
+                date_of_work_extended: format(new Date(req.date), 'MM/dd/yyyy'),
+                extended_start_time: req.startTime || '',
+                extended_end_time: req.endTime || '',
+                total_hours_extended: totalHours,
+                reason: req.reason || ''
+            };
+        });
+
+        return data.sort((a,b) => new Date(a.work_sched_date).getTime() - new Date(b.work_sched_date).getTime());
+    }
+
+    const handleDownloadWorkExtension = async (data: WorkExtensionRowData[] | null) => {
+        if (!data) return;
+        if (!workExtensionTemplate) {
+            toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a Work Extension template first.' });
+            return;
+        }
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const buffer = Buffer.from(workExtensionTemplate, 'binary');
+            await workbook.xlsx.load(buffer);
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) throw new Error("Template worksheet not found.");
+
+            let templateRowNumber = -1;
+            worksheet.eachRow((row, rowNumber) => {
+                row.eachCell((cell) => {
+                    if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
+                        templateRowNumber = rowNumber;
+                    }
+                });
+            });
+
+            if (templateRowNumber === -1) {
+                throw new Error("Template row with `{{employee_name}}` not found.");
+            }
+
+            worksheet.spliceRows(templateRowNumber, 1, ...data.map(d => Object.values(d)));
+
+            const uint8Array = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `Work Extension Summary - ${format(workExtensionDateRange!.from!, 'yyyy-MM-dd')} to ${format(workExtensionDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+
+        } catch (error) {
+            console.error("Error generating work extension report:", error);
+            toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
+        }
+    }
+
+
     // --- Event Handlers ---
     
-    const handleViewReport = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh') => {
+    const handleViewReport = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension') => {
         let data: ReportData | null = null;
         let title = '';
         let generator: (() => Promise<void>) | null = null;
@@ -845,6 +952,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 title = `WFH Certification - ${getFullName(currentUser)} (${format(wfhCertDateRange!.from!, 'MMMM yyyy')})`;
                 generator = () => handleDownloadWfhCertification(rawData);
             }
+        } else if (type === 'workExtension') {
+            const rawData = generateWorkExtensionData();
+            if (rawData) {
+                data = {
+                    headers: ['Employee', 'Work Date', 'Sched Start', 'Sched End', 'Ext Date', 'Ext Start', 'Ext End', 'Total Hours', 'Reason'],
+                    rows: rawData.map(d => Object.values(d))
+                };
+                title = `Work Extension Summary (${format(workExtensionDateRange!.from!, 'LLL d')} - ${format(workExtensionDateRange!.to!, 'LLL d, y')})`;
+                generator = () => handleDownloadWorkExtension(rawData);
+            }
         }
         
         if (data) {
@@ -855,7 +972,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
     }
 
-    const handleDirectDownload = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh') => {
+    const handleDirectDownload = (type: 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension') => {
         if (type === 'workSchedule') {
             handleDownloadWorkSchedule(generateWorkScheduleData());
         } else if (type === 'attendance') {
@@ -866,6 +983,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             handleDownloadTardyReport(generateTardyReportData());
         } else if (type === 'wfh') {
             handleDownloadWfhCertification(generateWfhCertificationData());
+        } else if (type === 'workExtension') {
+            handleDownloadWorkExtension(generateWorkExtensionData());
         }
     };
     
@@ -1015,6 +1134,59 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                         View Report
                                     </Button>
                                     <Button onClick={() => handleDirectDownload('attendance')} disabled={!attendanceDateRange || !attendanceTemplate}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Generate & Download
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+
+                            <Card className="p-6">
+                                <h3 className="font-semibold text-lg mb-2">Work Extension Summary</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Generate a summary of work extensions for the selected week.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            id="work-extension-date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full sm:w-[300px] justify-start text-left font-normal",
+                                            !workExtensionDateRange && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {workExtensionDateRange?.from ? (
+                                                <>
+                                                {format(workExtensionDateRange.from, "LLL dd, y")} -{" "}
+                                                {format(workExtensionDateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                            <span>Pick a week</span>
+                                            )}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            initialFocus
+                                            mode="single"
+                                            selected={workExtensionWeek}
+                                            onSelect={setWorkExtensionWeek}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Button variant="outline" onClick={() => setIsWorkExtensionUploaderOpen(true)}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Upload Template
+                                    </Button>
+                                </div>
+                                <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                                    <Button onClick={() => handleViewReport('workExtension')} disabled={!workExtensionDateRange}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Report
+                                    </Button>
+                                    <Button onClick={() => handleDirectDownload('workExtension')} disabled={!workExtensionDateRange || !workExtensionTemplate}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Generate & Download
                                     </Button>
@@ -1197,6 +1369,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 isOpen={isAttendanceUploaderOpen}
                 setIsOpen={setIsAttendanceUploaderOpen}
                 onTemplateUpload={setAttendanceTemplate}
+            />
+             <WorkExtensionTemplateUploader
+                isOpen={isWorkExtensionUploaderOpen}
+                setIsOpen={setIsWorkExtensionUploaderOpen}
+                onTemplateUpload={setWorkExtensionTemplate}
             />
             <WfhCertificationTemplateUploader
                 isOpen={isWfhCertUploaderOpen}
