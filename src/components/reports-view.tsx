@@ -223,11 +223,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
             
-            // Add all the new rows by duplicating the template row
-            let lastInsertedRowNumber = templateRowNumber;
-            data.rows.forEach((rowData) => {
+            // Duplicate the row for each data entry and then populate it
+            data.rows.forEach((rowData, index) => {
+                // The new row is inserted after the template row
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(lastInsertedRowNumber + 1);
+                
+                // The new row is at `templateRowNumber + 1`. We populate this new row.
+                const newRow = worksheet.getRow(templateRowNumber + 1);
 
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                      const originalCell = templateRow!.getCell(colNumber);
@@ -245,9 +247,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         cell.value = text;
                     }
                 });
-                 lastInsertedRowNumber++;
             });
             
+            // Remove the original template row
             worksheet.spliceRows(templateRowNumber, 1);
 
             const uint8Array = await workbook.xlsx.writeBuffer();
@@ -685,11 +687,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("Template row with `{{DATE}}` placeholder not found.");
             }
 
-            // Add all the new rows by duplicating the template row
-            let lastInsertedRowNumber = templateRowNumber;
-            data.rows.forEach((rowData) => {
+            // Duplicate the row for each data entry and then populate it
+            data.rows.forEach((rowData, index) => {
+                // The new row is inserted after the template row
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(lastInsertedRowNumber + 1);
+                
+                // The new row is at `templateRowNumber + 1`. We populate this new row.
+                const newRow = worksheet.getRow(templateRowNumber + 1);
 
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                     const originalCell = templateRow!.getCell(colNumber);
@@ -702,7 +706,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         cell.value = text;
                     }
                 });
-                 lastInsertedRowNumber++;
             });
             
             // Remove the original template row
@@ -1136,5 +1139,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
 
 
