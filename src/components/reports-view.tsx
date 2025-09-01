@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -165,7 +164,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             unpaidbreak_start: template.isUnpaidBreak ? template.breakStartTime || '' : '',
             unpaidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
             paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
-            paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
+            paidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
         };
     };
 
@@ -196,12 +195,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 row.eachCell({ includeEmpty: true }, (cell) => {
                     if (cell.value && typeof cell.value === 'string') {
                         let cellText = cell.value;
-                        if (cellText.includes('{{start_date}}')) {
-                            cell.value = cellText.replace('{{start_date}}', format(workScheduleDateRange.from!, 'MM/dd/yyyy'));
-                        }
-                        if (cellText.includes('{{end_date}}')) {
-                            cell.value = cellText.replace('{{end_date}}', format(workScheduleDateRange.to!, 'MM/dd/yyyy'));
-                        }
+                        cellText = cellText.replace('{{start_date}}', format(workScheduleDateRange.from!, 'MM/dd/yyyy'));
+                        cellText = cellText.replace('{{end_date}}', format(workScheduleDateRange.to!, 'MM/dd/yyyy'));
+                        cell.value = cellText;
                     }
                 });
             });
@@ -209,7 +205,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             // Find the template row
             let templateRowNumber = -1;
             let templateRow: ExcelJS.Row | undefined;
-
             worksheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
                  row.eachCell({ includeEmpty: true }, (cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
@@ -223,16 +218,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
             
-            // Duplicate the row for each data entry and then populate it
-            data.rows.forEach((rowData, index) => {
-                // The new row is inserted after the template row
+            // Insert and populate rows
+            let lastRowNumber = templateRowNumber;
+            data.rows.forEach((rowData) => {
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                
-                // The new row is at `templateRowNumber + 1`. We populate this new row.
                 const newRow = worksheet.getRow(templateRowNumber + 1);
 
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                     const originalCell = templateRow!.getCell(colNumber);
+                    const originalCell = templateRow!.getCell(colNumber);
                      if (originalCell.value && typeof originalCell.value === 'string') {
                         let text = originalCell.value;
                         text = text.replace(/{{employee_name}}/g, String(rowData[0]));
@@ -247,10 +240,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         cell.value = text;
                     }
                 });
+                lastRowNumber++;
             });
-            
-            // Remove the original template row
-            worksheet.spliceRows(templateRowNumber, 1);
+
+            // Remove the original template row after all new rows are added
+            if (data.rows.length > 0) {
+                 worksheet.spliceRows(templateRowNumber, 1);
+            }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -688,30 +684,27 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
 
             // Duplicate the row for each data entry and then populate it
-            data.rows.forEach((rowData, index) => {
-                // The new row is inserted after the template row
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-                
-                // The new row is at `templateRowNumber + 1`. We populate this new row.
-                const newRow = worksheet.getRow(templateRowNumber + 1);
-
-                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const originalCell = templateRow!.getCell(colNumber);
-                    if (originalCell.value && typeof originalCell.value === 'string') {
-                        let text = originalCell.value;
-                        text = text.replace(/{{DATE}}/g, String(rowData[0]));
-                        text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
-                        text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
-                        text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
-                        cell.value = text;
-                    }
-                });
-            });
-            
-            // Remove the original template row
             if (data.rows.length > 0) {
+                worksheet.spliceRows(templateRowNumber + 1, 0, ...new Array(data.rows.length - 1).fill([]));
+                data.rows.forEach((rowData, index) => {
+                    const newRow = worksheet.getRow(templateRowNumber + index);
+                    newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                        const originalCell = templateRow!.getCell(colNumber);
+                        cell.style = originalCell.style; // Copy style
+                        if (originalCell.value && typeof originalCell.value === 'string') {
+                            let text = originalCell.value;
+                            text = text.replace(/{{DATE}}/g, String(rowData[0]));
+                            text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
+                            text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
+                            text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
+                            cell.value = text;
+                        }
+                    });
+                });
+            } else {
                  worksheet.spliceRows(templateRowNumber, 1);
             }
+            
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -1140,5 +1133,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     );
 }
 
-
-
+    
