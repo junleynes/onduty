@@ -64,6 +64,9 @@ export type Leave = {
   requestedAt?: Date;
   managedBy?: string; // ID of manager who approved/rejected
   managedAt?: Date;
+  originalShiftDate?: Date;
+  originalStartTime?: string;
+  originalEndTime?: string;
 };
 
 export type Notification = {
