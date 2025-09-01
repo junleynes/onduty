@@ -49,6 +49,13 @@ type WorkScheduleRowData = {
     paidbreak_end: string;
 };
 
+type WfhCertRowData = {
+    DATE: string;
+    ATTENDANCE_RENDERED: string;
+    TOTAL_HRS_SPENT: string | number;
+    REMARKS: string;
+}
+
 
 export default function ReportsView({ employees, shifts, leave, holidays, currentUser }: ReportsViewProps) {
     const { toast } = useToast();
@@ -120,17 +127,29 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
         const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
         const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
-        const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
+        
+        // Logic for Holiday Off
+        if (shift?.isHolidayOff) {
+            const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
+            return { ...defaultSchedule, day_status: '' };
+        }
+        
+        // Logic for Time Off (Leave)
+        if (leaveEntry) {
+            const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
+            return { ...defaultSchedule, day_status: '' };
+        }
 
+        // Logic for regular Holiday
+        if (holiday) {
+             return { ...emptySchedule, day_status: 'HOLIDAY' };
+        }
+        
         if (shift) {
-            if (shift.isHolidayOff) {
-                // Return default schedule but empty status
-                return { ...defaultSchedule, day_status: '' };
-            }
             if (shift.isDayOff) {
                 return { ...emptySchedule, day_status: 'OFF' };
             }
-            // Regular shift
+            // Regular working shift
             return {
                 day_status: '',
                 schedule_start: shift.startTime,
@@ -140,15 +159,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
                 paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
             };
-        }
-
-        if (leaveEntry) {
-            // Return default schedule but empty status
-            return { ...defaultSchedule, day_status: '' };
-        }
-
-        if (holiday) {
-            return { ...emptySchedule, day_status: 'HOLIDAY' };
         }
 
         return emptySchedule;
@@ -203,8 +213,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         return { headers, rows };
     }
     
-
-
     const handleDownloadWorkSchedule = async (data: WorkScheduleRowData[] | null) => {
         if (!data) {
             toast({ variant: 'destructive', title: 'Data Missing', description: 'Could not generate data for the report.' });
@@ -285,6 +293,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 
                 headerMapping.forEach(({ col, dataKey }) => {
                     newRow.getCell(col).value = rowData[dataKey];
+                });
+                
+                // Copy styles from template row to new row
+                templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    newRow.getCell(colNumber).style = cell.style;
                 });
             });
 
@@ -594,22 +607,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
 
     // --- WFH Certification Functions ---
-    const generateWfhCertificationData = (): ReportData | null => {
+    const generateWfhCertificationData = (): WfhCertRowData[] | null => {
         if (!wfhCertDateRange || !wfhCertDateRange.from || !wfhCertDateRange.to) {
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month for the report.' });
             return null;
         }
 
         const daysInInterval = eachDayOfInterval({ start: wfhCertDateRange.from, end: wfhCertDateRange.to });
-        const headers = ['DATE', 'ATTENDANCE_RENDERED', 'TOTAL_HRS_SPENT', 'REMARKS'];
-        const rows: (string | number)[][] = [];
+        const rows: WfhCertRowData[] = [];
 
         daysInInterval.forEach(day => {
             const shift = shifts.find(s => s.employeeId === currentUser.id && isSameDay(new Date(s.date), day));
             const leaveEntry = leave.find(l => l.employeeId === currentUser.id && isSameDay(new Date(l.date), day));
 
             let attendanceRendered = '';
-            let totalHrs = '';
+            let totalHrs: string | number = '';
             let remarks = '';
             let includeRow = false;
 
@@ -645,38 +657,38 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
 
             if (includeRow) {
-                rows.push([
-                    format(day, 'MM/dd/yyyy'),
-                    attendanceRendered,
-                    totalHrs,
-                    remarks
-                ]);
+                rows.push({
+                    DATE: format(day, 'MM/dd/yyyy'),
+                    ATTENDANCE_RENDERED: attendanceRendered,
+                    TOTAL_HRS_SPENT: totalHrs,
+                    REMARKS: remarks
+                });
             }
         });
         
-        return { headers, rows };
+        return rows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
     };
 
-    const handleDownloadWfhCertification = async (data: ReportData | null) => {
-         if (!data) return;
+    const handleDownloadWfhCertification = async (data: WfhCertRowData[] | null) => {
+        if (!data) return;
         if (!wfhCertTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a WFH Certification template first.' });
             return;
         }
         if (!wfhCertDateRange || !wfhCertDateRange.from) {
-             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month.' });
+            toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month.' });
             return;
         }
-
+    
         try {
             const workbook = new ExcelJS.Workbook();
             const buffer = Buffer.from(wfhCertTemplate, 'binary');
             await workbook.xlsx.load(buffer);
             const worksheet = workbook.worksheets[0];
             if (!worksheet) throw new Error("Template worksheet not found.");
-            
+    
             const manager = employees.find(e => e.id === currentUser.reportsTo);
-
+    
             // Global placeholders
             worksheet.eachRow({ includeEmpty: true }, (row) => {
                 row.eachCell({ includeEmpty: true }, (cell) => {
@@ -690,69 +702,73 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     }
                 });
             });
-
+    
             // Find the template row
             let templateRowNumber = -1;
+            const placeholderKeys = ['{{DATE}}', '{{ATTENDANCE_RENDERED}}', '{{TOTAL_HRS_SPENT}}', '{{REMARKS}}'];
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
-                    if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
-                       templateRowNumber = rowNum;
+                    if (typeof cell.value === 'string' && placeholderKeys.some(key => cell.value!.toString().includes(key))) {
+                        templateRowNumber = rowNum;
+                    }
+                });
+            });
+    
+            if (templateRowNumber === -1) {
+                throw new Error("Template row with placeholders not found.");
+            }
+    
+            const templateRow = worksheet.getRow(templateRowNumber);
+            const dataRows = data;
+            const reversedData = [...dataRows].reverse();
+    
+            reversedData.forEach((rowData) => {
+                worksheet.duplicateRow(templateRowNumber, 1, true);
+                const newRow = worksheet.getRow(templateRowNumber + 1);
+
+                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    const templateCell = templateRow.getCell(colNumber);
+                    let cellValue = templateCell.text;
+
+                    if (cellValue.includes('{{DATE}}')) newRow.getCell(colNumber).value = new Date(rowData.DATE);
+                    else if (cellValue.includes('{{ATTENDANCE_RENDERED}}')) newRow.getCell(colNumber).value = rowData.ATTENDANCE_RENDERED;
+                    else if (cellValue.includes('{{TOTAL_HRS_SPENT}}')) newRow.getCell(colNumber).value = Number(rowData.TOTAL_HRS_SPENT) || null;
+                    else if (cellValue.includes('{{REMARKS}}')) newRow.getCell(colNumber).value = rowData.REMARKS;
+                    else newRow.getCell(colNumber).value = cellValue;
+                    
+                    newRow.getCell(colNumber).style = templateCell.style;
+                });
+            });
+
+            worksheet.spliceRows(templateRowNumber, 1);
+            
+            let sigRowNumber = -1;
+            let sigColNumber = -1;
+            worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+                row.eachCell((cell, colNumber) => {
+                    if (typeof cell.value === 'string' && cell.value.includes('{{employee_signature}}')) {
+                        sigRowNumber = rowNumber;
+                        sigColNumber = colNumber;
+                        cell.value = ''; // Clear placeholder
                     }
                 });
             });
 
-            if (templateRowNumber === -1) {
-                throw new Error("Template row with `{{DATE}}` placeholder not found.");
-            }
-            
-            const templateRow = worksheet.getRow(templateRowNumber);
-            const dataRows = data.rows;
-
-            // Insert data rows and apply formatting
-            worksheet.spliceRows(templateRowNumber, 1, ...dataRows);
-
-            // Apply formatting from the original template row to the new rows
-            for(let i = 0; i < dataRows.length; i++) {
-                const newRow = worksheet.getRow(templateRowNumber + i);
-                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const templateCell = templateRow.getCell(colNumber);
-                    cell.style = templateCell.style;
-                });
-            }
-            
-            // Signature placement after all rows are added
-            if (currentUser.signature) {
+            if (currentUser.signature && sigRowNumber !== -1 && sigColNumber !== -1) {
                 const signatureImageId = workbook.addImage({
                     base64: currentUser.signature.split(',')[1],
                     extension: 'png',
                 });
-                
-                let sigRowNumber = -1;
-                let sigColNumber = -1;
-
-                worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
-                    row.eachCell((cell, colNumber) => {
-                        if (typeof cell.value === 'string' && cell.value.includes('{{employee_signature}}')) {
-                            sigRowNumber = rowNumber;
-                            sigColNumber = colNumber;
-                            cell.value = ''; // Clear placeholder
-                        }
-                    });
+                worksheet.addImage(signatureImageId, {
+                    tl: { col: sigColNumber - 1, row: sigRowNumber - 1 },
+                    ext: { width: 100, height: 40 }
                 });
-
-                if (sigRowNumber !== -1 && sigColNumber !== -1) {
-                     worksheet.addImage(signatureImageId, {
-                        tl: { col: sigColNumber - 1, row: sigRowNumber - 1 },
-                        ext: { width: 100, height: 40 }
-                    });
-                }
             }
-
-
+    
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             saveAs(blob, `WFH Certification - ${getFullName(currentUser)} - ${format(wfhCertDateRange.from!, 'MMMM yyyy')}.xlsx`);
-
+    
         } catch(error) {
             console.error("Error generating WFH cert:", error);
             toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
@@ -792,10 +808,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 generator = () => handleDownloadTardyReport(data);
             }
         } else if (type === 'wfh') {
-            data = generateWfhCertificationData();
-            if (data) {
+            const rawData = generateWfhCertificationData();
+            if (rawData) {
+                const previewRows = rawData.map(d => [d.DATE, d.ATTENDANCE_RENDERED, d.TOTAL_HRS_SPENT, d.REMARKS]);
+                data = {
+                    headers: ['DATE', 'ATTENDANCE_RENDERED', 'TOTAL_HRS_SPENT', 'REMARKS'],
+                    rows: previewRows,
+                }
                 title = `WFH Certification - ${getFullName(currentUser)} (${format(wfhCertDateRange!.from!, 'MMMM yyyy')})`;
-                generator = () => handleDownloadWfhCertification(data);
+                generator = () => handleDownloadWfhCertification(rawData);
             }
         }
         
@@ -1176,3 +1197,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
