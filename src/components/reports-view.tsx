@@ -255,38 +255,52 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-            const templateValues = [...templateRow.values];
+            
+            // Map template headers to data keys
+            const placeholderMap: { [key: string]: keyof WorkScheduleRowData } = {
+                '{{employee_name}}': 'employee_name',
+                '{{date}}': 'date',
+                '{{day_status}}': 'day_status',
+                '{{schedule_start}}': 'schedule_start',
+                '{{schedule_end}}': 'schedule_end',
+                '{{unpaidbreak_start}}': 'unpaidbreak_start',
+                '{{unpaidbreak_end}}': 'unpaidbreak_end',
+                '{{paidbreak_start}}': 'paidbreak_start',
+                '{{paidbreak_end}}': 'paidbreak_end',
+            };
+
+            const headerMapping: { col: number, dataKey: keyof WorkScheduleRowData | null }[] = [];
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const cellValue = cell.value?.toString() || '';
+                let foundKey: keyof WorkScheduleRowData | null = null;
+                for (const placeholder in placeholderMap) {
+                    if (cellValue.includes(placeholder)) {
+                        foundKey = placeholderMap[placeholder];
+                        break;
+                    }
+                }
+                headerMapping.push({ col: colNumber, dataKey: foundKey });
+            });
+
 
             // Insert new rows
-            if (data.length > 0) {
-                 worksheet.spliceRows(templateRowNumber, 1, ...Array(data.length).fill(null).map(() => []));
-            }
-           
-            // Populate rows
-            data.forEach((rowData, index) => {
-                const newRow = worksheet.getRow(templateRowNumber + index);
-                templateValues.forEach((templateVal, col) => {
-                    const newCell = newRow.getCell(col + 1);
-                    if (typeof templateVal === 'string') {
-                        let text = templateVal;
-                        text = text.replace(/{{employee_name}}/g, rowData.employee_name);
-                        text = text.replace(/{{date}}/g, rowData.date);
-                        text = text.replace(/{{day_status}}/g, rowData.day_status);
-                        text = text.replace(/{{schedule_start}}/g, rowData.schedule_start);
-                        text = text.replace(/{{schedule_end}}/g, rowData.schedule_end);
-                        text = text.replace(/{{unpaidbreak_start}}/g, rowData.unpaidbreak_start);
-                        text = text.replace(/{{unpaidbreak_end}}/g, rowData.unpaidbreak_end);
-                        text = text.replace(/{{paidbreak_start}}/g, rowData.paidbreak_start);
-                        text = text.replace(/{{paidbreak_end}}/g, rowData.paidbreak_end);
-                        newCell.value = text;
-                    } else {
-                        newCell.value = templateVal;
-                    }
-                    // Copy style
-                    newCell.style = { ...templateRow.getCell(col + 1).style };
+            let lastRow = templateRowNumber;
+            data.forEach((rowData) => {
+                const newRow = worksheet.insertRow(lastRow + 1, []);
+                templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    newRow.getCell(colNumber).style = cell.style;
                 });
-                newRow.commit();
+                
+                headerMapping.forEach(({ col, dataKey }) => {
+                    if (dataKey) {
+                        newRow.getCell(col).value = rowData[dataKey];
+                    }
+                });
+                lastRow++;
             });
+
+            // Remove original template row
+            worksheet.spliceRows(templateRowNumber, 1);
 
 
             const uint8Array = await workbook.xlsx.writeBuffer();
@@ -1180,5 +1194,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
 
     
+
 
 
