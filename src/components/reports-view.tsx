@@ -103,7 +103,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
     const getScheduleFromTemplate = (template: ShiftTemplate | undefined) => {
         if (!template) {
-             return { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+             return { schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
         }
         return {
             schedule_start: template.startTime,
@@ -647,7 +647,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
             if (includeRow) {
                 rows.push({
-                    DATE: format(day, 'LLLL d, yyyy'),
+                    DATE: format(day, 'MMMM d, yyyy'),
                     ATTENDANCE_RENDERED: attendanceRendered,
                     TOTAL_HRS_SPENT: totalHrs,
                     REMARKS: remarks
@@ -695,11 +695,22 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             let templateRowNumber = -1;
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
-                    const cellText = cell.text;
-                    if (typeof cellText === 'string' && cellText.includes('{{DATE}}')) {
-                        templateRowNumber = rowNum;
+                    const cellValue = cell.value;
+                    if(typeof cellValue === 'object' && cellValue && 'richText' in cellValue) {
+                        // Handle rich text
+                        for(const textRun of (cellValue as ExcelJS.RichText).richText) {
+                            if (textRun.text.includes('{{DATE}}')) {
+                                templateRowNumber = rowNum;
+                                break;
+                            }
+                        }
+                    } else if (typeof cellValue === 'string') {
+                         if (cellValue.includes('{{DATE}}')) {
+                            templateRowNumber = rowNum;
+                        }
                     }
                 });
+                if (templateRowNumber !== -1) return;
             });
 
             if (templateRowNumber === -1) {
@@ -707,13 +718,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-            const placeholderMap: { [key: number]: keyof WfhCertRowData } = {};
+
+            // Create a map of placeholders to column numbers from the template row
+            const placeholderMap: { [key: string]: number } = {};
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                const cellValue = cell.text;
-                if (cellValue.includes('{{DATE}}')) placeholderMap[colNumber] = 'DATE';
-                if (cellValue.includes('{{ATTENDANCE_RENDERED}}')) placeholderMap[colNumber] = 'ATTENDANCE_RENDERED';
-                if (cellValue.includes('{{TOTAL_HRS_SPENT}}')) placeholderMap[colNumber] = 'TOTAL_HRS_SPENT';
-                if (cellValue.includes('{{REMARKS}}')) placeholderMap[colNumber] = 'REMARKS';
+                const cellText = cell.text;
+                if (cellText.includes('{{DATE}}')) placeholderMap['DATE'] = colNumber;
+                if (cellText.includes('{{ATTENDANCE_RENDERED}}')) placeholderMap['ATTENDANCE_RENDERED'] = colNumber;
+                if (cellText.includes('{{TOTAL_HRS_SPENT}}')) placeholderMap['TOTAL_HRS_SPENT'] = colNumber;
+                if (cellText.includes('{{REMARKS}}')) placeholderMap['REMARKS'] = colNumber;
             });
             
             // Insert data rows
@@ -722,12 +735,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             // Populate and style them
             data.forEach((rowData, index) => {
                 const newRow = worksheet.getRow(templateRowNumber + 1 + index);
-                for (const colStr in placeholderMap) {
-                    const col = parseInt(colStr, 10);
-                    const dataKey = placeholderMap[col];
+                for (const key in placeholderMap) {
+                    const col = placeholderMap[key as keyof WfhCertRowData];
+                    const dataKey = key as keyof WfhCertRowData;
+                    
                     const newCell = newRow.getCell(col);
                     newCell.value = rowData[dataKey];
-                    newCell.style = templateRow.getCell(col).style;
+                    
+                    const templateCell = templateRow.getCell(col);
+                    newCell.style = { ...templateCell.style };
                 }
                 newRow.commit();
             });
@@ -762,9 +778,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             saveAs(blob, `WFH Certification - ${getFullName(currentUser)} - ${format(wfhCertDateRange.from!, 'MMMM yyyy')}.xlsx`);
     
-        } catch(error) {
+        } catch(error: any) {
             console.error("Error generating WFH cert:", error);
-            toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
+            toast({ variant: 'destructive', title: 'Report Generation Failed', description: error.message || "An unknown error occurred." });
         }
     };
     
@@ -1191,3 +1207,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     );
 }
 
+
+
+    
