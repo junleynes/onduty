@@ -36,6 +36,19 @@ type ReportData = {
     rows: (string | number)[][];
 };
 
+type WorkScheduleRowData = {
+    employee_name: string;
+    date: string;
+    day_status: string;
+    schedule_start: string;
+    schedule_end: string;
+    unpaidbreak_start: string;
+    unpaidbreak_end: string;
+    paidbreak_start: string;
+    paidbreak_end: string;
+};
+
+
 export default function ReportsView({ employees, shifts, leave, holidays, currentUser }: ReportsViewProps) {
     const { toast } = useToast();
     const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
@@ -80,7 +93,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
     // --- Data Generation Functions ---
 
-    const generateWorkScheduleData = (): ReportData | null => {
+    const generateWorkScheduleData = (): WorkScheduleRowData[] | null => {
          if (!workScheduleDateRange || !workScheduleDateRange.from || !workScheduleDateRange.to) {
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the report.' });
             return null;
@@ -91,28 +104,39 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         const daysInInterval = eachDayOfInterval({ start: workScheduleDateRange.from, end: workScheduleDateRange.to });
 
-        const headers = ['Employee Name', 'Date', 'Day Status', 'Schedule Start', 'Schedule End', 'Unpaid Break Start', 'Unpaid Break End', 'Paid Break Start', 'Paid Break End'];
-        const rows: (string | number)[][] = [];
+        const rows: WorkScheduleRowData[] = [];
 
         groupEmployees.forEach((employee) => {
             daysInInterval.forEach(day => {
                 const dayData = findDataForDay(day, employee, shifts, leave, holidays);
-                rows.push([
-                    `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
-                    format(day, 'M/d/yyyy'),
-                    dayData.day_status,
-                    dayData.schedule_start,
-                    dayData.schedule_end,
-                    dayData.unpaidbreak_start,
-                    dayData.unpaidbreak_end,
-                    dayData.paidbreak_start,
-                    dayData.paidbreak_end,
-                ]);
+                rows.push({
+                    employee_name: `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
+                    date: format(day, 'M/d/yyyy'),
+                    ...dayData
+                });
             });
         });
         
-        return { headers, rows };
+        return rows;
     };
+    
+    const generateWorkSchedulePreviewData = (data: WorkScheduleRowData[] | null): ReportData | null => {
+        if (!data) return null;
+        const headers = ['Employee Name', 'Date', 'Day Status', 'Schedule Start', 'Schedule End', 'Unpaid Break Start', 'Unpaid Break End', 'Paid Break Start', 'Paid Break End'];
+        const rows = data.map(d => [
+            d.employee_name,
+            d.date,
+            d.day_status,
+            d.schedule_start,
+            d.schedule_end,
+            d.unpaidbreak_start,
+            d.unpaidbreak_end,
+            d.paidbreak_start,
+            d.paidbreak_end,
+        ]);
+        return { headers, rows };
+    }
+
 
     const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
         const shift = allShifts.find(s => s.employeeId === employee.id && !s.isDayOff && !s.isHolidayOff && isSameDay(new Date(s.date), day));
@@ -169,7 +193,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
 
 
-    const handleDownloadWorkSchedule = async (data: ReportData | null) => {
+    const handleDownloadWorkSchedule = async (data: WorkScheduleRowData[] | null) => {
         if (!data) {
             toast({ variant: 'destructive', title: 'Data Missing', description: 'Could not generate data for the report.' });
             return;
@@ -195,8 +219,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 row.eachCell({ includeEmpty: true }, (cell) => {
                     if (cell.value && typeof cell.value === 'string') {
                         let cellText = cell.value;
-                        cellText = cellText.replace('{{start_date}}', format(workScheduleDateRange.from!, 'MM/dd/yyyy'));
-                        cellText = cellText.replace('{{end_date}}', format(workScheduleDateRange.to!, 'MM/dd/yyyy'));
+                        cellText = cellText.replace(/{{start_date}}/g, format(workScheduleDateRange.from!, 'MM/dd/yyyy'));
+                        cellText = cellText.replace(/{{end_date}}/g, format(workScheduleDateRange.to!, 'MM/dd/yyyy'));
                         cell.value = cellText;
                     }
                 });
@@ -218,47 +242,44 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
 
-            // Get styles from the template row
-            const templateStyles: Partial<ExcelJS.Style>[] = [];
-            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                templateStyles[colNumber] = { ...cell.style };
-            });
+            // Insert all the new rows first
+            if (data.length > 0) {
+                worksheet.insertRows(templateRowNumber + 1, data.slice(1));
+            }
 
-            const templateValues = templateRow.values as string[];
-            
-            // Add all data rows
-            const addedRows = worksheet.addRows(data.rows, `i`);
-
-            // Apply styles and replace placeholders for each new row
-            addedRows.forEach(newRow => {
-                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    cell.style = templateStyles[colNumber] || {};
-                    const templateCellValue = templateValues[colNumber];
-                    if (templateCellValue) {
-                        let text = templateCellValue;
-                        text = text.replace(/{{employee_name}}/g, String(newRow.getCell(1).value));
-                        text = text.replace(/{{date}}/g, String(newRow.getCell(2).value));
-                        text = text.replace(/{{day_status}}/g, String(newRow.getCell(3).value));
-                        text = text.replace(/{{schedule_start}}/g, String(newRow.getCell(4).value));
-                        text = text.replace(/{{schedule_end}}/g, String(newRow.getCell(5).value));
-                        text = text.replace(/{{unpaidbreak_start}}/g, String(newRow.getCell(6).value));
-                        text = text.replace(/{{unpaidbreak_end}}/g, String(newRow.getCell(7).value));
-                        text = text.replace(/{{paidbreak_start}}/g, String(newRow.getCell(8).value));
-                        text = text.replace(/{{paidbreak_end}}/g, String(newRow.getCell(9).value));
-                        
-                        // Replace the raw data with the formatted string from the template
-                        if (text !== templateCellValue) {
-                             cell.value = text;
-                        }
+            // Now populate the data
+            data.forEach((rowData, index) => {
+                const currentRow = worksheet.getRow(templateRowNumber + index);
+                currentRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    // Copy style and value from template cell
+                    const templateCell = templateRow!.getCell(colNumber);
+                    cell.style = { ...templateCell.style };
+                    
+                    if (templateCell.value && typeof templateCell.value === 'string') {
+                        let text = templateCell.value;
+                        text = text.replace(/{{employee_name}}/g, rowData.employee_name);
+                        text = text.replace(/{{date}}/g, rowData.date);
+                        text = text.replace(/{{day_status}}/g, rowData.day_status);
+                        text = text.replace(/{{schedule_start}}/g, rowData.schedule_start);
+                        text = text.replace(/{{schedule_end}}/g, rowData.schedule_end);
+                        text = text.replace(/{{unpaidbreak_start}}/g, rowData.unpaidbreak_start);
+                        text = text.replace(/{{unpaidbreak_end}}/g, rowData.unpaidbreak_end);
+                        text = text.replace(/{{paidbreak_start}}/g, rowData.paidbreak_start);
+                        text = text.replace(/{{paidbreak_end}}/g, rowData.paidbreak_end);
+                        cell.value = text;
+                    } else {
+                        // If template cell is not a string, copy its value directly
+                        cell.value = templateCell.value;
                     }
                 });
+                currentRow.commit();
             });
-
-
-            // Remove the original template row after all new rows are added
-            if (data.rows.length > 0) {
-                 worksheet.spliceRows(templateRowNumber, 1);
+            
+            // Remove the original template row if we added any data
+            if(data.length > 0) {
+               worksheet.spliceRows(templateRowNumber + data.length, 1);
             }
+
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -697,12 +718,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Duplicate the row for each data entry and then populate it
             if (data.rows.length > 0) {
-                let lastRowNumber = templateRowNumber - 1;
-                data.rows.forEach((rowData) => {
-                    worksheet.duplicateRow(templateRowNumber, 1, true);
-                    const newRow = worksheet.getRow(lastRowNumber + 2);
-
-                    newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                 // Insert new rows below the template row
+                worksheet.insertRows(templateRowNumber + 1, data.rows.slice(1));
+                
+                // Populate the rows with data
+                data.rows.forEach((rowData, index) => {
+                    const currentRow = worksheet.getRow(templateRowNumber + index);
+                    currentRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                         const originalCell = templateRow!.getCell(colNumber);
                         if (originalCell.value && typeof originalCell.value === 'string') {
                             let text = originalCell.value;
@@ -713,11 +735,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             cell.value = text;
                         }
                     });
-                    lastRowNumber++;
+                     currentRow.commit();
                 });
 
                 // Remove the original template row after all new rows are added
-                worksheet.spliceRows(templateRowNumber, 1);
+                worksheet.spliceRows(templateRowNumber + data.rows.length, 1);
             } else {
                  worksheet.spliceRows(templateRowNumber, 1);
             }
@@ -741,10 +763,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         let generator: (() => Promise<void>) | null = null;
 
         if (type === 'workSchedule') {
-            data = generateWorkScheduleData();
+            const rawData = generateWorkScheduleData();
+            data = generateWorkSchedulePreviewData(rawData);
             if (data) {
                 title = `Regular Work Schedule (${format(workScheduleDateRange!.from!, 'LLL d')} - ${format(workScheduleDateRange!.to!, 'LLL d, y')})`;
-                generator = () => handleDownloadWorkSchedule(data);
+                generator = () => handleDownloadWorkSchedule(rawData);
             }
         } else if (type === 'attendance') {
             data = generateAttendanceSheetData();
@@ -1149,6 +1172,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    
 
     
 
