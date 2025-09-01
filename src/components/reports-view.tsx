@@ -277,6 +277,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
+            const templateStyles = new Map<number, Partial<ExcelJS.Style>>();
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                templateStyles.set(colNumber, { ...cell.style });
+            });
             
             const placeholderMap: { [key: string]: keyof WorkScheduleRowData } = {
                 '{{employee_name}}': 'employee_name',
@@ -310,7 +314,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     }
                     
                     newCell.value = templateValue;
-                    newCell.style = { ...templateCell.style };
+                    newCell.style = templateStyles.get(colNumber) || {};
                 });
             });
             
@@ -672,8 +676,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
             if (includeRow) {
                 rows.push({
-                    DATE: format(day, 'MMMM d, yyyy'),
-                    ATTENDANCE_RENDERED: attendanceRendered,
+                    DATE: format(day, 'November d, yyyy'),
+                    ATTENDANCE_RENDERED: attendanceRendered === 'ONLEAVE' ? 'ON LEAVE' : attendanceRendered,
                     TOTAL_HRS_SPENT: totalHrs,
                     REMARKS: remarks
                 });
@@ -726,13 +730,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
     
             let templateRowNumber = -1;
-             let templateRow;
+            let templateRow;
             worksheet.eachRow((row, rowNum) => {
                 if (templateRowNumber !== -1) return;
                 row.eachCell((cell) => {
                      const checkCell = (v: any) => {
                         if (v && typeof v === 'object' && v.richText) {
-                            return v.richText.some((rt: any) => rt.text?.includes('{{DATE}}'));
+                            return v.richText.some((rt: any) => typeof rt.text === 'string' && rt.text.includes('{{DATE}}'));
                         }
                         if (v && typeof v === 'string') {
                             return v.includes('{{DATE}}');
@@ -878,35 +882,51 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             await workbook.xlsx.load(buffer);
             const worksheet = workbook.worksheets[0];
             if (!worksheet) throw new Error("Template worksheet not found.");
-
+    
             let templateRowNumber = -1;
             worksheet.eachRow((row, rowNumber) => {
+                if (templateRowNumber !== -1) return;
                 row.eachCell((cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
                         templateRowNumber = rowNumber;
                     }
                 });
             });
-
+    
             if (templateRowNumber === -1) {
                 throw new Error("Template row with `{{employee_name}}` not found.");
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-
-            // Insert new rows and populate them with data and styles
+            const templateCellValues = new Map<number, any>();
+            const templateCellStyles = new Map<number, Partial<ExcelJS.Style>>();
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                templateCellValues.set(colNumber, cell.value);
+                templateCellStyles.set(colNumber, { ...cell.style });
+            });
+    
             data.forEach((rowData, index) => {
-                const newRow = worksheet.insertRow(templateRowNumber + index, Object.values(rowData));
-                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const templateCell = templateRow.getCell(colNumber);
-                    cell.style = { ...templateCell.style };
+                const row = worksheet.getRow(templateRowNumber + index);
+                templateCellValues.forEach((templateValue, colNumber) => {
+                    let finalValue = templateValue;
+                    if (typeof templateValue === 'string') {
+                        finalValue = templateValue
+                            .replace('{{employee_name}}', rowData.employee_name)
+                            .replace('{{work_sched_date}}', rowData.work_sched_date)
+                            .replace('{{start_time}}', rowData.start_time)
+                            .replace('{{end_time}}', rowData.end_time)
+                            .replace('{{date_of_work_extended}}', rowData.date_of_work_extended)
+                            .replace('{{extended_start_time}}', rowData.extended_start_time)
+                            .replace('{{extended_end_time}}', rowData.extended_end_time)
+                            .replace('{{total_hours_extended}}', rowData.total_hours_extended)
+                            .replace('{{reason}}', rowData.reason);
+                    }
+                    const cell = row.getCell(colNumber);
+                    cell.value = finalValue;
+                    cell.style = templateCellStyles.get(colNumber) || {};
                 });
             });
-
-            // Remove the original template row
-            worksheet.spliceRows(templateRowNumber + data.length, 1);
-
-
+            
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             saveAs(blob, `Work Extension Summary - ${format(workExtensionDateRange!.from!, 'yyyy-MM-dd')} to ${format(workExtensionDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
