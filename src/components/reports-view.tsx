@@ -93,6 +93,54 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     }, [wfhCertMonth]);
 
     // --- Data Generation Functions ---
+    
+    const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
+        const shift = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
+        const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
+        const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
+        const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
+
+        if (shift) {
+            // It's a working holiday
+            if (shift.isHolidayOff) {
+                 return {
+                    day_status: '', // Empty as requested
+                    schedule_start: shift.startTime,
+                    schedule_end: shift.endTime,
+                    unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                    unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                    paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                    paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                };
+            }
+
+            if (shift.isDayOff) {
+                return { ...emptySchedule, day_status: 'OFF' };
+            }
+            
+            // Regular shift
+            return {
+                day_status: '',
+                schedule_start: shift.startTime,
+                schedule_end: shift.endTime,
+                unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
+                paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+            };
+        }
+
+        if (leaveEntry) {
+            return { ...emptySchedule, day_status: leaveEntry.type || 'Time Off' };
+        }
+
+        if (holiday) {
+            return { ...emptySchedule, day_status: 'HOLIDAY' };
+        }
+
+        return emptySchedule;
+    }
+
 
     const generateWorkScheduleData = (): WorkScheduleRowData[] | null => {
          if (!workScheduleDateRange || !workScheduleDateRange.from || !workScheduleDateRange.to) {
@@ -101,7 +149,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
         const groupEmployees = employees
             .filter(e => e.group === currentUser.group)
-            .sort((a,b) => a.lastName.localeCompare(b.lastName));
+            .sort((a, b) => {
+                const lastNameComp = a.lastName.localeCompare(b.lastName);
+                if (lastNameComp !== 0) return lastNameComp;
+                return a.firstName.localeCompare(b.firstName);
+            });
 
         const daysInInterval = eachDayOfInterval({ start: workScheduleDateRange.from, end: workScheduleDateRange.to });
 
@@ -137,39 +189,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         ]);
         return { headers, rows };
     }
-
-
-    const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
-        const shift = allShifts.find(s => s.employeeId === employee.id && !s.isDayOff && !s.isHolidayOff && isSameDay(new Date(s.date), day));
-        const dayOff = allShifts.find(s => s.employeeId === employee.id && s.isDayOff && isSameDay(new Date(s.date), day));
-        const holidayOff = allShifts.find(s => s.employeeId === employee.id && s.isHolidayOff && isSameDay(new Date(s.date), day));
-        const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
-        const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
-
-        const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
-        
-        if (dayOff) {
-            return { ...emptySchedule, day_status: 'OFF' };
-        }
-        
-        if (holidayOff || leaveEntry || holiday) {
-             return { ...emptySchedule, day_status: holidayOff ? 'HOLIDAY OFF' : (leaveEntry?.type || holiday?.title || 'Time Off') };
-        }
-
-        if (shift) {
-             return {
-                day_status: '',
-                schedule_start: shift.startTime,
-                schedule_end: shift.endTime,
-                unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
-                paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
-            };
-        }
-
-        return emptySchedule;
-    }
     
     const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
         if (employee.position?.toLowerCase().includes('manager')) {
@@ -188,7 +207,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             unpaidbreak_start: template.isUnpaidBreak ? template.breakStartTime || '' : '',
             unpaidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
             paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
-            paidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
+            paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
         };
     };
 
@@ -228,31 +247,30 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Find the template row
             let templateRowNumber = -1;
-            let templateRow: ExcelJS.Row | undefined;
             worksheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
                  row.eachCell({ includeEmpty: true }, (cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
                        templateRowNumber = rowNum;
-                       templateRow = row;
                     }
                  });
             });
             
-            if (templateRowNumber === -1 || !templateRow) {
+            if (templateRowNumber === -1) {
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
+            
+            const templateRow = worksheet.getRow(templateRowNumber);
 
-            // Insert new rows and populate them
-            let lastRowNumber = templateRowNumber;
+            // Duplicate and populate rows
+            let lastRow = templateRow;
             data.forEach((rowData) => {
-                const newRow = worksheet.addRow(templateRow?.values); // Does not actually work this way, addRow adds at the end
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                lastRowNumber++;
-                const duplicatedRow = worksheet.getRow(lastRowNumber);
-
-                duplicatedRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    if (cell.value && typeof cell.value === 'string') {
-                        let text = cell.value;
+                const newRow = worksheet.getRow(templateRowNumber + 1);
+                
+                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    const templateCell = templateRow.getCell(colNumber);
+                    if (templateCell.value && typeof templateCell.value === 'string') {
+                         let text = templateCell.value;
                         text = text.replace(/{{employee_name}}/g, rowData.employee_name);
                         text = text.replace(/{{date}}/g, rowData.date);
                         text = text.replace(/{{day_status}}/g, rowData.day_status);
@@ -265,14 +283,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         cell.value = text;
                     }
                 });
-                duplicatedRow.commit();
+                newRow.commit();
+                lastRow = newRow;
             });
-            
-            // Remove the original template row if we added any data
-            if(data.length > 0) {
-               worksheet.spliceRows(templateRowNumber, 1);
-            }
 
+            // Remove the original template row if data was added
+            if (data.length > 0) {
+                worksheet.spliceRows(templateRowNumber, 1);
+            }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -695,32 +713,30 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Row placeholders
             let templateRowNumber = -1;
-            let templateRow: ExcelJS.Row | undefined;
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
                        templateRowNumber = rowNum;
-                       templateRow = row;
                     }
                 });
             });
 
-            if (templateRowNumber === -1 || !templateRow) {
+            if (templateRowNumber === -1) {
                 throw new Error("Template row with `{{DATE}}` placeholder not found.");
             }
+            
+            const templateRow = worksheet.getRow(templateRowNumber);
 
-            // Duplicate the row for each data entry and then populate it
+            // Duplicate and populate rows
             if (data.rows.length > 0) {
-                 // Insert new rows below the template row
-                worksheet.insertRows(templateRowNumber + 1, data.rows.slice(1));
-                
-                // Populate the rows with data
                 data.rows.forEach((rowData, index) => {
-                    const currentRow = worksheet.getRow(templateRowNumber + index);
-                    currentRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                        const originalCell = templateRow!.getCell(colNumber);
-                        if (originalCell.value && typeof originalCell.value === 'string') {
-                            let text = originalCell.value;
+                    worksheet.duplicateRow(templateRowNumber, 1, true);
+                    const newRow = worksheet.getRow(templateRowNumber + 1);
+
+                    newRow.eachCell({includeEmpty: true}, (cell, colNumber) => {
+                        const templateCell = templateRow.getCell(colNumber);
+                        if (templateCell.value && typeof templateCell.value === 'string') {
+                            let text = templateCell.value;
                             text = text.replace(/{{DATE}}/g, String(rowData[0]));
                             text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
                             text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
@@ -728,14 +744,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             cell.value = text;
                         }
                     });
-                     currentRow.commit();
+                    newRow.commit();
                 });
-
-                // Remove the original template row after all new rows are added
-                worksheet.spliceRows(templateRowNumber + data.rows.length, 1);
-            } else {
-                 worksheet.spliceRows(templateRowNumber, 1);
             }
+            
+            // Remove the original template row
+            worksheet.spliceRows(templateRowNumber, 1);
             
 
             const uint8Array = await workbook.xlsx.writeBuffer();
@@ -1165,10 +1179,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-    
-
-    
 
     
 
