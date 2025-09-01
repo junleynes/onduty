@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
 import { isSameDay, getMonth, getDate, getYear, format } from 'date-fns';
+import { getData } from '@/lib/db-actions';
 
 
 // Views
@@ -47,15 +48,16 @@ function AppContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [employees, setEmployees] = useState<Employee[]>(() => getInitialState('employees', initialEmployees));
-  const [shifts, setShifts] = useState<Shift[]>(() => getInitialState('shifts', initialShifts));
-  const [leave, setLeave] = useState<Leave[]>(() => getInitialState('leave', initialLeave));
-  const [groups, setGroups] = useState<string[]>(() => getInitialState('groups', initialGroups));
-  const [notes, setNotes] = useState<Note[]>(() => getInitialState('notes', initialNotes));
-  const [holidays, setHolidays] = useState<Holiday[]>(() => getInitialState('holidays', initialHolidays));
-  const [tasks, setTasks] = useState<Task[]>(() => getInitialState('tasks', initialTasks));
-  const [allowances, setAllowances] = useState<CommunicationAllowance[]>(() => getInitialState('communicationAllowances', initialAllowance));
-  const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>(() => getInitialState('smtpSettings', initialSmtpSettings));
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [leave, setLeave] = useState<Leave[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [allowances, setAllowances] = useState<CommunicationAllowance[]>([]);
+  const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>({});
+  const [isLoading, setIsLoading] = useState(true);
 
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
@@ -90,32 +92,55 @@ function AppContent() {
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('communicationAllowances', JSON.stringify(allowances)); }, [allowances]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('smtpSettings', JSON.stringify(smtpSettings)); }, [smtpSettings]);
 
-
-
+  // Load initial data from DB
   useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-        const user: Employee = JSON.parse(storedUser);
-        const updatedUser = employees.find(emp => emp.id === user.id);
-        if (updatedUser) {
-            setCurrentUser(updatedUser);
-             if (updatedUser.role === 'admin') {
-                setActiveView('admin');
-            } else if (updatedUser.role === 'manager') {
-                setActiveView('schedule');
+    async function loadData() {
+        setIsLoading(true);
+        const result = await getData();
+        if (result.success && result.data) {
+            setEmployees(result.data.employees);
+            setShifts(result.data.shifts);
+            setLeave(result.data.leave);
+            setNotes(result.data.notes);
+            setHolidays(result.data.holidays);
+            setTasks(result.data.tasks);
+            setAllowances(result.data.allowances);
+            setGroups(result.data.groups);
+            setSmtpSettings(result.data.smtpSettings);
+
+             // Check for logged in user *after* data has been loaded
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                const user: Employee = JSON.parse(storedUser);
+                const updatedUser = result.data.employees.find(emp => emp.id === user.id);
+                if (updatedUser) {
+                    setCurrentUser(updatedUser);
+                    if (updatedUser.role === 'admin') {
+                        setActiveView('admin');
+                    } else if (updatedUser.role === 'manager') {
+                        setActiveView('schedule');
+                    } else {
+                        setActiveView('my-schedule');
+                    }
+                } else {
+                    handleLogout(); // User in localStorage not found in DB
+                }
             } else {
-                setActiveView('my-schedule');
+                router.push('/login');
             }
         } else {
-            handleLogout();
+            toast({
+                variant: 'destructive',
+                title: 'Failed to load data',
+                description: result.error || 'Could not connect to the database.',
+            });
         }
-    } else {
-      router.push('/login');
+        setIsLoading(false);
     }
-  }, [router]);
-  
-  const role: UserRole = currentUser?.role || 'member';
-  
+    loadData();
+  }, [router, toast]);
+
+
   // Effect for sending celebration notifications
     useEffect(() => {
         if (!employees.length || !currentUser) return;
@@ -367,14 +392,14 @@ function AppContent() {
 
 
   const currentView = useMemo(() => {
-    if (!currentUser) {
+    if (isLoading || !currentUser) {
         return (
              <Card>
                 <CardHeader>
                     <CardTitle>Loading...</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p>Please wait while we check your login status.</p>
+                    <p>Loading application data. Please wait...</p>
                 </CardContent>
             </Card>
         )
@@ -479,10 +504,14 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, currentUser, groups, shiftsForView, addNotification, router, toast]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, currentUser, groups, shiftsForView, addNotification, router, toast, isLoading]);
 
-  if (!currentUser) {
-      return null;
+  if (isLoading || !currentUser) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <p>Loading...</p>
+        </div>
+      );
   }
 
   const userNotifications = notifications.filter(n => !n.employeeId || n.employeeId === currentUser.id);
