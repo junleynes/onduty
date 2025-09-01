@@ -217,31 +217,43 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             if (templateRowNumber === -1 || !templateRow) {
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
-            
-            // Insert and populate rows
-            let lastRowNumber = templateRowNumber;
-            data.rows.forEach((rowData) => {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber + 1);
 
+            // Get styles from the template row
+            const templateStyles: Partial<ExcelJS.Style>[] = [];
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                templateStyles[colNumber] = { ...cell.style };
+            });
+
+            const templateValues = templateRow.values as string[];
+            
+            // Add all data rows
+            const addedRows = worksheet.addRows(data.rows, `i`);
+
+            // Apply styles and replace placeholders for each new row
+            addedRows.forEach(newRow => {
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const originalCell = templateRow!.getCell(colNumber);
-                     if (originalCell.value && typeof originalCell.value === 'string') {
-                        let text = originalCell.value;
-                        text = text.replace(/{{employee_name}}/g, String(rowData[0]));
-                        text = text.replace(/{{date}}/g, String(rowData[1]));
-                        text = text.replace(/{{day_status}}/g, String(rowData[2]));
-                        text = text.replace(/{{schedule_start}}/g, String(rowData[3]));
-                        text = text.replace(/{{schedule_end}}/g, String(rowData[4]));
-                        text = text.replace(/{{unpaidbreak_start}}/g, String(rowData[5]));
-                        text = text.replace(/{{unpaidbreak_end}}/g, String(rowData[6]));
-                        text = text.replace(/{{paidbreak_start}}/g, String(rowData[7]));
-                        text = text.replace(/{{paidbreak_end}}/g, String(rowData[8]));
-                        cell.value = text;
+                    cell.style = templateStyles[colNumber] || {};
+                    const templateCellValue = templateValues[colNumber];
+                    if (templateCellValue) {
+                        let text = templateCellValue;
+                        text = text.replace(/{{employee_name}}/g, String(newRow.getCell(1).value));
+                        text = text.replace(/{{date}}/g, String(newRow.getCell(2).value));
+                        text = text.replace(/{{day_status}}/g, String(newRow.getCell(3).value));
+                        text = text.replace(/{{schedule_start}}/g, String(newRow.getCell(4).value));
+                        text = text.replace(/{{schedule_end}}/g, String(newRow.getCell(5).value));
+                        text = text.replace(/{{unpaidbreak_start}}/g, String(newRow.getCell(6).value));
+                        text = text.replace(/{{unpaidbreak_end}}/g, String(newRow.getCell(7).value));
+                        text = text.replace(/{{paidbreak_start}}/g, String(newRow.getCell(8).value));
+                        text = text.replace(/{{paidbreak_end}}/g, String(newRow.getCell(9).value));
+                        
+                        // Replace the raw data with the formatted string from the template
+                        if (text !== templateCellValue) {
+                             cell.value = text;
+                        }
                     }
                 });
-                lastRowNumber++;
             });
+
 
             // Remove the original template row after all new rows are added
             if (data.rows.length > 0) {
@@ -685,12 +697,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Duplicate the row for each data entry and then populate it
             if (data.rows.length > 0) {
-                worksheet.spliceRows(templateRowNumber + 1, 0, ...new Array(data.rows.length - 1).fill([]));
-                data.rows.forEach((rowData, index) => {
-                    const newRow = worksheet.getRow(templateRowNumber + index);
+                let lastRowNumber = templateRowNumber - 1;
+                data.rows.forEach((rowData) => {
+                    worksheet.duplicateRow(templateRowNumber, 1, true);
+                    const newRow = worksheet.getRow(lastRowNumber + 2);
+
                     newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                         const originalCell = templateRow!.getCell(colNumber);
-                        cell.style = originalCell.style; // Copy style
                         if (originalCell.value && typeof originalCell.value === 'string') {
                             let text = originalCell.value;
                             text = text.replace(/{{DATE}}/g, String(rowData[0]));
@@ -700,7 +713,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             cell.value = text;
                         }
                     });
+                    lastRowNumber++;
                 });
+
+                // Remove the original template row after all new rows are added
+                worksheet.spliceRows(templateRowNumber, 1);
             } else {
                  worksheet.spliceRows(templateRowNumber, 1);
             }
@@ -1132,5 +1149,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    
 
     
