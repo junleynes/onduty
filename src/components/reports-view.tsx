@@ -130,11 +130,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     day_status: '', // Empty as requested
                 };
             }
-
             if (shift.isDayOff) {
                 return { ...emptySchedule, day_status: 'OFF' };
             }
-            
             // Regular shift
             return {
                 day_status: '',
@@ -268,6 +266,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             data.forEach((rowData, index) => {
                 const newRow = worksheet.getRow(templateRowNumber + index);
                 templateValues.forEach((templateVal, col) => {
+                    const newCell = newRow.getCell(col + 1);
                     if (typeof templateVal === 'string') {
                         let text = templateVal;
                         text = text.replace(/{{employee_name}}/g, rowData.employee_name);
@@ -279,12 +278,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         text = text.replace(/{{unpaidbreak_end}}/g, rowData.unpaidbreak_end);
                         text = text.replace(/{{paidbreak_start}}/g, rowData.paidbreak_start);
                         text = text.replace(/{{paidbreak_end}}/g, rowData.paidbreak_end);
-                        newRow.getCell(col).value = text;
+                        newCell.value = text;
                     } else {
-                        newRow.getCell(col).value = templateVal;
+                        newCell.value = templateVal;
                     }
                     // Copy style
-                    newRow.getCell(col).style = { ...templateRow.getCell(col).style };
+                    newCell.style = { ...templateRow.getCell(col + 1).style };
                 });
                 newRow.commit();
             });
@@ -1181,4 +1180,5 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
 
     
+
 
