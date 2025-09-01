@@ -116,10 +116,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
     
     const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
-        if (employee.role === 'manager') {
-            return initialShiftTemplates.find(t => t.name.toLowerCase().includes("manager shift"));
-        }
-        return initialShiftTemplates.find(t => t.name.toLowerCase().includes("mid shift"));
+        const defaultShiftName = employee.role === 'manager' ? "manager shift" : "mid shift";
+        return initialShiftTemplates.find(t => t.name.toLowerCase().includes(defaultShiftName));
     };
 
     const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
@@ -280,19 +278,17 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 }
             });
             
-            let lastRowNumber = templateRowNumber;
             data.forEach((rowData, index) => {
-                const newRowNumber = templateRowNumber + index;
+                const rowNumberToInsert = templateRowNumber + index;
                 if (index > 0) {
                     worksheet.duplicateRow(templateRowNumber, 1, true);
                 }
-                const newRow = worksheet.getRow(newRowNumber);
+                const newRow = worksheet.getRow(rowNumberToInsert);
                 
                 columnMapping.forEach(({ col, dataKey }) => {
                     newRow.getCell(col).value = rowData[dataKey];
                 });
                 newRow.commit();
-                lastRowNumber = newRowNumber;
             });
 
             const uint8Array = await workbook.xlsx.writeBuffer();
@@ -606,7 +602,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const rows: WfhCertRowData[] = [];
     
         daysInInterval.forEach(day => {
-            // This is the fix: Ensure we only process days within the actual selected month
             if (getMonth(day) !== getMonth(wfhCertDateRange.from!)) {
                 return;
             }
@@ -697,67 +692,23 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             });
     
-            // Find the template row by looking for a required placeholder
-            let templateRowNumber = -1;
-            worksheet.eachRow((row, rowNum) => {
-                row.eachCell((cell) => {
-                    if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
-                        templateRowNumber = rowNum;
-                    }
-                });
-            });
-    
-            if (templateRowNumber === -1) {
-                throw new Error("Template row with placeholder `{{DATE}}` not found.");
-            }
-    
+            const templateRowNumber = 9;
             const templateRow = worksheet.getRow(templateRowNumber);
-            const placeholderMap: { [key: string]: keyof WfhCertRowData } = {
-                '{{DATE}}': 'DATE',
-                '{{ATTENDANCE_RENDERED}}': 'ATTENDANCE_RENDERED',
-                '{{TOTAL_HRS_SPENT}}': 'TOTAL_HRS_SPENT',
-                '{{REMARKS}}': 'REMARKS',
-            };
+            if (!templateRow.values.some(v => typeof v === 'string' && v.includes('{{DATE}}'))) {
+                 throw new Error("Template row with placeholder `{{DATE}}` not found on row 9.");
+            }
 
-            const columnMap: { col: number; key: keyof WfhCertRowData }[] = [];
-            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                const cellText = cell.text;
-                for (const placeholder in placeholderMap) {
-                    if (cellText.includes(placeholder)) {
-                        columnMap.push({ col: colNumber, key: placeholderMap[placeholder] });
-                        break; 
-                    }
-                }
-            });
-            
-            // Insert data into the sheet by adding new rows
-            const rowsToInsert = data.map(rowData => {
-                const newRowValues: (string | number | null)[] = [];
-                templateRow.eachCell({ includeEmpty: true }, (templateCell, col) => {
-                     // Find if this column has a placeholder
-                    const mapping = columnMap.find(m => m.col === col);
-                    if (mapping) {
-                        newRowValues[col - 1] = rowData[mapping.key];
-                    } else {
-                        // For non-placeholder cells, insert their static value or keep empty
-                        newRowValues[col - 1] = templateCell.text ? templateCell.value : null;
-                    }
-                });
-                return newRowValues;
-            });
+            const dataToInsert = data.map(d => [d.DATE, d.ATTENDANCE_RENDERED, d.TOTAL_HRS_SPENT, d.REMARKS]);
+            worksheet.spliceRows(templateRowNumber, 1, ...dataToInsert);
 
-            worksheet.spliceRows(templateRowNumber, 1, ...rowsToInsert);
-
-            // Apply styles from the original template row to all new data rows
             for (let i = 0; i < data.length; i++) {
-                const dataRow = worksheet.getRow(templateRowNumber + i);
-                dataRow.height = templateRow.height;
-                templateRow.eachCell({ includeEmpty: true }, (templateCell, col) => {
-                    dataRow.getCell(col).style = templateCell.style;
+                const newRow = worksheet.getRow(templateRowNumber + i);
+                newRow.height = templateRow.height;
+                templateRow.eachCell({ includeEmpty: true }, (templateCell, colNumber) => {
+                    newRow.getCell(colNumber).style = templateCell.style;
                 });
             }
 
-            // Signature placement after all data is written
             let sigRowNumber = -1;
             let sigColNumber = -1;
             worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
@@ -1213,4 +1164,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
