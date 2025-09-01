@@ -392,7 +392,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `${currentUser?.group} Attendance Sheet - ${format(attendanceDateRange.from, 'MMMM yyyy')}.xlsx`);
+            saveAs(blob, `${currentUser?.group} Attendance Sheet - ${format(attendanceDateRange.from, 'yyyy-MM-dd')} to ${format(attendanceDateRange.to, 'yyyy-MM-dd')}.xlsx`);
 
         } catch (error) {
             console.error("Error generating Excel from template:", error);
