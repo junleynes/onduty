@@ -124,6 +124,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         if (shift) {
             if (shift.isHolidayOff) {
+                // Return default schedule but empty status
                 return { ...defaultSchedule, day_status: '' };
             }
             if (shift.isDayOff) {
@@ -142,6 +143,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
 
         if (leaveEntry) {
+            // Return default schedule but empty status
             return { ...defaultSchedule, day_status: '' };
         }
 
@@ -274,22 +276,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 }
             });
 
-
-            // Insert new rows
+            // Insert new rows and populate them
             let lastRowNumber = templateRowNumber;
             data.forEach((rowData) => {
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber + 1);
-                
-                headerMapping.forEach(({ col, placeholder, dataKey }) => {
-                    const originalCell = templateRow.getCell(col);
-                    const newCell = newRow.getCell(col);
-                    
-                    const originalValue = originalCell.value?.toString() || '';
-                    newCell.value = originalValue.replace(placeholder, rowData[dataKey]);
-                });
-                
                 lastRowNumber++;
+                const newRow = worksheet.getRow(lastRowNumber);
+                
+                headerMapping.forEach(({ col, dataKey }) => {
+                    newRow.getCell(col).value = rowData[dataKey];
+                });
             });
 
 
@@ -605,7 +601,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
 
         const daysInInterval = eachDayOfInterval({ start: wfhCertDateRange.from, end: wfhCertDateRange.to });
-        const headers = ['DATE', 'ATTENDANCE RENDERED', 'TOTAL HRS. SPENT', 'REMARKS'];
+        const headers = ['DATE', 'ATTENDANCE_RENDERED', 'TOTAL_HRS_SPENT', 'REMARKS'];
         const rows: (string | number)[][] = [];
 
         daysInInterval.forEach(day => {
@@ -695,7 +691,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             });
 
-            // Row placeholders
+            // Find the template row
             let templateRowNumber = -1;
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
@@ -710,38 +706,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
+            const dataRows = data.rows;
 
-            // Duplicate and populate rows in reverse to maintain order
-            if (data.rows.length > 0) {
-                for (let i = data.rows.length - 1; i >= 0; i--) {
-                    const rowData = data.rows[i];
-                    worksheet.duplicateRow(templateRowNumber, 1, true);
-                    const newRow = worksheet.getRow(templateRowNumber);
+            // Insert data rows and apply formatting
+            worksheet.spliceRows(templateRowNumber, 1, ...dataRows);
 
-                    newRow.eachCell({includeEmpty: true}, (cell, colNumber) => {
-                        const templateCell = templateRow.getCell(colNumber);
-                        const newCellModel = { ...templateCell.model, address: cell.address };
-                        cell.model = newCellModel;
-
-                        if (templateCell.value && typeof templateCell.value === 'string') {
-                            let text = templateCell.value;
-                            text = text.replace(/{{DATE}}/g, String(rowData[0]));
-                            text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
-                            text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
-                            text = text.replace(/{{REMARKS}}/g, String(rowData[3]));
-                            cell.value = text;
-                        } else {
-                            cell.value = templateCell.value;
-                        }
-                    });
-                }
+            // Apply formatting from the original template row to the new rows
+            for(let i = 0; i < dataRows.length; i++) {
+                const newRow = worksheet.getRow(templateRowNumber + i);
+                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    const templateCell = templateRow.getCell(colNumber);
+                    cell.style = templateCell.style;
+                });
             }
             
-            // Remove the original template row
-            worksheet.spliceRows(templateRowNumber, 1);
-            
             // Signature placement after all rows are added
-            const lastRowNumber = templateRowNumber + data.rows.length -1;
             if (currentUser.signature) {
                 const signatureImageId = workbook.addImage({
                     base64: currentUser.signature.split(',')[1],
@@ -1197,11 +1176,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-    
-
-    
-
-
-
-
