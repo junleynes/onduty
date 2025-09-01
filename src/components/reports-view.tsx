@@ -130,11 +130,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         
         const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
 
-        if (shift?.isHolidayOff) {
+        if (leaveEntry) {
             return { ...defaultSchedule, day_status: '' };
         }
         
-        if (leaveEntry) {
+        if (shift?.isHolidayOff) {
             return { ...defaultSchedule, day_status: '' };
         }
         
@@ -280,19 +280,20 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 }
             });
             
-            let lastRowNumber = templateRowNumber -1;
+            let lastRowNumber = templateRowNumber;
             data.forEach((rowData, index) => {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber + index);
-
+                const newRowNumber = templateRowNumber + index;
+                if (index > 0) {
+                    worksheet.duplicateRow(templateRowNumber, 1, true);
+                }
+                const newRow = worksheet.getRow(newRowNumber);
+                
                 columnMapping.forEach(({ col, dataKey }) => {
                     newRow.getCell(col).value = rowData[dataKey];
                 });
+                newRow.commit();
+                lastRowNumber = newRowNumber;
             });
-
-            // Remove original template row
-            worksheet.spliceRows(templateRowNumber + data.length, 1);
-
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -718,38 +719,44 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 '{{REMARKS}}': 'REMARKS',
             };
 
-            // Pre-duplicate all rows needed
-            for (let i = 1; i < data.length; i++) {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-            }
-
-            // Populate the duplicated rows
-            data.forEach((rowData, index) => {
-                const currentRow = worksheet.getRow(templateRowNumber + index);
-                templateRow.eachCell({ includeEmpty: true }, (templateCell, col) => {
-                    const currentCell = currentRow.getCell(col);
-                    const templateText = templateCell.text;
-                    
-                    let newText = templateText;
-                    let replaced = false;
-                    for (const placeholder in placeholderMap) {
-                        if (templateText.includes(placeholder)) {
-                            newText = newText.replace(placeholder, String(rowData[placeholderMap[placeholder]]));
-                            replaced = true;
-                        }
+            const columnMap: { col: number; key: keyof WfhCertRowData }[] = [];
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const cellText = cell.text;
+                for (const placeholder in placeholderMap) {
+                    if (cellText.includes(placeholder)) {
+                        columnMap.push({ col: colNumber, key: placeholderMap[placeholder] });
+                        break; 
                     }
-
-                    if (replaced) {
-                        currentCell.value = newText;
-                    } else {
-                        // If it wasn't a placeholder cell, clear it to avoid duplication
-                        currentCell.value = null;
-                    }
-                     // Always copy style
-                    currentCell.style = templateCell.style;
-                });
+                }
             });
             
+            // Insert data into the sheet by adding new rows
+            const rowsToInsert = data.map(rowData => {
+                const newRowValues: (string | number | null)[] = [];
+                templateRow.eachCell({ includeEmpty: true }, (templateCell, col) => {
+                     // Find if this column has a placeholder
+                    const mapping = columnMap.find(m => m.col === col);
+                    if (mapping) {
+                        newRowValues[col - 1] = rowData[mapping.key];
+                    } else {
+                        // For non-placeholder cells, insert their static value or keep empty
+                        newRowValues[col - 1] = templateCell.text ? templateCell.value : null;
+                    }
+                });
+                return newRowValues;
+            });
+
+            worksheet.spliceRows(templateRowNumber, 1, ...rowsToInsert);
+
+            // Apply styles from the original template row to all new data rows
+            for (let i = 0; i < data.length; i++) {
+                const dataRow = worksheet.getRow(templateRowNumber + i);
+                dataRow.height = templateRow.height;
+                templateRow.eachCell({ includeEmpty: true }, (templateCell, col) => {
+                    dataRow.getCell(col).style = templateCell.style;
+                });
+            }
+
             // Signature placement after all data is written
             let sigRowNumber = -1;
             let sigColNumber = -1;
@@ -1206,3 +1213,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
