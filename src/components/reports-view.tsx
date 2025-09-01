@@ -86,7 +86,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the report.' });
             return null;
         }
-        const groupEmployees = employees.filter(e => e.group === currentUser.group);
+        const groupEmployees = employees
+            .filter(e => e.group === currentUser.group)
+            .sort((a,b) => a.lastName.localeCompare(b.lastName));
+
         const daysInInterval = eachDayOfInterval({ start: workScheduleDateRange.from, end: workScheduleDateRange.to });
 
         const headers = ['Employee Name', 'Date', 'Day Status', 'Schedule Start', 'Schedule End', 'Unpaid Break Start', 'Unpaid Break End', 'Paid Break Start', 'Paid Break End'];
@@ -220,15 +223,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
             
-            const lastRowNumber = templateRowNumber;
-            
             // Add all the new rows by duplicating the template row
-            data.rows.forEach(rowData => {
-                worksheet.duplicateRow(lastRowNumber, 1, true);
-                const newRow = worksheet.getRow(lastRowNumber + 1);
+            data.rows.forEach((rowData, index) => {
+                // The row we duplicate is always the original template row
+                worksheet.duplicateRow(templateRowNumber, 1, true);
+                // The new row is inserted *after* the duplicated one, so its index is templateRowNumber + 1
+                const newRow = worksheet.getRow(templateRowNumber + 1);
 
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                     const originalCell = templateRow.getCell(colNumber);
+                     const originalCell = templateRow.getCell(colNumber); // Get style from original template
                      if (originalCell.value && typeof originalCell.value === 'string') {
                         let text = originalCell.value;
                         text = text.replace(/{{employee_name}}/g, String(rowData[0]));
@@ -245,7 +248,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             });
 
-            // Remove the original template row
+            // Remove the original template row only after all duplication is complete
             if (data.rows.length > 0) {
                  worksheet.spliceRows(templateRowNumber, 1);
             }
@@ -685,12 +688,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 throw new Error("Template row with `{{DATE}}` placeholder not found.");
             }
 
-            const lastRowNumber = templateRowNumber;
-
             // Add all the new rows by duplicating the template row
-            data.rows.forEach(rowData => {
-                worksheet.duplicateRow(lastRowNumber, 1, true);
-                const newRow = worksheet.getRow(lastRowNumber + 1);
+            data.rows.forEach((rowData) => {
+                worksheet.duplicateRow(templateRowNumber, 1, true);
+                const newRow = worksheet.getRow(templateRowNumber + 1);
 
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                     const originalCell = templateRow.getCell(colNumber);
@@ -1136,3 +1137,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
