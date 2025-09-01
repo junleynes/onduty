@@ -255,7 +255,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-            const templateRowValues = [...templateRow.values as ExcelJS.CellValue[]]; // clone
             
             const placeholderMap: { [key: string]: keyof WorkScheduleRowData } = {
                 '{{employee_name}}': 'employee_name',
@@ -269,35 +268,29 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 '{{paidbreak_end}}': 'paidbreak_end',
             };
 
-            const columnMapping: { col: number; dataKey: keyof WorkScheduleRowData }[] = [];
+            const columnMapping: { col: number; dataKey: keyof WorkScheduleRowData, originalValue: string }[] = [];
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 const cellValue = cell.text;
                 for (const placeholder in placeholderMap) {
                     if (cellValue.includes(placeholder)) {
-                        columnMapping.push({ col: colNumber, dataKey: placeholderMap[placeholder] });
+                        columnMapping.push({ col: colNumber, dataKey: placeholderMap[placeholder], originalValue: cellValue });
                     }
                 }
             });
-
+            
             const sortedData = [...data].sort((a,b) => {
                 const nameComp = a.employee_name.localeCompare(b.employee_name);
                 if (nameComp !== 0) return nameComp;
                 return new Date(a.date).getTime() - new Date(b.date).getTime();
             });
             
-            worksheet.spliceRows(templateRowNumber + 1, 0, ...Array(sortedData.length -1).fill([]));
+            worksheet.spliceRows(templateRowNumber, 1, ...sortedData.map(() => templateRow.values));
 
             sortedData.forEach((rowData, index) => {
                 const newRow = worksheet.getRow(templateRowNumber + index);
-                newRow.values = templateRowValues; // Apply template row values (and styles)
-
-                columnMapping.forEach(({ col, dataKey }) => {
-                    const originalCell = templateRow.getCell(col);
+                columnMapping.forEach(({ col, dataKey, originalValue }) => {
                     const newCell = newRow.getCell(col);
-                    // Replace placeholder in the cloned cell value
-                    const originalValue = originalCell.value?.toString() || '';
                     newCell.value = originalValue.replace(`{{${dataKey}}}`, rowData[dataKey]);
-                    newCell.style = originalCell.style;
                 });
                 newRow.commit();
             });
@@ -705,12 +698,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
     
             const templateRow = worksheet.getRow(9);
-            if (!templateRow.values.some(v => typeof v === 'string' && v.includes('{{DATE}}'))) {
+            if (!templateRow.values.some(v => typeof v === 'string' && v.text.includes('{{DATE}}'))) {
                  throw new Error("Template row with placeholder `{{DATE}}` not found on row 9.");
             }
             
-            // This is the new, robust logic
-            const placeholderMap: { [key: string]: keyof WfhCertRowData } = {};
+            const placeholderMap: { [key: number]: keyof WfhCertRowData } = {};
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 const cellValue = cell.text;
                 if (cellValue.includes('{{DATE}}')) placeholderMap[colNumber] = 'DATE';
@@ -719,10 +711,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 if (cellValue.includes('{{REMARKS}}')) placeholderMap[colNumber] = 'REMARKS';
             });
             
-            // Add all the data rows first
-            worksheet.insertRows(10, data.map(d => []));
+            // Insert data rows
+            worksheet.insertRows(10, data);
 
-            // Now, populate and style them
+            // Populate and style them
             data.forEach((rowData, index) => {
                 const newRow = worksheet.getRow(10 + index);
                 for (const colStr in placeholderMap) {
@@ -735,10 +727,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 newRow.commit();
             });
 
-            // Clear the template row's placeholders
-            for (const colStr in placeholderMap) {
-                templateRow.getCell(parseInt(colStr, 10)).value = null;
-            }
+            // Remove the template row
+            worksheet.spliceRows(9, 1);
 
             let sigRowNumber = -1;
             let sigColNumber = -1;
