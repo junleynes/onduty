@@ -124,7 +124,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const defaultSchedule = getScheduleFromTemplate(defaultShiftTemplate);
 
         if (shift) {
-            // It's a working holiday
             if (shift.isHolidayOff) {
                  return {
                     ...defaultSchedule,
@@ -258,17 +257,19 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
+            const templateValues = [...templateRow.values];
 
-            // Duplicate and populate rows
-            let lastRow = templateRow;
-            data.forEach((rowData) => {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber + 1);
-                
-                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const templateCell = templateRow.getCell(colNumber);
-                    if (templateCell.value && typeof templateCell.value === 'string') {
-                         let text = templateCell.value;
+            // Insert new rows
+            if (data.length > 0) {
+                 worksheet.spliceRows(templateRowNumber, 1, ...Array(data.length).fill(null).map(() => []));
+            }
+           
+            // Populate rows
+            data.forEach((rowData, index) => {
+                const newRow = worksheet.getRow(templateRowNumber + index);
+                templateValues.forEach((templateVal, col) => {
+                    if (typeof templateVal === 'string') {
+                        let text = templateVal;
                         text = text.replace(/{{employee_name}}/g, rowData.employee_name);
                         text = text.replace(/{{date}}/g, rowData.date);
                         text = text.replace(/{{day_status}}/g, rowData.day_status);
@@ -278,17 +279,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         text = text.replace(/{{unpaidbreak_end}}/g, rowData.unpaidbreak_end);
                         text = text.replace(/{{paidbreak_start}}/g, rowData.paidbreak_start);
                         text = text.replace(/{{paidbreak_end}}/g, rowData.paidbreak_end);
-                        cell.value = text;
+                        newRow.getCell(col).value = text;
+                    } else {
+                        newRow.getCell(col).value = templateVal;
                     }
+                    // Copy style
+                    newRow.getCell(col).style = { ...templateRow.getCell(col).style };
                 });
                 newRow.commit();
-                lastRow = newRow;
             });
 
-            // Remove the original template row if data was added
-            if (data.length > 0) {
-                worksheet.spliceRows(templateRowNumber, 1);
-            }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -1181,3 +1181,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
 
     
+
