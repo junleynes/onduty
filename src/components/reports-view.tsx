@@ -731,15 +731,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 if (templateRowNumber !== -1) return;
                 row.eachCell((cell) => {
                      const checkCell = (v: any) => {
-                        if (typeof v === 'string' && v.includes('{{DATE}}')) {
-                            return true;
+                        if (v && typeof v === 'object' && v.richText) {
+                            return v.richText.some((rt: any) => rt.text?.includes('{{DATE}}'));
                         }
-                        if (typeof v === 'object' && v && 'richText' in v) {
-                           for(const textRun of (v as ExcelJS.RichText).richText) {
-                                if (textRun.text?.includes('{{DATE}}')) {
-                                    return true;
-                                }
-                            }
+                        if (v && typeof v === 'string') {
+                            return v.includes('{{DATE}}');
                         }
                         return false;
                     }
@@ -837,12 +833,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         const extensionRequests = leave.filter(l => 
             l.type === 'Work Extension' &&
-            isWithinInterval(new Date(l.date), { start: workExtensionDateRange.from!, end: workExtensionDateRange.to! })
+            l.originalShiftDate &&
+            isWithinInterval(new Date(l.originalShiftDate), { start: workExtensionDateRange.from!, end: workExtensionDateRange.to! })
         );
         
         const data: WorkExtensionRowData[] = extensionRequests.map(req => {
             const employee = employees.find(e => e.id === req.employeeId);
-            const originalShift = shifts.find(s => s.employeeId === req.employeeId && isSameDay(new Date(s.date), new Date(req.date)));
             
             let totalHours = '';
             if (req.startTime && req.endTime) {
@@ -855,9 +851,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             return {
                 employee_name: employee ? getFullName(employee) : 'Unknown',
-                work_sched_date: format(new Date(req.date), 'MM/dd/yyyy'),
-                start_time: originalShift?.startTime || '',
-                end_time: originalShift?.endTime || '',
+                work_sched_date: req.originalShiftDate ? format(new Date(req.originalShiftDate), 'MM/dd/yyyy') : '',
+                start_time: req.originalStartTime || '',
+                end_time: req.originalEndTime || '',
                 date_of_work_extended: format(new Date(req.date), 'MM/dd/yyyy'),
                 extended_start_time: req.startTime || '',
                 extended_end_time: req.endTime || '',
@@ -895,8 +891,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             if (templateRowNumber === -1) {
                 throw new Error("Template row with `{{employee_name}}` not found.");
             }
+            
+            const templateRow = worksheet.getRow(templateRowNumber);
 
-            worksheet.spliceRows(templateRowNumber, 1, ...data.map(d => Object.values(d)));
+            // Insert new rows and populate them with data and styles
+            data.forEach((rowData, index) => {
+                const newRow = worksheet.insertRow(templateRowNumber + index, Object.values(rowData));
+                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    const templateCell = templateRow.getCell(colNumber);
+                    cell.style = { ...templateCell.style };
+                });
+            });
+
+            // Remove the original template row
+            worksheet.spliceRows(templateRowNumber + data.length, 1);
+
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
