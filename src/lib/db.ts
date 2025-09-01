@@ -1,6 +1,8 @@
+
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
+import initialDb from './db.json';
 
 const DB_FILE = 'local.db';
 
@@ -17,11 +19,67 @@ if (!dbExists) {
   db.exec(schema);
   console.log('Database schema loaded.');
 
-  // Optional: Seed the database with initial data if needed
-  // const seedPath = path.join(process.cwd(), 'src', 'lib', 'seed.sql');
-  // const seed = fs.readFileSync(seedPath, 'utf-8');
-  // db.exec(seed);
-  // console.log('Database seeded with initial data.');
+  // Seed the database with initial data
+  console.log('Seeding database with initial data...');
+  try {
+    const insertEmployee = db.prepare('INSERT INTO employees (id, employeeNumber, firstName, lastName, email, phone, password, position, role, groupName, avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insertGroup = db.prepare('INSERT INTO groups (name) VALUES (?)');
+    const insertShiftTemplate = db.prepare('INSERT INTO shift_templates (name, label, startTime, endTime, color, breakStartTime, breakEndTime, isUnpaidBreak) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    const insertLeaveType = db.prepare('INSERT INTO leave_types (type, color) VALUES (?, ?)');
+    const insertSmtpSettings = db.prepare('INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+
+    db.transaction(() => {
+        // Seed Employees
+        initialDb.employees.forEach(emp => {
+            const visibility = emp.visibility || {};
+            insertEmployee.run(
+                emp.id,
+                emp.employeeNumber,
+                emp.firstName,
+                emp.lastName,
+                emp.email,
+                emp.phone,
+                emp.password,
+                emp.position,
+                emp.role,
+                emp.group,
+                emp.avatar,
+                emp.loadAllocation,
+                emp.reportsTo,
+                emp.birthDate,
+                emp.startDate,
+                emp.signature,
+                JSON.stringify(visibility)
+            );
+        });
+
+        // Seed Groups
+        initialDb.groups.forEach(group => {
+            insertGroup.run(group);
+        });
+        
+        // Seed Shift Templates
+        initialDb.shiftTemplates.forEach(st => {
+            insertShiftTemplate.run(st.name, st.label, st.startTime, st.endTime, st.color, st.breakStartTime, st.breakEndTime, st.isUnpaidBreak ? 1 : 0);
+        });
+
+        // Seed Leave Types
+        initialDb.leaveTypes.forEach(lt => {
+            insertLeaveType.run(lt.type, lt.color);
+        });
+
+        // Seed SMTP Settings
+        if (initialDb.smtpSettings) {
+            insertSmtpSettings.run(1, initialDb.smtpSettings.host, initialDb.smtpSettings.port, initialDb.smtpSettings.secure ? 1 : 0, initialDb.smtpSettings.user, initialDb.smtpSettings.pass, initialDb.smtpSettings.fromEmail, initialDb.smtpSettings.fromName);
+        }
+
+    })();
+    
+    console.log('Database seeded successfully.');
+  } catch(error) {
+    console.error('Failed to seed database:', error);
+  }
+
 } else {
     console.log('Connected to existing database.');
 }
