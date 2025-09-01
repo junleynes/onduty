@@ -255,7 +255,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-            const templateRowValues = templateRow.values as ExcelJS.CellValue[];
+            const templateRowValues = [...templateRow.values as ExcelJS.CellValue[]]; // clone
             
             const placeholderMap: { [key: string]: keyof WorkScheduleRowData } = {
                 '{{employee_name}}': 'employee_name',
@@ -285,15 +285,19 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 return new Date(a.date).getTime() - new Date(b.date).getTime();
             });
             
-            // Insert rows from bottom to top to avoid shifting issues
-            for (let i = sortedData.length - 1; i >= 0; i--) {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-            }
+            worksheet.spliceRows(templateRowNumber + 1, 0, ...Array(sortedData.length -1).fill([]));
 
             sortedData.forEach((rowData, index) => {
                 const newRow = worksheet.getRow(templateRowNumber + index);
+                newRow.values = templateRowValues; // Apply template row values (and styles)
+
                 columnMapping.forEach(({ col, dataKey }) => {
-                    newRow.getCell(col).value = rowData[dataKey];
+                    const originalCell = templateRow.getCell(col);
+                    const newCell = newRow.getCell(col);
+                    // Replace placeholder in the cloned cell value
+                    const originalValue = originalCell.value?.toString() || '';
+                    newCell.value = originalValue.replace(`{{${dataKey}}}`, rowData[dataKey]);
+                    newCell.style = originalCell.style;
                 });
                 newRow.commit();
             });
@@ -623,7 +627,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             let includeRow = false;
     
             if (leaveEntry) {
-                attendanceRendered = 'ONLEAVE';
+                attendanceRendered = 'ON LEAVE';
                 remarks = leaveEntry.type;
                 includeRow = true;
             } else if (shift) {
@@ -655,7 +659,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
             if (includeRow) {
                 rows.push({
-                    DATE: format(day, 'MM/dd/yyyy'),
+                    DATE: format(day, 'LLLL d, yyyy'),
                     ATTENDANCE_RENDERED: attendanceRendered,
                     TOTAL_HRS_SPENT: totalHrs,
                     REMARKS: remarks
