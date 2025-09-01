@@ -11,7 +11,7 @@ import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn, getFullName, getInitialState } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths } from 'date-fns';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import { WfhCertificationTemplateUploader } from './wfh-certification-template-uploader';
@@ -101,13 +101,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
     // --- Data Generation Functions ---
     
-    const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
-        if (employee.role === 'manager') {
-            return initialShiftTemplates.find(t => t.name.toLowerCase().includes("manager shift"));
-        }
-        return initialShiftTemplates.find(t => t.name.toLowerCase().includes("mid shift"));
-    };
-
     const getScheduleFromTemplate = (template: ShiftTemplate | undefined) => {
         if (!template) {
              return { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
@@ -120,6 +113,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
             paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
         };
+    };
+    
+    const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
+        if (employee.role === 'manager') {
+            return initialShiftTemplates.find(t => t.name.toLowerCase().includes("manager shift"));
+        }
+        return initialShiftTemplates.find(t => t.name.toLowerCase().includes("mid shift"));
     };
 
     const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
@@ -261,7 +261,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-            
+
             const placeholderMap: { [key: string]: keyof WorkScheduleRowData } = {
                 '{{employee_name}}': 'employee_name',
                 '{{date}}': 'date',
@@ -273,31 +273,25 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 '{{paidbreak_start}}': 'paidbreak_start',
                 '{{paidbreak_end}}': 'paidbreak_end',
             };
-
-            const headerMapping: { col: number, placeholder: string, dataKey: keyof WorkScheduleRowData }[] = [];
+            
+            const columnMapping: { col: number; dataKey: keyof WorkScheduleRowData }[] = [];
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                const cellValue = cell.value?.toString() || '';
+                const cellValue = cell.text;
                 for (const placeholder in placeholderMap) {
                     if (cellValue.includes(placeholder)) {
-                        headerMapping.push({ col: colNumber, placeholder, dataKey: placeholderMap[placeholder] });
+                        columnMapping.push({ col: colNumber, dataKey: placeholderMap[placeholder] });
                     }
                 }
             });
 
-            // Insert new rows and populate them
-            let lastRowNumber = templateRowNumber;
-            data.forEach((rowData) => {
+            // Insert new rows based on data
+            const reversedData = [...data].reverse();
+            reversedData.forEach((rowData) => {
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                lastRowNumber++;
-                const newRow = worksheet.getRow(lastRowNumber);
-                
-                headerMapping.forEach(({ col, dataKey }) => {
+                const newRow = worksheet.getRow(templateRowNumber + 1);
+
+                columnMapping.forEach(({ col, dataKey }) => {
                     newRow.getCell(col).value = rowData[dataKey];
-                });
-                
-                // Copy styles from template row to new row
-                templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    newRow.getCell(colNumber).style = cell.style;
                 });
             });
 
@@ -612,19 +606,24 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month for the report.' });
             return null;
         }
-
+    
         const daysInInterval = eachDayOfInterval({ start: wfhCertDateRange.from, end: wfhCertDateRange.to });
         const rows: WfhCertRowData[] = [];
-
+    
         daysInInterval.forEach(day => {
+            // This is the fix: ensure we only process days that are in the selected month
+            if (getMonth(day) !== getMonth(wfhCertDateRange.from!)) {
+                return;
+            }
+    
             const shift = shifts.find(s => s.employeeId === currentUser.id && isSameDay(new Date(s.date), day));
             const leaveEntry = leave.find(l => l.employeeId === currentUser.id && isSameDay(new Date(l.date), day));
-
+    
             let attendanceRendered = '';
             let totalHrs: string | number = '';
             let remarks = '';
             let includeRow = false;
-
+    
             if (leaveEntry) {
                 attendanceRendered = 'ONLEAVE';
                 remarks = leaveEntry.type;
@@ -642,7 +641,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         const end = parse(shift.endTime, 'HH:mm', new Date());
                         let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                         if (diff < 0) diff += 24;
-
+    
                         let breakHours = 0;
                         if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
                             const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
@@ -655,7 +654,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     }
                 }
             }
-
+    
             if (includeRow) {
                 rows.push({
                     DATE: format(day, 'MM/dd/yyyy'),
@@ -719,29 +718,39 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
     
             const templateRow = worksheet.getRow(templateRowNumber);
-            const dataRows = data;
-            const reversedData = [...dataRows].reverse();
-    
-            reversedData.forEach((rowData) => {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber + 1);
-
-                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const templateCell = templateRow.getCell(colNumber);
-                    let cellValue = templateCell.text;
-
-                    if (cellValue.includes('{{DATE}}')) newRow.getCell(colNumber).value = new Date(rowData.DATE);
-                    else if (cellValue.includes('{{ATTENDANCE_RENDERED}}')) newRow.getCell(colNumber).value = rowData.ATTENDANCE_RENDERED;
-                    else if (cellValue.includes('{{TOTAL_HRS_SPENT}}')) newRow.getCell(colNumber).value = Number(rowData.TOTAL_HRS_SPENT) || null;
-                    else if (cellValue.includes('{{REMARKS}}')) newRow.getCell(colNumber).value = rowData.REMARKS;
-                    else newRow.getCell(colNumber).value = cellValue;
-                    
-                    newRow.getCell(colNumber).style = templateCell.style;
-                });
+            const columnMapping: { col: number; dataKey: keyof WfhCertRowData }[] = [];
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                const cellText = cell.text.trim();
+                if (cellText === '{{DATE}}') columnMapping.push({ col: colNumber, dataKey: 'DATE' });
+                if (cellText === '{{ATTENDANCE_RENDERED}}') columnMapping.push({ col: colNumber, dataKey: 'ATTENDANCE_RENDERED' });
+                if (cellText === '{{TOTAL_HRS_SPENT}}') columnMapping.push({ col: colNumber, dataKey: 'TOTAL_HRS_SPENT' });
+                if (cellText === '{{REMARKS}}') columnMapping.push({ col: colNumber, dataKey: 'REMARKS' });
             });
 
-            worksheet.spliceRows(templateRowNumber, 1);
-            
+            // Insert and populate data rows
+            if (data.length > 0) {
+                const rowsToAdd = data.map(rowData => 
+                    columnMapping.reduce((acc, { dataKey }) => {
+                        acc.push(rowData[dataKey]);
+                        return acc;
+                    }, [] as (string | number)[])
+                );
+                
+                worksheet.spliceRows(templateRowNumber, 1, ...rowsToAdd);
+
+                // Re-apply styles from the template row to all new data rows
+                for(let i = 0; i < data.length; i++) {
+                    const newRow = worksheet.getRow(templateRowNumber + i);
+                    newRow.height = templateRow.height;
+                    templateRow.eachCell({ includeEmpty: true }, (templateCell, colNumber) => {
+                        newRow.getCell(colNumber).style = templateCell.style;
+                    });
+                }
+            } else {
+                 worksheet.spliceRows(templateRowNumber, 1);
+            }
+
+            // Find signature cell and add image
             let sigRowNumber = -1;
             let sigColNumber = -1;
             worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
@@ -1197,4 +1206,5 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
 
