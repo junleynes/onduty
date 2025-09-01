@@ -208,7 +208,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Find the template row
             let templateRowNumber = -1;
-            let templateRow;
+            let templateRow: ExcelJS.Row | undefined;
 
             worksheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
                  row.eachCell({ includeEmpty: true }, (cell) => {
@@ -224,14 +224,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             // Add all the new rows by duplicating the template row
-            data.rows.forEach((rowData, index) => {
-                // The row we duplicate is always the original template row
+            let lastInsertedRowNumber = templateRowNumber;
+            data.rows.forEach((rowData) => {
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                // The new row is inserted *after* the duplicated one, so its index is templateRowNumber + 1
-                const newRow = worksheet.getRow(templateRowNumber + 1);
+                const newRow = worksheet.getRow(lastInsertedRowNumber + 1);
 
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                     const originalCell = templateRow.getCell(colNumber); // Get style from original template
+                     const originalCell = templateRow!.getCell(colNumber);
                      if (originalCell.value && typeof originalCell.value === 'string') {
                         let text = originalCell.value;
                         text = text.replace(/{{employee_name}}/g, String(rowData[0]));
@@ -246,12 +245,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         cell.value = text;
                     }
                 });
+                 lastInsertedRowNumber++;
             });
-
-            // Remove the original template row only after all duplication is complete
-            if (data.rows.length > 0) {
-                 worksheet.spliceRows(templateRowNumber, 1);
-            }
+            
+            worksheet.spliceRows(templateRowNumber, 1);
 
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -674,7 +671,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Row placeholders
             let templateRowNumber = -1;
-            let templateRow;
+            let templateRow: ExcelJS.Row | undefined;
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
@@ -689,12 +686,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
 
             // Add all the new rows by duplicating the template row
+            let lastInsertedRowNumber = templateRowNumber;
             data.rows.forEach((rowData) => {
                 worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber + 1);
+                const newRow = worksheet.getRow(lastInsertedRowNumber + 1);
 
                 newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-                    const originalCell = templateRow.getCell(colNumber);
+                    const originalCell = templateRow!.getCell(colNumber);
                     if (originalCell.value && typeof originalCell.value === 'string') {
                         let text = originalCell.value;
                         text = text.replace(/{{DATE}}/g, String(rowData[0]));
@@ -704,6 +702,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         cell.value = text;
                     }
                 });
+                 lastInsertedRowNumber++;
             });
             
             // Remove the original template row
@@ -1137,4 +1136,5 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
 
