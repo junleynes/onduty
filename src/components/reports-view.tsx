@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -128,16 +127,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         
         const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
 
-        if (leaveEntry) {
+        if (leaveEntry || shift?.isHolidayOff) {
             return { ...defaultSchedule, day_status: '' };
-        }
-        
-        if (shift?.isHolidayOff) {
-            return { ...defaultSchedule, day_status: '' };
-        }
-        
-        if (holiday && (!shift || shift.isDayOff)) {
-             return { ...emptySchedule, day_status: 'HOLIDAY' };
         }
         
         if (shift) {
@@ -153,6 +144,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
                 paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
             };
+        }
+        
+        if (holiday) {
+             return { ...emptySchedule, day_status: 'HOLIDAY' };
         }
 
         return emptySchedule;
@@ -597,12 +592,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
     // --- WFH Certification Functions ---
     const generateWfhCertificationData = (): WfhCertRowData[] | null => {
-        if (!wfhCertDateRange || !wfhCertDateRange.from) {
+        if (!wfhCertDateRange || !wfhCertDateRange.from || !wfhCertDateRange.to) {
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month for the report.' });
             return null;
         }
-    
-        const daysInInterval = eachDayOfInterval({ start: wfhCertDateRange.from, end: wfhCertDateRange.to });
+
+        const daysInInterval = eachDayOfInterval({ start: wfhCertDateRange.from, end: wfhCertDateRange.to })
+            .filter(day => getMonth(day) === getMonth(wfhCertDateRange.from!));
+            
         const rows: WfhCertRowData[] = [];
     
         daysInInterval.forEach(day => {
@@ -681,36 +678,41 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             // Global placeholders
             worksheet.eachRow({ includeEmpty: true }, (row) => {
                 row.eachCell({ includeEmpty: true }, (cell) => {
+                    const replacePlaceholders = (text: string) => {
+                        if (!text) return text;
+                        let newText = text;
+                        newText = newText.replace(/{{first_day_of_month}}/g, format(startOfMonth(wfhCertDateRange.from!), 'MMMM d, yyyy'));
+                        newText = newText.replace(/{{last_day_of_month}}/g, format(endOfMonth(wfhCertDateRange.from!), 'MMMM d, yyyy'));
+                        newText = newText.replace(/{{employee_name}}/g, getFullName(currentUser));
+                        newText = newText.replace(/{{reports_to_manager}}/g, manager ? getFullName(manager) : 'N/A');
+                        return newText;
+                    }
                     if (cell.value && typeof cell.value === 'string') {
-                        let text = cell.value;
-                        text = text.replace(/{{first_day_of_month}}/g, format(startOfMonth(wfhCertDateRange.from!), 'MMMM d, yyyy'));
-                        text = text.replace(/{{last_day_of_month}}/g, format(endOfMonth(wfhCertDateRange.from!), 'MMMM d, yyyy'));
-                        text = text.replace(/{{employee_name}}/g, getFullName(currentUser));
-                        text = text.replace(/{{reports_to_manager}}/g, manager ? getFullName(manager) : 'N/A');
-                        cell.value = text;
+                        cell.value = replacePlaceholders(cell.value);
+                    } else if (cell.value && typeof cell.value === 'object' && 'richText' in cell.value) {
+                        const richText = cell.value as ExcelJS.RichText;
+                        richText.richText = richText.richText.map(rt => ({...rt, text: replacePlaceholders(rt.text)}));
+                        cell.value = richText;
                     }
                 });
             });
     
             let templateRowNumber = -1;
             worksheet.eachRow((row, rowNum) => {
+                if (templateRowNumber !== -1) return;
                 row.eachCell((cell) => {
                     const cellValue = cell.value;
-                    if(typeof cellValue === 'object' && cellValue && 'richText' in cellValue) {
-                        // Handle rich text
+                     if(typeof cellValue === 'object' && cellValue && 'richText' in cellValue) {
                         for(const textRun of (cellValue as ExcelJS.RichText).richText) {
-                            if (textRun.text.includes('{{DATE}}')) {
+                            if (textRun.text?.includes('{{DATE}}')) {
                                 templateRowNumber = rowNum;
-                                break;
+                                return;
                             }
                         }
-                    } else if (typeof cellValue === 'string') {
-                         if (cellValue.includes('{{DATE}}')) {
-                            templateRowNumber = rowNum;
-                        }
+                    } else if (typeof cellValue === 'string' && cellValue.includes('{{DATE}}')) {
+                        templateRowNumber = rowNum;
                     }
                 });
-                if (templateRowNumber !== -1) return;
             });
 
             if (templateRowNumber === -1) {
@@ -718,8 +720,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
-
-            // Create a map of placeholders to column numbers from the template row
             const placeholderMap: { [key: string]: number } = {};
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 const cellText = cell.text;
@@ -735,14 +735,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             // Populate and style them
             data.forEach((rowData, index) => {
                 const newRow = worksheet.getRow(templateRowNumber + 1 + index);
+                newRow.height = templateRow.height;
                 for (const key in placeholderMap) {
                     const col = placeholderMap[key as keyof WfhCertRowData];
                     const dataKey = key as keyof WfhCertRowData;
                     
                     const newCell = newRow.getCell(col);
-                    newCell.value = rowData[dataKey];
-                    
                     const templateCell = templateRow.getCell(col);
+
+                    newCell.value = rowData[dataKey];
                     newCell.style = { ...templateCell.style };
                 }
                 newRow.commit();
@@ -755,21 +756,35 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             let sigColNumber = -1;
             worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
                 row.eachCell((cell, colNumber) => {
-                    if (typeof cell.value === 'string' && cell.value.includes('{{employee_signature}}')) {
-                        sigRowNumber = rowNumber;
-                        sigColNumber = colNumber;
-                        cell.value = ''; // Clear placeholder
+                    const findAndClearPlaceholder = (text: string) => {
+                        if (typeof text === 'string' && text.includes('{{employee_signature}}')) {
+                            sigRowNumber = rowNumber;
+                            sigColNumber = colNumber;
+                            return text.replace('{{employee_signature}}', '');
+                        }
+                        return text;
+                    }
+
+                    if (typeof cell.value === 'string') {
+                       cell.value = findAndClearPlaceholder(cell.value);
+                    } else if (cell.value && typeof cell.value === 'object' && 'richText' in cell.value) {
+                         const richText = cell.value as ExcelJS.RichText;
+                         richText.richText = richText.richText.map(rt => ({...rt, text: findAndClearPlaceholder(rt.text)}));
+                         cell.value = richText;
                     }
                 });
             });
+            
+            const finalSigRow = sigRowNumber > -1 ? sigRowNumber - 1 : worksheet.lastRow ? worksheet.lastRow.number + 2 : data.length + 10;
+            const finalSigCol = sigColNumber > -1 ? sigColNumber - 1 : 1;
 
-            if (currentUser.signature && sigRowNumber !== -1 && sigColNumber !== -1) {
+            if (currentUser.signature) {
                 const signatureImageId = workbook.addImage({
                     base64: currentUser.signature.split(',')[1],
                     extension: 'png',
                 });
                 worksheet.addImage(signatureImageId, {
-                    tl: { col: sigColNumber - 1, row: sigRowNumber - 1 },
+                    tl: { col: finalSigCol, row: finalSigRow },
                     ext: { width: 100, height: 40 }
                 });
             }
@@ -1206,7 +1221,5 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-
 
     
