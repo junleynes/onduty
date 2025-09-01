@@ -606,11 +606,6 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const rows: WfhCertRowData[] = [];
     
         daysInInterval.forEach(day => {
-            // This is the fix: strictly check if the day is in the selected month
-            if (getMonth(day) !== getMonth(wfhCertDateRange.from!)) {
-                return;
-            }
-
             const shift = shifts.find(s => s.employeeId === currentUser.id && isSameDay(new Date(s.date), day));
             const leaveEntry = leave.find(l => l.employeeId === currentUser.id && isSameDay(new Date(l.date), day));
     
@@ -697,11 +692,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             });
     
-            const templateRow = worksheet.getRow(9);
-            if (!templateRow.values.some(v => typeof v === 'string' && v.text.includes('{{DATE}}'))) {
-                 throw new Error("Template row with placeholder `{{DATE}}` not found on row 9.");
+            let templateRowNumber = -1;
+            worksheet.eachRow((row, rowNum) => {
+                row.eachCell((cell) => {
+                    const cellText = cell.text;
+                    if (typeof cellText === 'string' && cellText.includes('{{DATE}}')) {
+                        templateRowNumber = rowNum;
+                    }
+                });
+            });
+
+            if (templateRowNumber === -1) {
+                throw new Error("Template row with placeholder `{{DATE}}` not found.");
             }
             
+            const templateRow = worksheet.getRow(templateRowNumber);
             const placeholderMap: { [key: number]: keyof WfhCertRowData } = {};
             templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
                 const cellValue = cell.text;
@@ -712,11 +717,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
             
             // Insert data rows
-            worksheet.insertRows(10, data);
+            worksheet.insertRows(templateRowNumber + 1, data);
 
             // Populate and style them
             data.forEach((rowData, index) => {
-                const newRow = worksheet.getRow(10 + index);
+                const newRow = worksheet.getRow(templateRowNumber + 1 + index);
                 for (const colStr in placeholderMap) {
                     const col = parseInt(colStr, 10);
                     const dataKey = placeholderMap[col];
@@ -728,7 +733,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
 
             // Remove the template row
-            worksheet.spliceRows(9, 1);
+            worksheet.spliceRows(templateRowNumber, 1);
 
             let sigRowNumber = -1;
             let sigColNumber = -1;
@@ -1185,3 +1190,4 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
