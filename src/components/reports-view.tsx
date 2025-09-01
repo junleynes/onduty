@@ -62,6 +62,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [reportGenerator, setReportGenerator] = useState<(() => Promise<void>) | null>(null);
     const [reportTitle, setReportTitle] = useState('');
 
+    const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
+
 
     const attendanceDateRange = useMemo(() => {
         if (!attendanceWeek) return undefined;
@@ -818,289 +820,291 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <Card className="p-6">
-                        <h3 className="font-semibold text-lg mb-2">Regular Work Schedule</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Generate a report of employee work schedules for a specific period.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    id="date"
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-full sm:w-[300px] justify-start text-left font-normal",
-                                    !workScheduleDateRange && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {workScheduleDateRange?.from ? (
-                                    workScheduleDateRange.to ? (
-                                        <>
-                                        {format(workScheduleDateRange.from, "LLL dd, y")} -{" "}
-                                        {format(workScheduleDateRange.to, "LLL dd, y")}
-                                        </>
-                                    ) : (
-                                        format(workScheduleDateRange.from, "LLL dd, y")
-                                    )
-                                    ) : (
-                                    <span>Pick a date range</span>
-                                    )}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0 flex" align="start">
-                                    <div className="flex flex-col space-y-2 p-4 border-r">
-                                        <h4 className="font-medium text-sm">Presets</h4>
-                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('first-half', 0)}>This Month (1-15)</Button>
-                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('second-half', 0)}>This Month (16-EOM)</Button>
-                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('first-half', -1)}>Last Month (1-15)</Button>
-                                        <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('second-half', -1)}>Last Month (16-EOM)</Button>
-                                    </div>
-                                    <Calendar
-                                        initialFocus
-                                        mode="range"
-                                        defaultMonth={workScheduleDateRange?.from}
-                                        selected={workScheduleDateRange}
-                                        onSelect={setWorkScheduleDateRange}
-                                        numberOfMonths={2}
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                            <Button variant="outline" onClick={() => setIsWorkScheduleUploaderOpen(true)}>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload Template
-                            </Button>
-                        </div>
-                         <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
-                             <Button onClick={() => handleViewReport('workSchedule')} disabled={!workScheduleDateRange}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Report
-                            </Button>
-                            <Button onClick={() => handleDirectDownload('workSchedule')} disabled={!workScheduleDateRange || !workScheduleTemplate}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Generate & Download
-                            </Button>
-                        </CardFooter>
-                    </Card>
+                    {isManager && (
+                        <>
+                            <Card className="p-6">
+                                <h3 className="font-semibold text-lg mb-2">Regular Work Schedule</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Generate a report of employee work schedules for a specific period.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            id="date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full sm:w-[300px] justify-start text-left font-normal",
+                                            !workScheduleDateRange && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {workScheduleDateRange?.from ? (
+                                            workScheduleDateRange.to ? (
+                                                <>
+                                                {format(workScheduleDateRange.from, "LLL dd, y")} -{" "}
+                                                {format(workScheduleDateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                                format(workScheduleDateRange.from, "LLL dd, y")
+                                            )
+                                            ) : (
+                                            <span>Pick a date range</span>
+                                            )}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0 flex" align="start">
+                                            <div className="flex flex-col space-y-2 p-4 border-r">
+                                                <h4 className="font-medium text-sm">Presets</h4>
+                                                <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('first-half', 0)}>This Month (1-15)</Button>
+                                                <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('second-half', 0)}>This Month (16-EOM)</Button>
+                                                <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('first-half', -1)}>Last Month (1-15)</Button>
+                                                <Button variant="ghost" className="justify-start" onClick={() => setSemiMonthlyRange('second-half', -1)}>Last Month (16-EOM)</Button>
+                                            </div>
+                                            <Calendar
+                                                initialFocus
+                                                mode="range"
+                                                defaultMonth={workScheduleDateRange?.from}
+                                                selected={workScheduleDateRange}
+                                                onSelect={setWorkScheduleDateRange}
+                                                numberOfMonths={2}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Button variant="outline" onClick={() => setIsWorkScheduleUploaderOpen(true)}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Upload Template
+                                    </Button>
+                                </div>
+                                <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                                    <Button onClick={() => handleViewReport('workSchedule')} disabled={!workScheduleDateRange}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Report
+                                    </Button>
+                                    <Button onClick={() => handleDirectDownload('workSchedule')} disabled={!workScheduleDateRange || !workScheduleTemplate}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Generate & Download
+                                    </Button>
+                                </CardFooter>
+                            </Card>
 
-                     <Card className="p-6">
-                        <h3 className="font-semibold text-lg mb-2">Attendance Sheet</h3>
+                            <Card className="p-6">
+                                <h3 className="font-semibold text-lg mb-2">Attendance Sheet</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Generate a weekly attendance sheet (Mon-Sun) based on a template.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            id="attendance-date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full sm:w-[300px] justify-start text-left font-normal",
+                                            !attendanceDateRange && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {attendanceDateRange?.from ? (
+                                                <>
+                                                {format(attendanceDateRange.from, "LLL dd, y")} -{" "}
+                                                {format(attendanceDateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                            <span>Pick a week</span>
+                                            )}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            initialFocus
+                                            mode="single"
+                                            selected={attendanceWeek}
+                                            onSelect={setAttendanceWeek}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Button variant="outline" onClick={() => setIsAttendanceUploaderOpen(true)}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Upload Template
+                                    </Button>
+                                </div>
+                                <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                                    <Button onClick={() => handleViewReport('attendance')} disabled={!attendanceDateRange}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Report
+                                    </Button>
+                                    <Button onClick={() => handleDirectDownload('attendance')} disabled={!attendanceDateRange || !attendanceTemplate}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Generate & Download
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+
+                            <Card className="p-6">
+                                <h3 className="font-semibold text-lg mb-2">Summary Per User</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Generate an individual summary of shifts, hours, and leave for each employee.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            id="summary-date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full sm:w-[300px] justify-start text-left font-normal",
+                                            !summaryDateRange && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {summaryDateRange?.from ? (
+                                            summaryDateRange.to ? (
+                                                <>
+                                                {format(summaryDateRange.from, "LLL dd, y")} -{" "}
+                                                {format(summaryDateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                                format(summaryDateRange.from, "LLL dd, y")
+                                            )
+                                            ) : (
+                                            <span>Pick a date range</span>
+                                            )}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            initialFocus
+                                            mode="range"
+                                            defaultMonth={summaryDateRange?.from}
+                                            selected={summaryDateRange}
+                                            onSelect={setSummaryDateRange}
+                                            numberOfMonths={2}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                                <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                                    <Button onClick={() => handleViewReport('userSummary')} disabled={!summaryDateRange}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Report
+                                    </Button>
+                                    <Button onClick={() => handleDirectDownload('userSummary')} disabled={!summaryDateRange}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Generate & Download
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                            
+                            <Card className="p-6">
+                                <h3 className="font-semibold text-lg mb-2">Cumulative Tardy Report</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    Combines tardiness data from leave requests and manual CSV uploads.
+                                </p>
+                                <div className="flex flex-col sm:flex-row gap-4">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                        <Button
+                                            id="tardy-date"
+                                            variant={"outline"}
+                                            className={cn(
+                                            "w-full sm:w-[300px] justify-start text-left font-normal",
+                                            !tardyDateRange && "text-muted-foreground"
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {tardyDateRange?.from ? (
+                                            tardyDateRange.to ? (
+                                                <>
+                                                {format(tardyDateRange.from, "LLL dd, y")} -{" "}
+                                                {format(tardyDateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                                format(tardyDateRange.from, "LLL dd, y")
+                                            )
+                                            ) : (
+                                            <span>Pick a date range</span>
+                                            )}
+                                        </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            initialFocus
+                                            mode="range"
+                                            defaultMonth={tardyDateRange?.from}
+                                            selected={tardyDateRange}
+                                            onSelect={setTardyDateRange}
+                                            numberOfMonths={2}
+                                        />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Button variant="outline" onClick={() => setIsTardyImporterOpen(true)}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Import Tardy Data
+                                    </Button>
+                                </div>
+                                <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                                    <Button onClick={() => handleViewReport('tardy')} disabled={!tardyDateRange}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Report
+                                    </Button>
+                                    <Button onClick={() => handleDirectDownload('tardy')} disabled={!tardyDateRange}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Generate & Download
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        </>
+                    )}
+
+                    <Card className="p-6">
+                        <h3 className="font-semibold text-lg mb-2">Work From Home Certification</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                            Generate a weekly attendance sheet (Mon-Sun) based on a template.
+                            Generate a WFH certification for the current user for a specific month.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4">
-                             <Popover>
+                            <Popover>
                                 <PopoverTrigger asChild>
                                 <Button
-                                    id="attendance-date"
+                                    id="wfh-cert-date"
                                     variant={"outline"}
                                     className={cn(
                                     "w-full sm:w-[300px] justify-start text-left font-normal",
-                                    !attendanceDateRange && "text-muted-foreground"
+                                    !wfhCertMonth && "text-muted-foreground"
                                     )}
                                 >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {attendanceDateRange?.from ? (
-                                        <>
-                                        {format(attendanceDateRange.from, "LLL dd, y")} -{" "}
-                                        {format(attendanceDateRange.to, "LLL dd, y")}
-                                        </>
-                                    ) : (
-                                    <span>Pick a week</span>
-                                    )}
+                                    {wfhCertMonth ? format(wfhCertMonth, "MMMM yyyy") : <span>Pick a month</span>}
                                 </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
                                 <Calendar
                                     initialFocus
                                     mode="single"
-                                    selected={attendanceWeek}
-                                    onSelect={setAttendanceWeek}
+                                    selected={wfhCertMonth}
+                                    onSelect={setWfhCertMonth}
+                                    captionLayout="dropdown-buttons"
+                                    fromYear={2020}
+                                    toYear={new Date().getFullYear() + 1}
                                 />
                                 </PopoverContent>
                             </Popover>
-                            <Button variant="outline" onClick={() => setIsAttendanceUploaderOpen(true)}>
+                            <Button variant="outline" onClick={() => setIsWfhCertUploaderOpen(true)}>
                                 <Upload className="mr-2 h-4 w-4" />
                                 Upload Template
                             </Button>
                         </div>
-                         <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
-                            <Button onClick={() => handleViewReport('attendance')} disabled={!attendanceDateRange}>
+                        <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
+                            <Button onClick={() => handleViewReport('wfh')} disabled={!wfhCertMonth}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Report
                             </Button>
-                            <Button onClick={() => handleDirectDownload('attendance')} disabled={!attendanceDateRange || !attendanceTemplate}>
+                            <Button onClick={() => handleDirectDownload('wfh')} disabled={!wfhCertMonth || !wfhCertTemplate}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Generate & Download
                             </Button>
                         </CardFooter>
                     </Card>
-
-                    <Card className="p-6">
-                        <h3 className="font-semibold text-lg mb-2">Summary Per User</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Generate an individual summary of shifts, hours, and leave for each employee.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    id="summary-date"
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-full sm:w-[300px] justify-start text-left font-normal",
-                                    !summaryDateRange && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {summaryDateRange?.from ? (
-                                    summaryDateRange.to ? (
-                                        <>
-                                        {format(summaryDateRange.from, "LLL dd, y")} -{" "}
-                                        {format(summaryDateRange.to, "LLL dd, y")}
-                                        </>
-                                    ) : (
-                                        format(summaryDateRange.from, "LLL dd, y")
-                                    )
-                                    ) : (
-                                    <span>Pick a date range</span>
-                                    )}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={summaryDateRange?.from}
-                                    selected={summaryDateRange}
-                                    onSelect={setSummaryDateRange}
-                                    numberOfMonths={2}
-                                />
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-                         <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
-                             <Button onClick={() => handleViewReport('userSummary')} disabled={!summaryDateRange}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Report
-                            </Button>
-                            <Button onClick={() => handleDirectDownload('userSummary')} disabled={!summaryDateRange}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Generate & Download
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                    
-                    <Card className="p-6">
-                        <h3 className="font-semibold text-lg mb-2">Cumulative Tardy Report</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Combines tardiness data from leave requests and manual CSV uploads.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-4">
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                <Button
-                                    id="tardy-date"
-                                    variant={"outline"}
-                                    className={cn(
-                                    "w-full sm:w-[300px] justify-start text-left font-normal",
-                                    !tardyDateRange && "text-muted-foreground"
-                                    )}
-                                >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {tardyDateRange?.from ? (
-                                    tardyDateRange.to ? (
-                                        <>
-                                        {format(tardyDateRange.from, "LLL dd, y")} -{" "}
-                                        {format(tardyDateRange.to, "LLL dd, y")}
-                                        </>
-                                    ) : (
-                                        format(tardyDateRange.from, "LLL dd, y")
-                                    )
-                                    ) : (
-                                    <span>Pick a date range</span>
-                                    )}
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    initialFocus
-                                    mode="range"
-                                    defaultMonth={tardyDateRange?.from}
-                                    selected={tardyDateRange}
-                                    onSelect={setTardyDateRange}
-                                    numberOfMonths={2}
-                                />
-                                </PopoverContent>
-                            </Popover>
-                            <Button variant="outline" onClick={() => setIsTardyImporterOpen(true)}>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Import Tardy Data
-                            </Button>
-                        </div>
-                         <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
-                             <Button onClick={() => handleViewReport('tardy')} disabled={!tardyDateRange}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Report
-                            </Button>
-                            <Button onClick={() => handleDirectDownload('tardy')} disabled={!tardyDateRange}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Generate & Download
-                            </Button>
-                        </CardFooter>
-                    </Card>
-
-                    {currentUser.role === 'manager' && (
-                        <Card className="p-6">
-                            <h3 className="font-semibold text-lg mb-2">Work From Home Certification</h3>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                Generate a WFH certification for the current user for a specific month.
-                            </p>
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                    <Button
-                                        id="wfh-cert-date"
-                                        variant={"outline"}
-                                        className={cn(
-                                        "w-full sm:w-[300px] justify-start text-left font-normal",
-                                        !wfhCertMonth && "text-muted-foreground"
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {wfhCertMonth ? format(wfhCertMonth, "MMMM yyyy") : <span>Pick a month</span>}
-                                    </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        initialFocus
-                                        mode="single"
-                                        selected={wfhCertMonth}
-                                        onSelect={setWfhCertMonth}
-                                        captionLayout="dropdown-buttons"
-                                        fromYear={2020}
-                                        toYear={new Date().getFullYear() + 1}
-                                    />
-                                    </PopoverContent>
-                                </Popover>
-                                <Button variant="outline" onClick={() => setIsWfhCertUploaderOpen(true)}>
-                                    <Upload className="mr-2 h-4 w-4" />
-                                    Upload Template
-                                </Button>
-                            </div>
-                            <CardFooter className="px-0 pt-6 pb-0 flex gap-2">
-                                <Button onClick={() => handleViewReport('wfh')} disabled={!wfhCertMonth}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Report
-                                </Button>
-                                <Button onClick={() => handleDirectDownload('wfh')} disabled={!wfhCertMonth || !wfhCertTemplate}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Generate & Download
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    )}
 
                 </CardContent>
             </Card>

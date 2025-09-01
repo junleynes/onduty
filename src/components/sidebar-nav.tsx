@@ -114,6 +114,12 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
                 { view: 'holidays', label: 'Holidays', icon: PartyPopper, iconColor: 'bg-yellow-500' },
             ]
         },
+        {
+            label: 'Reports',
+            items: [
+                { view: 'reports', label: 'Reports', icon: FileText, iconColor: 'bg-gray-500' },
+            ]
+        }
     ]
 };
 
