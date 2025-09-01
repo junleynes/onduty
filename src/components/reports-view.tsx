@@ -205,27 +205,32 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Find the template row
             let templateRowNumber = -1;
+            let templateRow;
 
             worksheet.eachRow({ includeEmpty: true }, (row, rowNum) => {
                  row.eachCell({ includeEmpty: true }, (cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
                        templateRowNumber = rowNum;
+                       templateRow = row;
                     }
                  });
             });
             
-            if (templateRowNumber === -1) {
+            if (templateRowNumber === -1 || !templateRow) {
                 throw new Error("No template row with `{{employee_name}}` placeholder found in the template.");
             }
             
+            const lastRowNumber = templateRowNumber;
+            
             // Add all the new rows by duplicating the template row
             data.rows.forEach(rowData => {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber);
+                worksheet.duplicateRow(lastRowNumber, 1, true);
+                const newRow = worksheet.getRow(lastRowNumber + 1);
 
-                newRow.eachCell({ includeEmpty: true }, (cell) => {
-                     if (cell.value && typeof cell.value === 'string') {
-                        let text = cell.value;
+                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                     const originalCell = templateRow.getCell(colNumber);
+                     if (originalCell.value && typeof originalCell.value === 'string') {
+                        let text = originalCell.value;
                         text = text.replace(/{{employee_name}}/g, String(rowData[0]));
                         text = text.replace(/{{date}}/g, String(rowData[1]));
                         text = text.replace(/{{day_status}}/g, String(rowData[2]));
@@ -242,7 +247,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Remove the original template row
             if (data.rows.length > 0) {
-                 worksheet.spliceRows(templateRowNumber + data.rows.length, 1);
+                 worksheet.spliceRows(templateRowNumber, 1);
             }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
@@ -666,26 +671,31 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             // Row placeholders
             let templateRowNumber = -1;
+            let templateRow;
             worksheet.eachRow((row, rowNum) => {
                 row.eachCell((cell) => {
                     if (typeof cell.value === 'string' && cell.value.includes('{{DATE}}')) {
                        templateRowNumber = rowNum;
+                       templateRow = row;
                     }
                 });
             });
 
-            if (templateRowNumber === -1) {
+            if (templateRowNumber === -1 || !templateRow) {
                 throw new Error("Template row with `{{DATE}}` placeholder not found.");
             }
 
+            const lastRowNumber = templateRowNumber;
+
             // Add all the new rows by duplicating the template row
             data.rows.forEach(rowData => {
-                worksheet.duplicateRow(templateRowNumber, 1, true);
-                const newRow = worksheet.getRow(templateRowNumber);
+                worksheet.duplicateRow(lastRowNumber, 1, true);
+                const newRow = worksheet.getRow(lastRowNumber + 1);
 
-                newRow.eachCell({ includeEmpty: true }, (cell) => {
-                    if (cell.value && typeof cell.value === 'string') {
-                        let text = cell.value;
+                newRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                    const originalCell = templateRow.getCell(colNumber);
+                    if (originalCell.value && typeof originalCell.value === 'string') {
+                        let text = originalCell.value;
                         text = text.replace(/{{DATE}}/g, String(rowData[0]));
                         text = text.replace(/{{ATTENDANCE_RENDERED}}/g, String(rowData[1]));
                         text = text.replace(/{{TOTAL_HRS_SPENT}}/g, String(rowData[2]));
@@ -697,7 +707,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             
             // Remove the original template row
             if (data.rows.length > 0) {
-                 worksheet.spliceRows(templateRowNumber + data.rows.length, 1);
+                 worksheet.spliceRows(templateRowNumber, 1);
             }
 
             const uint8Array = await workbook.xlsx.writeBuffer();
