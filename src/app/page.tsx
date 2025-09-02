@@ -132,10 +132,21 @@ function AppContent() {
           
           let userToSet: Employee | null = null;
           
+          // Use DB user if found, otherwise trust localStorage (for hardcoded admin)
           if (userFromDb) {
             userToSet = userFromDb;
-          } else if (storedUser.email === 'admin@onduty.local') {
-            userToSet = storedUser;
+          } else if (storedUser.id === 'emp-admin-01') {
+            userToSet = {
+                id: "emp-admin-01",
+                employeeNumber: "001",
+                firstName: "Super",
+                lastName: "Admin",
+                email: "admin@onduty.local",
+                phone: "123-456-7890",
+                position: "System Administrator",
+                role: "admin",
+                group: "Administration"
+            };
           }
 
           if (userToSet) {

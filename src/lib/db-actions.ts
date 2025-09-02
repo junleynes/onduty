@@ -117,7 +117,7 @@ export async function saveAllData({
   smtpSettings: SmtpSettings;
 }) {
   try {
-    const upsertEmployee = db.prepare(`
+    const upsertEmployeeStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, groupName, avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @groupName, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
       ON CONFLICT(id) DO UPDATE SET
@@ -126,9 +126,9 @@ export async function saveAllData({
         reportsTo=excluded.reportsTo, birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
     `);
 
-    const deleteEmployee = db.prepare('DELETE FROM employees WHERE id = ?');
+    const deleteEmployeeStmt = db.prepare('DELETE FROM employees WHERE id = ?');
     
-    const upsertShift = db.prepare(`
+    const upsertShiftStmt = db.prepare(`
         INSERT INTO shifts (id, employeeId, label, startTime, endTime, date, color, isDayOff, isHolidayOff, status, breakStartTime, breakEndTime, isUnpaidBreak)
         VALUES (@id, @employeeId, @label, @startTime, @endTime, @date, @color, @isDayOff, @isHolidayOff, @status, @breakStartTime, @breakEndTime, @isUnpaidBreak)
         ON CONFLICT(id) DO UPDATE SET
@@ -136,10 +136,9 @@ export async function saveAllData({
             isDayOff=excluded.isDayOff, isHolidayOff=excluded.isHolidayOff, status=excluded.status, breakStartTime=excluded.breakStartTime, breakEndTime=excluded.breakEndTime, isUnpaidBreak=excluded.isUnpaidBreak
     `);
 
-    const deleteShift = db.prepare('DELETE FROM shifts WHERE id = ?');
+    const deleteShiftStmt = db.prepare('DELETE FROM shifts WHERE id = ?');
 
-    // Add similar statements for leave, notes, holidays, tasks, allowances
-    const upsertLeave = db.prepare(`
+    const upsertLeaveStmt = db.prepare(`
       INSERT INTO leave (id, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime)
       VALUES (@id, @employeeId, @type, @color, @date, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime)
       ON CONFLICT(id) DO UPDATE SET
@@ -147,42 +146,41 @@ export async function saveAllData({
         status=excluded.status, reason=excluded.reason, requestedAt=excluded.requestedAt, managedBy=excluded.managedBy, managedAt=excluded.managedAt, originalShiftDate=excluded.originalShiftDate,
         originalStartTime=excluded.originalStartTime, originalEndTime=excluded.originalEndTime
     `);
-    const deleteLeave = db.prepare('DELETE FROM leave WHERE id = ?');
+    const deleteLeaveStmt = db.prepare('DELETE FROM leave WHERE id = ?');
     
-    const upsertNote = db.prepare('INSERT INTO notes (id, date, title, description) VALUES (@id, @date, @title, @description) ON CONFLICT(id) DO UPDATE SET date=excluded.date, title=excluded.title, description=excluded.description');
-    const deleteNote = db.prepare('DELETE FROM notes WHERE id = ?');
+    const upsertNoteStmt = db.prepare('INSERT INTO notes (id, date, title, description) VALUES (@id, @date, @title, @description) ON CONFLICT(id) DO UPDATE SET date=excluded.date, title=excluded.title, description=excluded.description');
+    const deleteNoteStmt = db.prepare('DELETE FROM notes WHERE id = ?');
 
-    const upsertHoliday = db.prepare('INSERT INTO holidays (id, date, title) VALUES (@id, @date, @title) ON CONFLICT(id) DO UPDATE SET date=excluded.date, title=excluded.title');
-    const deleteHoliday = db.prepare('DELETE FROM holidays WHERE id = ?');
+    const upsertHolidayStmt = db.prepare('INSERT INTO holidays (id, date, title) VALUES (@id, @date, @title) ON CONFLICT(id) DO UPDATE SET date=excluded.date, title=excluded.title');
+    const deleteHolidayStmt = db.prepare('DELETE FROM holidays WHERE id = ?');
     
-    const upsertTask = db.prepare(`
+    const upsertTaskStmt = db.prepare(`
       INSERT INTO tasks (id, shiftId, assigneeId, scope, title, description, status, completedAt, dueDate, createdBy)
       VALUES (@id, @shiftId, @assigneeId, @scope, @title, @description, @status, @completedAt, @dueDate, @createdBy)
       ON CONFLICT(id) DO UPDATE SET
         shiftId=excluded.shiftId, assigneeId=excluded.assigneeId, scope=excluded.scope, title=excluded.title, description=excluded.description,
         status=excluded.status, completedAt=excluded.completedAt, dueDate=excluded.dueDate, createdBy=excluded.createdBy
     `);
-    const deleteTask = db.prepare('DELETE FROM tasks WHERE id = ?');
+    const deleteTaskStmt = db.prepare('DELETE FROM tasks WHERE id = ?');
 
-    const upsertAllowance = db.prepare(`
+    const upsertAllowanceStmt = db.prepare(`
       INSERT INTO communication_allowances (id, employeeId, year, month, balance, asOfDate, screenshot)
       VALUES (@id, @employeeId, @year, @month, @balance, @asOfDate, @screenshot)
       ON CONFLICT(id) DO UPDATE SET
         employeeId=excluded.employeeId, year=excluded.year, month=excluded.month, balance=excluded.balance, asOfDate=excluded.asOfDate, screenshot=excluded.screenshot
     `);
-    const deleteAllowance = db.prepare('DELETE FROM communication_allowances WHERE id = ?');
+    const deleteAllowanceStmt = db.prepare('DELETE FROM communication_allowances WHERE id = ?');
     
-    const upsertGroup = db.prepare('INSERT INTO groups (name) VALUES (?) ON CONFLICT(name) DO NOTHING');
-    const deleteGroup = db.prepare('DELETE FROM groups WHERE name = ?');
+    const upsertGroupStmt = db.prepare('INSERT INTO groups (name) VALUES (?) ON CONFLICT(name) DO NOTHING');
+    const deleteGroupStmt = db.prepare('DELETE FROM groups WHERE name = ?');
     
-    const upsertSmtpSettings = db.prepare(`
+    const upsertSmtpSettingsStmt = db.prepare(`
         INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName)
         VALUES (1, @host, @port, @secure, @user, @pass, @fromEmail, @fromName)
         ON CONFLICT(id) DO UPDATE SET
             host=excluded.host, port=excluded.port, secure=excluded.secure, user=excluded.user,
             pass=excluded.pass, fromEmail=excluded.fromEmail, fromName=excluded.fromName
     `);
-
 
     const saveTransaction = db.transaction(() => {
       // Employees
@@ -191,27 +189,26 @@ export async function saveAllData({
       const stateEmployeeIds = new Set(employees.map(e => e.id));
       
       for (const emp of employees) {
-        const empId = emp.id || uuidv4();
-        const dbEmp = dbEmployeeMap.get(empId);
-        // If the incoming employee data has a password, use it.
-        // Otherwise, use the existing password from the DB.
-        // If it's a new user (no dbEmp), use the incoming password or a default.
-        const passwordToSave = emp.password || dbEmp?.password || 'password';
+        const empToSave = { ...emp };
+        const dbEmp = dbEmployeeMap.get(empToSave.id);
+        
+        // Preserve existing password if not provided in the update
+        if (!empToSave.password && dbEmp) {
+            empToSave.password = dbEmp.password;
+        }
 
-        upsertEmployee.run({
-            ...emp,
-            id: empId,
-            password: passwordToSave,
-            groupName: emp.group,
-            birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
-            startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
-            lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
-            visibility: JSON.stringify(emp.visibility || {}),
+        upsertEmployeeStmt.run({
+            ...empToSave,
+            groupName: empToSave.group,
+            birthDate: empToSave.birthDate ? new Date(empToSave.birthDate).toISOString() : null,
+            startDate: empToSave.startDate ? new Date(empToSave.startDate).toISOString() : null,
+            lastPromotionDate: empToSave.lastPromotionDate ? new Date(empToSave.lastPromotionDate).toISOString() : null,
+            visibility: JSON.stringify(empToSave.visibility || {}),
         });
       }
       for (const dbEmp of dbEmployees) {
-          if (!stateEmployeeIds.has(dbEmp.id)) {
-              deleteEmployee.run(dbEmp.id);
+          if (!stateEmployeeIds.has(dbEmp.id) && dbEmp.id !== 'emp-admin-01') { // Don't delete hardcoded admin
+              deleteEmployeeStmt.run(dbEmp.id);
           }
       }
 
@@ -219,7 +216,7 @@ export async function saveAllData({
       const dbShiftIds = new Set(db.prepare('SELECT id FROM shifts').all().map((s: any) => s.id));
       const stateShiftIds = new Set(shifts.map(s => s.id));
       for (const shift of shifts) {
-          upsertShift.run({
+          upsertShiftStmt.run({
               ...shift,
               date: new Date(shift.date).toISOString().split('T')[0],
               isDayOff: shift.isDayOff ? 1 : 0,
@@ -228,16 +225,14 @@ export async function saveAllData({
           });
       }
       for (const dbId of dbShiftIds) {
-          if (!stateShiftIds.has(dbId)) {
-              deleteShift.run(dbId);
-          }
+          if (!stateShiftIds.has(dbId)) deleteShiftStmt.run(dbId);
       }
       
       // Leave
       const dbLeaveIds = new Set(db.prepare('SELECT id FROM leave').all().map((l: any) => l.id));
       const stateLeaveIds = new Set(leave.map(l => l.id));
        for (const l of leave) {
-          upsertLeave.run({
+          upsertLeaveStmt.run({
               ...l,
               date: new Date(l.date).toISOString().split('T')[0],
               isAllDay: l.isAllDay ? 1 : 0,
@@ -247,70 +242,68 @@ export async function saveAllData({
           });
       }
       for (const dbId of dbLeaveIds) {
-          if (!stateLeaveIds.has(dbId)) {
-              deleteLeave.run(dbId);
-          }
+          if (!stateLeaveIds.has(dbId)) deleteLeaveStmt.run(dbId);
       }
 
       // Notes
       const dbNoteIds = new Set(db.prepare('SELECT id FROM notes').all().map((n: any) => n.id));
       const stateNoteIds = new Set(notes.map(n => n.id));
       for (const note of notes) {
-        upsertNote.run({ ...note, date: new Date(note.date).toISOString().split('T')[0] });
+        upsertNoteStmt.run({ ...note, date: new Date(note.date).toISOString().split('T')[0] });
       }
       for (const dbId of dbNoteIds) {
-        if (!stateNoteIds.has(dbId)) deleteNote.run(dbId);
+        if (!stateNoteIds.has(dbId)) deleteNoteStmt.run(dbId);
       }
       
       // Holidays
       const dbHolidayIds = new Set(db.prepare('SELECT id FROM holidays').all().map((h: any) => h.id));
       const stateHolidayIds = new Set(holidays.map(h => h.id));
        for (const holiday of holidays) {
-        upsertHoliday.run({ ...holiday, date: new Date(holiday.date).toISOString().split('T')[0] });
+        upsertHolidayStmt.run({ ...holiday, date: new Date(holiday.date).toISOString().split('T')[0] });
       }
       for (const dbId of dbHolidayIds) {
-        if (!stateHolidayIds.has(dbId)) deleteHoliday.run(dbId);
+        if (!stateHolidayIds.has(dbId)) deleteHolidayStmt.run(dbId);
       }
 
       // Tasks
       const dbTaskIds = new Set(db.prepare('SELECT id FROM tasks').all().map((t: any) => t.id));
       const stateTaskIds = new Set(tasks.map(t => t.id));
       for (const task of tasks) {
-        upsertTask.run({
+        upsertTaskStmt.run({
             ...task,
             completedAt: task.completedAt? new Date(task.completedAt).toISOString() : undefined,
             dueDate: task.dueDate? new Date(task.dueDate).toISOString() : undefined,
         });
       }
       for (const dbId of dbTaskIds) {
-        if (!stateTaskIds.has(dbId)) deleteTask.run(dbId);
+        if (!stateTaskIds.has(dbId)) deleteTaskStmt.run(dbId);
       }
 
       // Allowances
       const dbAllowanceIds = new Set(db.prepare('SELECT id FROM communication_allowances').all().map((a: any) => a.id));
       const stateAllowanceIds = new Set(allowances.map(a => a.id));
        for (const allowance of allowances) {
-        upsertAllowance.run({
+        upsertAllowanceStmt.run({
             ...allowance,
             asOfDate: allowance.asOfDate? new Date(allowance.asOfDate).toISOString() : undefined,
         });
       }
       for (const dbId of dbAllowanceIds) {
-        if (!stateAllowanceIds.has(dbId)) deleteAllowance.run(dbId);
+        if (!stateAllowanceIds.has(dbId)) deleteAllowanceStmt.run(dbId);
       }
       
       // Groups
       const dbGroups = new Set(db.prepare('SELECT name FROM groups').all().map((g: any) => g.name));
       const stateGroups = new Set(groups);
       for (const group of stateGroups) {
-          if (!dbGroups.has(group)) upsertGroup.run(group);
+          if (!dbGroups.has(group)) upsertGroupStmt.run(group);
       }
       for (const dbGroup of dbGroups) {
-          if (!stateGroups.has(dbGroup)) deleteGroup.run(dbGroup);
+          if (!stateGroups.has(dbGroup)) deleteGroupStmt.run(dbGroup);
       }
 
       // SMTP Settings
-      upsertSmtpSettings.run({
+      upsertSmtpSettingsStmt.run({
           ...smtpSettings,
           secure: smtpSettings.secure ? 1 : 0
       });
