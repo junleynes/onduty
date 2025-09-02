@@ -85,30 +85,48 @@ function AppContent() {
 
   // Save all data to the database whenever there's a change
   useEffect(() => {
-    if (!initialDataLoaded) return;
+    if (!initialDataLoaded || isLoading) return;
     
     const saveData = async () => {
         setIsSaving(true);
-        await saveAllData({
-            employees,
-            shifts,
-            leave,
-            notes,
-            holidays,
-            tasks,
-            allowances,
-            groups,
-            smtpSettings,
-            tardyRecords,
-            templates
-        });
-        setIsSaving(false);
+        console.log("Attempting to save data to DB...");
+        try {
+            const result = await saveAllData({
+                employees,
+                shifts,
+                leave,
+                notes,
+                holidays,
+                tasks,
+                allowances,
+                groups,
+                smtpSettings,
+                tardyRecords,
+                templates
+            });
+
+            if (!result.success) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Save Failed',
+                    description: result.error || 'Could not save changes to the database.',
+                });
+            }
+        } catch (error) {
+             toast({
+                variant: 'destructive',
+                title: 'Save Error',
+                description: (error as Error).message,
+            });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const timeoutId = setTimeout(saveData, 1000); // Debounce saves
+    const timeoutId = setTimeout(saveData, 1500); // Debounce saves
     return () => clearTimeout(timeoutId);
 
-  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, initialDataLoaded]);
+  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, initialDataLoaded, isLoading, toast]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -128,8 +146,7 @@ function AppContent() {
         setSmtpSettings(result.data.smtpSettings);
         setTardyRecords(result.data.tardyRecords);
         setTemplates(result.data.templates);
-        setInitialDataLoaded(true);
-
+        
         const storedUserJson = localStorage.getItem('currentUser');
         if (storedUserJson) {
           const storedUser: Employee = JSON.parse(storedUserJson);
@@ -139,7 +156,7 @@ function AppContent() {
           
           if (userFromDb) {
             userToSet = userFromDb;
-          } else if (storedUser.id === 'emp-admin-01') {
+          } else if (storedUser.email === 'admin@onduty.local') {
             userToSet = {
                 id: "emp-admin-01",
                 employeeNumber: "001",
@@ -177,6 +194,7 @@ function AppContent() {
         handleLogout();
       }
       setIsLoading(false);
+      setInitialDataLoaded(true); // Signal that initial load is complete
     }
     loadDataAndAuth();
   }, [router, toast]);
