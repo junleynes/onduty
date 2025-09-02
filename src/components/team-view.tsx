@@ -91,15 +91,20 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
   };
 
   const groupedEmployees = React.useMemo(() => {
-    return employees.reduce((acc, employee) => {
-      const group = employee.group || 'Unassigned';
-      if (!acc[group]) {
-        acc[group] = [];
-      }
-      acc[group].push(employee);
-      return acc;
+    if (!currentUser || !currentUser.group) {
+        return {};
+    }
+    return employees
+      .filter(employee => employee.group === currentUser.group)
+      .reduce((acc, employee) => {
+        const group = employee.group || 'Unassigned';
+        if (!acc[group]) {
+          acc[group] = [];
+        }
+        acc[group].push(employee);
+        return acc;
     }, {} as Record<string, Employee[]>);
-  }, [employees]);
+  }, [employees, currentUser]);
 
   return (
     <>
@@ -196,6 +201,12 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
                     </AccordionItem>
                 </Card>
             ))}
+             {Object.keys(groupedEmployees).length === 0 && (
+                 <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                    <p>No team members found in your assigned group.</p>
+                    <p className="text-sm">Please contact an administrator to be assigned to a group.</p>
+                 </div>
+            )}
           </Accordion>
         </CardContent>
       </Card>
