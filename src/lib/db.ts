@@ -57,7 +57,7 @@ if (!dbExists) {
   // Seed the database with initial data
   console.log('Seeding database with initial data...');
   try {
-    const insertEmployee = db.prepare('INSERT INTO employees (id, employeeNumber, firstName, lastName, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insertEmployee = db.prepare('INSERT INTO employees (id, employeeNumber, firstName, lastName, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const insertGroup = db.prepare('INSERT INTO groups (name) VALUES (?)');
     const insertSmtpSettings = db.prepare('INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 
@@ -82,7 +82,8 @@ if (!dbExists) {
                 (emp as any).birthDate,
                 (emp as any).startDate,
                 (emp as any).signature,
-                JSON.stringify(visibility)
+                JSON.stringify(visibility),
+                (emp as any).lastPromotionDate
             );
         });
 

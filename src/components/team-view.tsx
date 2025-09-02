@@ -21,7 +21,8 @@ type TeamViewProps = {
     onEditMember: (employee: Employee) => void;
 };
 
-const calculateTenure = (startDate: Date): string => {
+const calculateTenure = (startDate: Date | undefined): string => {
+    if (!startDate) return 'N/A';
     const now = new Date();
     const years = differenceInYears(now, startDate);
     const months = differenceInMonths(now, startDate) % 12;
