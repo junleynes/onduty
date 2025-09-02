@@ -1,25 +1,24 @@
 
-
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
     employeeNumber TEXT,
-    firstName TEXT NOT NULL,
-    lastName TEXT NOT NULL,
+    firstName TEXT,
+    lastName TEXT,
     middleInitial TEXT,
-    email TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,
     phone TEXT,
     password TEXT,
     position TEXT,
     role TEXT,
-    groupName TEXT,
+    "group" TEXT,
     avatar TEXT,
     loadAllocation REAL,
     reportsTo TEXT,
     birthDate TEXT,
     startDate TEXT,
+    lastPromotionDate TEXT,
     signature TEXT,
-    visibility TEXT,
-    lastPromotionDate TEXT
+    visibility TEXT
 );
 
 CREATE TABLE IF NOT EXISTS shifts (
@@ -35,13 +34,12 @@ CREATE TABLE IF NOT EXISTS shifts (
     status TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER,
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    isUnpaidBreak INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS leave (
     id TEXT PRIMARY KEY,
-    employeeId TEXT NOT NULL,
+    employeeId TEXT,
     type TEXT,
     color TEXT,
     date TEXT,
@@ -55,8 +53,7 @@ CREATE TABLE IF NOT EXISTS leave (
     managedAt TEXT,
     originalShiftDate TEXT,
     originalStartTime TEXT,
-    originalEndTime TEXT,
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    originalEndTime TEXT
 );
 
 CREATE TABLE IF NOT EXISTS notes (
@@ -92,8 +89,7 @@ CREATE TABLE IF NOT EXISTS communication_allowances (
     month INTEGER,
     balance REAL,
     asOfDate TEXT,
-    screenshot TEXT,
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    screenshot TEXT
 );
 
 CREATE TABLE IF NOT EXISTS groups (
@@ -113,9 +109,9 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
 
 CREATE TABLE IF NOT EXISTS tardy_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    employeeId TEXT NOT NULL,
-    employeeName TEXT NOT NULL,
-    date TEXT NOT NULL,
+    employeeId TEXT,
+    employeeName TEXT,
+    date TEXT,
     schedule TEXT,
     timeIn TEXT,
     timeOut TEXT,

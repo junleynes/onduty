@@ -12,6 +12,41 @@ const dbExists = fs.existsSync(DB_FILE);
 
 export const db = new Database(DB_FILE);
 
+const runMigrations = () => {
+    try {
+        console.log("Running database migrations if needed...");
+        // Migration for key_value_store table
+        const checkKeyValueStore = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='key_value_store'").get();
+        if (!checkKeyValueStore) {
+             console.log("`key_value_store` table not found. Creating it.");
+             db.exec("CREATE TABLE IF NOT EXISTS key_value_store (key TEXT PRIMARY KEY, value TEXT)");
+             console.log("`key_value_store` table created successfully.");
+        }
+
+        // Migration for visibility column in employees table
+        const columns = db.prepare("PRAGMA table_info(employees)").all();
+        const hasVisibilityColumn = columns.some((col: any) => col.name === 'visibility');
+
+        if (!hasVisibilityColumn) {
+            console.log("`visibility` column not found in `employees` table. Adding it.");
+            db.exec("ALTER TABLE employees ADD COLUMN visibility TEXT");
+            
+            const defaultVisibility = JSON.stringify({
+                schedule: true,
+                onDuty: true,
+                orgChart: true,
+                mobileLoad: true,
+            });
+            db.prepare("UPDATE employees SET visibility = ?").run(defaultVisibility);
+            console.log("`visibility` column added and populated with default values.");
+        }
+        console.log("Migrations check complete.");
+
+    } catch(e) {
+        console.error("Error during database migration check:", e);
+    }
+}
+
 if (!dbExists) {
   console.log('No database found, creating a new one.');
   const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
@@ -29,7 +64,7 @@ if (!dbExists) {
     db.transaction(() => {
         // Seed Employees
         initialDb.employees.forEach(emp => {
-            const visibility = (emp as any).visibility || {};
+            const visibility = (emp as any).visibility || { schedule: true, onDuty: true, orgChart: true, mobileLoad: true };
             insertEmployee.run(
                 emp.id,
                 emp.employeeNumber,
@@ -70,17 +105,7 @@ if (!dbExists) {
 
 } else {
     console.log('Connected to existing database.');
-    // Migration for existing databases that might be missing tables or columns
-    try {
-        const checkKeyValueStore = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='key_value_store'").get();
-        if (!checkKeyValueStore) {
-             console.log("`key_value_store` table not found. Creating it.");
-             db.exec("CREATE TABLE IF NOT EXISTS key_value_store (key TEXT PRIMARY KEY, value TEXT)");
-             console.log("`key_value_store` table created successfully.");
-        }
-    } catch(e) {
-        console.error("Error during database migration check:", e);
-    }
+    runMigrations();
 }
 
 // Gracefully close the database connection on exit
@@ -88,5 +113,3 @@ process.on('exit', () => db.close());
 process.on('SIGHUP', () => process.exit(128 + 1));
 process.on('SIGINT', () => process.exit(128 + 2));
 process.on('SIGTERM', () => process.exit(128 + 15));
-
-    
