@@ -136,7 +136,7 @@ export default function OndutyPage() {
                       <CardContent className="p-4 flex flex-col gap-4">
                         <div className="flex items-center gap-4">
                           <Avatar className="h-16 w-16 border-2 border-primary">
-                            <AvatarImage src={employee.avatar} data-ai-hint="profile avatar" />
+                            <AvatarImage src={employee.avatar || undefined} data-ai-hint="profile avatar" />
                             <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(employee)) }} className="text-xl">
                               {getInitials(getFullName(employee))}
                             </AvatarFallback>

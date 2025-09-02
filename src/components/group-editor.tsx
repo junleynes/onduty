@@ -44,7 +44,7 @@ export function GroupEditor({ isOpen, setIsOpen, groups, setGroups }: GroupEdito
     },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'groups',
   });
