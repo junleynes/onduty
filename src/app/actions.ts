@@ -61,11 +61,12 @@ export async function verifyUser(email: string, password: string): Promise<{ suc
         const userRow = stmt.get(email);
 
         if (userRow) {
-            const user = userRow as Employee;
+            // Ensure we are working with a plain object
+            const user = JSON.parse(JSON.stringify(userRow)) as Employee;
+            
+            // Now, the password comparison will be reliable.
             if (user.password === password) {
-                // Ensure a plain object is returned, not a database row object.
-                const userObject = JSON.parse(JSON.stringify(user));
-                return { success: true, user: userObject };
+                return { success: true, user: user };
             }
         }
         

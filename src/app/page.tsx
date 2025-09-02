@@ -7,7 +7,6 @@ import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Tas
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
-import { employees as initialEmployees, shifts as initialShifts, leave as initialLeave, initialGroups, initialNotes, initialHolidays, initialTasks, communicationAllowances as initialAllowance, initialSmtpSettings } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
@@ -515,6 +514,7 @@ function AppContent() {
   }
 
   const userNotifications = notifications.filter(n => !n.employeeId || n.employeeId === currentUser.id);
+  const role = currentUser.role || 'member';
 
   return (
     <>
