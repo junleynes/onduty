@@ -1,15 +1,15 @@
 
-CREATE TABLE IF NOT EXISTS employees (
+CREATE TABLE employees (
     id TEXT PRIMARY KEY,
     employeeNumber TEXT,
-    firstName TEXT,
-    lastName TEXT,
+    firstName TEXT NOT NULL,
+    lastName TEXT NOT NULL,
     middleInitial TEXT,
-    email TEXT UNIQUE,
+    email TEXT UNIQUE NOT NULL,
     phone TEXT,
     password TEXT,
     position TEXT,
-    role TEXT,
+    role TEXT NOT NULL,
     "group" TEXT,
     avatar TEXT,
     loadAllocation REAL,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS employees (
     visibility TEXT
 );
 
-CREATE TABLE IF NOT EXISTS shifts (
+CREATE TABLE shifts (
     id TEXT PRIMARY KEY,
     employeeId TEXT,
     label TEXT,
@@ -29,15 +29,15 @@ CREATE TABLE IF NOT EXISTS shifts (
     endTime TEXT,
     date TEXT,
     color TEXT,
-    isDayOff INTEGER,
-    isHolidayOff INTEGER,
+    isDayOff INTEGER DEFAULT 0,
+    isHolidayOff INTEGER DEFAULT 0,
     status TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER
+    isUnpaidBreak INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS leave (
+CREATE TABLE leave (
     id TEXT PRIMARY KEY,
     employeeId TEXT,
     type TEXT,
@@ -56,20 +56,20 @@ CREATE TABLE IF NOT EXISTS leave (
     originalEndTime TEXT
 );
 
-CREATE TABLE IF NOT EXISTS notes (
+CREATE TABLE notes (
     id TEXT PRIMARY KEY,
     date TEXT,
     title TEXT,
     description TEXT
 );
 
-CREATE TABLE IF NOT EXISTS holidays (
+CREATE TABLE holidays (
     id TEXT PRIMARY KEY,
     date TEXT,
     title TEXT
 );
 
-CREATE TABLE IF NOT EXISTS tasks (
+CREATE TABLE tasks (
     id TEXT PRIMARY KEY,
     shiftId TEXT,
     assigneeId TEXT,
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     createdBy TEXT
 );
 
-CREATE TABLE IF NOT EXISTS communication_allowances (
+CREATE TABLE communication_allowances (
     id TEXT PRIMARY KEY,
     employeeId TEXT,
     year INTEGER,
@@ -92,12 +92,12 @@ CREATE TABLE IF NOT EXISTS communication_allowances (
     screenshot TEXT
 );
 
-CREATE TABLE IF NOT EXISTS groups (
+CREATE TABLE groups (
     name TEXT PRIMARY KEY
 );
 
-CREATE TABLE IF NOT EXISTS smtp_settings (
-    id INTEGER PRIMARY KEY,
+CREATE TABLE smtp_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
     host TEXT,
     port INTEGER,
     secure INTEGER,
@@ -107,18 +107,18 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
     fromName TEXT
 );
 
-CREATE TABLE IF NOT EXISTS tardy_records (
+CREATE TABLE tardy_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    employeeId TEXT,
-    employeeName TEXT,
-    date TEXT,
+    employeeId TEXT NOT NULL,
+    employeeName TEXT NOT NULL,
+    date TEXT NOT NULL,
     schedule TEXT,
     timeIn TEXT,
     timeOut TEXT,
     remarks TEXT
 );
 
-CREATE TABLE IF NOT EXISTS key_value_store (
+CREATE TABLE key_value_store (
     key TEXT PRIMARY KEY,
     value TEXT
 );

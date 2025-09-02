@@ -88,6 +88,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
               position: row['Position'] || '',
               birthDate: parseDate(row['Birth Date']),
               startDate: parseDate(row['Start Date']),
+              lastPromotionDate: parseDate(row['Last Promotion Date']),
               group: row['Group'] || '',
               email: row['Email'] || '',
               phone: row['Phone'] || '',
