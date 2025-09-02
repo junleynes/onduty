@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
@@ -183,7 +184,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
   const handleSaveShift = (savedShift: Shift | Partial<Shift>) => {
     if (isReadOnly) return;
-    const employeeName = savedShift.employeeId ? getFullName(employees.find(e => e.id === savedShift.employeeId)!) : 'Unassigned';
+    const employee = employees.find(e => e.id === savedShift.employeeId)
+    const employeeName = employee ? getFullName(employee) : 'Unassigned';
     if ('id' in savedShift && savedShift.id) {
       setShifts(shifts.map(s => s.id === savedShift.id ? { ...s, ...savedShift, status: 'draft' } as Shift : s));
       addNotification({ message: `Shift for ${employeeName} on ${format(savedShift.date!, 'MMM d')} was updated.` });
@@ -200,7 +202,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     if (isReadOnly) return;
     const deletedShift = shifts.find(s => s.id === shiftId);
     if(deletedShift) {
-      const employeeName = deletedShift.employeeId ? getFullName(employees.find(e => e.id === deletedShift.employeeId)!) : 'Unassigned';
+      const employee = employees.find(e => e.id === deletedShift.employeeId);
+      const employeeName = employee ? getFullName(employee) : 'Unassigned';
       addNotification({ message: `Shift for ${employeeName} on ${format(deletedShift.date!, 'MMM d')} was deleted.` });
     }
     setShifts(shifts.filter(s => s.id !== shiftId));
@@ -490,21 +493,30 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             const totalHours = shiftsForDay.reduce((acc, shift) => {
                 if (!shift.startTime || !shift.endTime) return acc;
                 
-                const start = parse(shift.startTime, 'HH:mm', new Date());
-                const end = parse(shift.endTime, 'HH:mm', new Date());
-                let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                if (diff < 0) diff += 24; // Account for overnight shifts
-                
-                let breakHours = 0;
-                if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
-                    const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
-                    const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
-                    let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
-                    if (breakDiff < 0) breakDiff += 24;
-                    breakHours = breakDiff;
+                try {
+                    const start = parse(shift.startTime, 'HH:mm', new Date());
+                    const end = parse(shift.endTime, 'HH:mm', new Date());
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) return acc;
+
+                    let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                    if (diff < 0) diff += 24; // Account for overnight shifts
+                    
+                    let breakHours = 0;
+                    if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
+                        const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
+                        const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
+                        if (!isNaN(breakStart.getTime()) && !isNaN(breakEnd.getTime())) {
+                            let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
+                            if (breakDiff < 0) breakDiff += 24;
+                            breakHours = breakDiff;
+                        }
+                    }
+                    
+                    return acc + (diff - breakHours);
+                } catch (e) {
+                    console.error("Error parsing shift times", e);
+                    return acc;
                 }
-                
-                return acc + (diff - breakHours);
             }, 0);
             
             const isMonthAndOutside = viewMode === 'month' && day.getMonth() !== currentDate.getMonth();

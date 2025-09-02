@@ -436,7 +436,7 @@ function AppContent() {
 
 
   const currentView = useMemo(() => {
-    if (isLoading || !currentUser) {
+    if (!initialDataLoaded || !currentUser) {
         return (
              <Card>
                 <CardHeader>
@@ -558,9 +558,9 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, currentUser, groups, shiftsForView, addNotification, router, toast, isLoading]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded]);
 
-  if (isLoading || !currentUser) {
+  if (!initialDataLoaded || !currentUser) {
       return (
         <div className="flex h-screen w-full items-center justify-center">
             <p>Loading...</p>

@@ -37,7 +37,6 @@ export async function getData() {
     // Process data to match client-side types (e.g., parsing JSON, converting dates)
     const processedEmployees: Employee[] = employees.map(e => ({
       ...e,
-      group: e.group,
       birthDate: e.birthDate ? new Date(e.birthDate) : undefined,
       startDate: e.startDate ? new Date(e.startDate) : undefined,
       lastPromotionDate: e.lastPromotionDate ? new Date(e.lastPromotionDate) : undefined,
@@ -138,6 +137,19 @@ export async function saveAllData({
 }) {
   const saveTransaction = db.transaction(() => {
     // --- EMPLOYEES ---
+    const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
+    const employeeIdsInState = new Set(employees.map(e => e.id));
+    
+    const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id));
+    if (employeesToDelete.length > 0) {
+      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
+      deleteStmt.run(...employeesToDelete);
+    }
+    
+    const existingPasswords = new Map(
+      db.prepare('SELECT id, password FROM employees').all().map((e: any) => [e.id, e.password])
+    );
+    
     const empStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
@@ -147,15 +159,9 @@ export async function saveAllData({
         reportsTo=excluded.reportsTo, birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
     `);
 
-    const existingPasswords = new Map(
-      db.prepare('SELECT id, password FROM employees').all().map((e: any) => [e.id, e.password])
-    );
-    const employeeIdsInState = new Set(employees.map(e => e.id));
-
     for (const emp of employees) {
       empStmt.run({
         ...emp,
-        group: emp.group,
         password: emp.password || existingPasswords.get(emp.id) || 'password', // Fallback for new users
         birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
         startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
@@ -164,14 +170,6 @@ export async function saveAllData({
         reportsTo: emp.reportsTo || null,
         signature: emp.signature || null,
       });
-    }
-
-    const allDbEmployeeIds = db.prepare('SELECT id from employees').all().map((row: any) => row.id);
-    const employeesToDelete = allDbEmployeeIds.filter(id => !employeeIdsInState.has(id));
-
-    if (employeesToDelete.length > 0) {
-      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
-      deleteStmt.run(...employeesToDelete);
     }
     
     // --- SHIFTS ---
