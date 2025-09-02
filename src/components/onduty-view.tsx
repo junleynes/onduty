@@ -62,12 +62,7 @@ export default function OndutyView({ employees, shifts, currentUser }: OndutyVie
     }
   });
 
-  const shiftsForView = currentUser?.group
-    ? activeShifts.filter(as => as.employee.group === currentUser.group)
-    : activeShifts;
-
-
-  const groupedActiveShifts = shiftsForView.reduce((acc, { employee, shift }) => {
+  const groupedActiveShifts = activeShifts.reduce((acc, { employee, shift }) => {
     const groupName = employee.group || 'Unassigned';
     if (!acc[groupName]) {
       acc[groupName] = [];
