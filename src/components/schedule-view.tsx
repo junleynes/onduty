@@ -10,7 +10,7 @@ import { Button } from './ui/button';
 import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper, Mail, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar } from './ui/calendar';
 import { cn, getInitials, getBackgroundColor, getFullName, getInitialState } from '@/lib/utils';
 import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
@@ -485,7 +485,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         {days.map((day) => {
             const shiftsForDay = shifts.filter(shift => isSameDay(new Date(shift.date), day) && !shift.isDayOff && !shift.isHolidayOff);
             const totalShifts = shiftsForDay.length;
-            const onDutyEmployees = new Set(shiftsForDay.map(shift => shift.employeeId)).size;
+            const onDutyEmployees = new Set(shiftsForDay.filter(s => s.employeeId).map(shift => shift.employeeId)).size;
             
             const totalHours = shiftsForDay.reduce((acc, shift) => {
                 if (!shift.startTime || !shift.endTime) return acc;
