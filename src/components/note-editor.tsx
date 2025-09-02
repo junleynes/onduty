@@ -20,6 +20,7 @@ import { Trash2 } from 'lucide-react';
 import type { Note } from '@/types';
 import { Textarea } from './ui/textarea';
 import { format } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
 
 const noteSchema = z.object({
   id: z.string().optional(),
@@ -59,7 +60,7 @@ export function NoteEditor({ isOpen, setIsOpen, note, onSave, onDelete }: NoteEd
   }, [note, isOpen, form]);
 
   const onSubmit = (values: z.infer<typeof noteSchema>) => {
-    onSave(values);
+    onSave({ ...values, id: values.id || uuidv4() });
   };
 
   const handleDelete = () => {
@@ -68,7 +69,7 @@ export function NoteEditor({ isOpen, setIsOpen, note, onSave, onDelete }: NoteEd
     }
   };
 
-  const formattedDate = note?.date ? format(note.date, 'EEEE, MMMM d') : '';
+  const formattedDate = note?.date ? format(new Date(note.date), 'EEEE, MMMM d') : '';
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

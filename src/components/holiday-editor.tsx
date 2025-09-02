@@ -23,6 +23,7 @@ import type { Holiday } from '@/types';
 import { DatePicker } from './ui/date-picker';
 import { format } from 'date-fns';
 import { Separator } from './ui/separator';
+import { v4 as uuidv4 } from 'uuid';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Holiday name is required'),
@@ -50,9 +51,9 @@ export function HolidayEditor({ isOpen, setIsOpen, holidays, setHolidays, onImpo
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     const newHoliday: Holiday = {
         ...values,
-        id: `hol-${Date.now()}`
+        id: uuidv4()
     };
-    setHolidays(prev => [...prev, newHoliday].sort((a,b) => a.date.getTime() - b.date.getTime()));
+    setHolidays(prev => [...prev, newHoliday].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     form.reset({ title: '', date: new Date() });
     toast({ title: 'Holiday Added' });
   };

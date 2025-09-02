@@ -13,6 +13,7 @@ import { PlusCircle, Check, X } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { v4 as uuidv4 } from 'uuid';
 
 type TimeOffViewProps = {
   leaveRequests: Leave[];
@@ -61,7 +62,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
       toast({ title: 'Request Updated' });
     } else { // Creating
       const newRequest: Leave = {
-        id: `leave-${Date.now()}`,
+        id: uuidv4(),
         employeeId: currentUser.id,
         status: 'pending',
         requestedAt: new Date(),

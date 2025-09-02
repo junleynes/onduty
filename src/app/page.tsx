@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
@@ -11,7 +11,9 @@ import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { getInitialState } from '@/lib/utils';
 import { isSameDay, getMonth, getDate, getYear, format } from 'date-fns';
-import { getData } from '@/lib/db-actions';
+import { getData, saveAllData } from '@/lib/db-actions';
+import { useToast } from '@/hooks/use-toast';
+import { v4 as uuidv4 } from 'uuid';
 
 
 // Views
@@ -22,7 +24,6 @@ import AdminPanel from '@/components/admin-panel';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { TeamEditor } from '@/components/team-editor';
 import { MemberImporter } from '@/components/member-importer';
-import { useToast } from '@/hooks/use-toast';
 import { GroupEditor } from '@/components/group-editor';
 import OrgChartView from '@/components/org-chart-view';
 import CelebrationsView from '@/components/celebrations-view';
@@ -56,8 +57,10 @@ function AppContent() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [allowances, setAllowances] = useState<CommunicationAllowance[]>([]);
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>({});
+  
   const [isLoading, setIsLoading] = useState(true);
-
+  const [isSaving, setIsSaving] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
   const [activeView, setActiveView] = useState<NavItem>('schedule');
@@ -79,17 +82,30 @@ function AppContent() {
 
   const { notifications, setNotifications, addNotification, addNotificationForUser } = useNotifications();
 
-  // Persist state to localStorage on change
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('employees', JSON.stringify(employees)); }, [employees]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('shifts', JSON.stringify(shifts)); }, [shifts]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('leave', JSON.stringify(leave)); }, [leave]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('groups', JSON.stringify(groups)); }, [groups]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notifications', JSON.stringify(notifications)); }, [notifications]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('notes', JSON.stringify(notes)); }, [notes]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('holidays', JSON.stringify(holidays)); }, [holidays]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('tasks', JSON.stringify(tasks)); }, [tasks]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('communicationAllowances', JSON.stringify(allowances)); }, [allowances]);
-  useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('smtpSettings', JSON.stringify(smtpSettings)); }, [smtpSettings]);
+  // Save all data to the database whenever there's a change
+  useEffect(() => {
+    if (!initialDataLoaded) return;
+    
+    const saveData = async () => {
+        setIsSaving(true);
+        await saveAllData({
+            employees,
+            shifts,
+            leave,
+            notes,
+            holidays,
+            tasks,
+            allowances,
+            groups,
+            smtpSettings,
+        });
+        setIsSaving(false);
+    };
+
+    const timeoutId = setTimeout(saveData, 1000); // Debounce saves
+    return () => clearTimeout(timeoutId);
+
+  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, initialDataLoaded]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -107,6 +123,7 @@ function AppContent() {
         setAllowances(result.data.allowances);
         setGroups(result.data.groups);
         setSmtpSettings(result.data.smtpSettings);
+        setInitialDataLoaded(true);
 
         const storedUserJson = localStorage.getItem('currentUser');
         if (storedUserJson) {
@@ -118,7 +135,6 @@ function AppContent() {
           if (userFromDb) {
             userToSet = userFromDb;
           } else if (storedUser.email === 'admin@onduty.local') {
-            // This handles the hardcoded admin case
             userToSet = storedUser;
           }
 
@@ -132,7 +148,7 @@ function AppContent() {
               setActiveView('my-schedule');
             }
           } else {
-            handleLogout(); // User in localStorage not found in DB
+            handleLogout(); 
           }
         } else {
           router.push('/login');
@@ -143,7 +159,6 @@ function AppContent() {
           title: 'Failed to load data',
           description: result.error || 'Could not connect to the database.',
         });
-        // If data fails to load, also log out to prevent inconsistent state
         handleLogout();
       }
       setIsLoading(false);
@@ -163,19 +178,17 @@ function AppContent() {
         const celebrationsToNotify: { employee: Employee; type: 'birthday' | 'anniversary' }[] = [];
 
         employees.forEach(employee => {
-            // Check for birthday
             if (employee.birthDate) {
                 const birthDate = new Date(employee.birthDate);
-                if (getMonth(birthDate) === getMonth(today) && getDate(birthDate) === getMonth(today)) {
+                if (getMonth(birthDate) === getMonth(today) && getDate(birthDate) === getDate(today)) {
                     if (!notifiedToday.includes(`${employee.id}-birthday`)) {
                         celebrationsToNotify.push({ employee, type: 'birthday' });
                     }
                 }
             }
-            // Check for anniversary
             if (employee.startDate) {
                 const startDate = new Date(employee.startDate);
-                if (getYear(startDate) !== getYear(today) && getMonth(startDate) === getMonth(today) && getDate(startDate) === getMonth(today)) {
+                if (getYear(startDate) !== getYear(today) && getMonth(startDate) === getMonth(today) && getDate(startDate) === getDate(today)) {
                      if (!notifiedToday.includes(`${employee.id}-anniversary`)) {
                         celebrationsToNotify.push({ employee, type: 'anniversary' });
                     }
@@ -264,7 +277,6 @@ function AppContent() {
   };
 
   const handleDeleteMember = (employeeId: string) => {
-    // Also remove all associated data
     setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
     
     const shiftsForEmployee = shifts.filter(s => s.employeeId === employeeId);
@@ -298,53 +310,40 @@ function AppContent() {
 
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
-    // Check if adding a new user or editing an existing one
     if (employeeData.id) {
-        // This is a direct edit of an existing user
         setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
         toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
     } else {
-        // This is a new user submission, check for email duplication
         const existingEmployeeByEmail = employees.find(emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase());
 
         if (existingEmployeeByEmail) {
-            // Email exists, overwrite the existing user's data
-            setEmployees(employees.map(emp =>
-                emp.id === existingEmployeeByEmail.id
-                    ? { ...emp, ...employeeData, id: emp.id } as Employee // Ensure ID is preserved
-                    : emp
-            ));
-            toast({ title: 'User Updated', description: 'An existing user with this email was updated.' });
-        } else {
-            // Email is new, create a new user
-            const newEmployee: Employee = {
-                ...employeeData,
-                id: `emp-${Date.now()}`,
-                avatar: employeeData.avatar || '',
-                position: employeeData.position || '',
-                role: employeeData.role || 'member',
-                phone: employeeData.phone || '',
-            } as Employee;
-            setEmployees([...employees, newEmployee]);
-            toast({ title: 'User Added' });
+            toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
+            return;
         }
+        
+        const newEmployee: Employee = {
+            ...employeeData,
+            id: uuidv4(),
+            avatar: employeeData.avatar || '',
+            position: employeeData.position || '',
+            role: employeeData.role || 'member',
+            phone: employeeData.phone || '',
+        } as Employee;
+        setEmployees([...employees, newEmployee]);
+        toast({ title: 'User Added' });
     }
 
-    // Update current user if their own data was changed
     if (currentUser?.id === employeeData.id) {
-        const updatedUser = employees.find(e => e.id === employeeData.id);
-        if (updatedUser) {
-            const finalUser = { ...updatedUser, ...employeeData };
-            setCurrentUser(finalUser as Employee);
-            localStorage.setItem('currentUser', JSON.stringify(finalUser));
-        }
+        const updatedUser = { ...currentUser, ...employeeData };
+        setCurrentUser(updatedUser as Employee);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
     }
   };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
-      const newEmployees: Employee[] = newMembers.map((member, index) => ({
+      const newEmployees: Employee[] = newMembers.map((member) => ({
         ...member,
-        id: `emp-${Date.now()}-${index}`,
+        id: uuidv4(),
         avatar: member.avatar || '',
         position: member.position || '',
         role: member.role || 'member',
@@ -356,9 +355,9 @@ function AppContent() {
   }
 
   const handleImportHolidays = (newHolidays: Partial<Holiday>[]) => {
-      const holidaysWithIds: Holiday[] = newHolidays.map((holiday, index) => ({
+      const holidaysWithIds: Holiday[] = newHolidays.map((holiday) => ({
         ...holiday,
-        id: `hol-${Date.now()}-${index}`,
+        id: uuidv4(),
       } as Holiday));
 
       setHolidays(prev => [...prev, ...holidaysWithIds]);
@@ -384,7 +383,7 @@ function AppContent() {
         setNotes(notes.map(n => n.id === savedNote.id ? savedNote as Note : n));
         toast({ title: 'Note Updated' });
     } else {
-        const newNoteWithId = { ...savedNote, id: `note-${Date.now()}` } as Note;
+        const newNoteWithId = { ...savedNote, id: uuidv4() } as Note;
         setNotes([...notes, newNoteWithId]);
         toast({ title: 'Note Added' });
     }

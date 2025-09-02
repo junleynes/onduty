@@ -16,7 +16,7 @@ import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
@@ -29,6 +29,7 @@ import { sendEmail } from '@/app/actions';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { v4 as uuidv4 } from 'uuid';
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -184,12 +185,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     if (isReadOnly) return;
     const employeeName = savedShift.employeeId ? getFullName(employees.find(e => e.id === savedShift.employeeId)!) : 'Unassigned';
     if ('id' in savedShift && savedShift.id) {
-      // Update existing shift
       setShifts(shifts.map(s => s.id === savedShift.id ? { ...s, ...savedShift, status: 'draft' } as Shift : s));
       addNotification({ message: `Shift for ${employeeName} on ${format(savedShift.date!, 'MMM d')} was updated.` });
     } else {
-      // Add new shift
-      const newShiftWithId = { ...savedShift, id: `sh-${Date.now()}`, status: 'draft' };
+      const newShiftWithId = { ...savedShift, id: uuidv4(), status: 'draft' };
       setShifts([...shifts, newShiftWithId as Shift]);
       addNotification({ message: `New shift created for ${employeeName} on ${format(savedShift.date!, 'MMM d')}.` });
     }
@@ -219,7 +218,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')} was updated.` });
         toast({ title: "Leave Updated" });
     } else {
-        const newLeaveWithId = { ...savedLeave, id: `leave-${Date.now()}` } as Leave;
+        const newLeaveWithId = { ...savedLeave, id: uuidv4() } as Leave;
         setLeave(prevLeave => [...prevLeave, newLeaveWithId]);
         addNotification({ message: `Time off for ${employeeName} on ${format(savedLeave.date!, 'MMM d')}.` });
         toast({ title: "Time Off Added" });
@@ -307,7 +306,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
     const newShifts = prevWeekShifts.map(shift => ({
       ...shift,
-      id: `sh-${Date.now()}-${Math.random()}`,
+      id: uuidv4(),
       date: addDays(new Date(shift.date), 7),
       status: 'draft' as const,
     }));
@@ -344,7 +343,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         const { dayOfWeek, ...rest } = templateShift;
         return {
             ...rest,
-            id: `sh-${Date.now()}-${Math.random()}`,
+            id: uuidv4(),
             date: targetDay,
             status: 'draft',
         };
@@ -391,7 +390,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
 
   const handleSaveDraft = () => {
     toast({ title: "Draft Saved", description: "Your schedule changes have been saved." });
-    // Data is already saved to local storage via useEffect, so this is just for user feedback.
+    // Data is already saved via useEffect, so this is just for user feedback.
   };
 
   // Shift/Item Drag and Drop Handlers

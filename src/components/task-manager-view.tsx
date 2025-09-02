@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { getFullName } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { v4 as uuidv4 } from 'uuid';
 
 type TaskManagerViewProps = {
   tasks: Task[];
@@ -121,7 +122,7 @@ export default function TaskManagerView({ tasks, setTasks, currentUser, employee
         toast({ title: 'Task Updated' });
     } else { // Creating new task
         const newTask: Task = {
-            id: `task-${Date.now()}`,
+            id: uuidv4(),
             status: 'pending',
             createdBy: currentUser.id,
             ...taskData,
