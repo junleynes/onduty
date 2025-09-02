@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { SmtpSettings, Employee } from '@/types';
+import type { SmtpSettings, Employee, Shift, AppVisibility } from '@/types';
 import nodemailer from 'nodemailer';
 import { db } from '@/lib/db';
 
@@ -94,6 +94,55 @@ export async function verifyUser(email: string, password: string): Promise<{ suc
 
     } catch (error) {
         console.error('Login verification failed:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+function safeParseJSON(jsonString: string | null | undefined, defaultValue: any) {
+  if (!jsonString) return defaultValue;
+  try {
+    return JSON.parse(jsonString);
+  } catch (e) {
+    return defaultValue;
+  }
+}
+
+export async function getPublicData(): Promise<{
+    success: boolean;
+    data?: { employees: Employee[], shifts: Shift[] };
+    error?: string;
+}> {
+    try {
+        const allEmployees = db.prepare('SELECT * FROM employees').all() as any[];
+        const allShifts = db.prepare('SELECT * FROM shifts').all() as any[];
+        
+        const processedEmployees: Employee[] = allEmployees.map(e => ({
+            ...e,
+            visibility: safeParseJSON(e.visibility, {}) as AppVisibility
+        }));
+
+        const visibleEmployees = processedEmployees.filter(e => e.visibility?.onDuty !== false);
+
+        const publishedShifts = allShifts
+            .map(s => ({
+                ...s,
+                date: new Date(s.date),
+                isDayOff: s.isDayOff === 1,
+                isHolidayOff: s.isHolidayOff === 1,
+                isUnpaidBreak: s.isUnpaidBreak === 1,
+            }))
+            .filter(s => s.status === 'published' && !s.isDayOff && !s.isHolidayOff);
+
+        return {
+            success: true,
+            data: {
+                employees: visibleEmployees,
+                shifts: publishedShifts,
+            }
+        };
+
+    } catch (error) {
+        console.error('Failed to fetch public data:', error);
         return { success: false, error: (error as Error).message };
     }
 }

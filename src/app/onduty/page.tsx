@@ -5,11 +5,11 @@ import React, { useState, useEffect } from 'react';
 import type { Employee, Shift } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getInitials, getBackgroundColor, getFullName, getInitialState } from '@/lib/utils';
+import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { isSameDay, parse, subDays } from 'date-fns';
-import { Clock, Phone, Mail, LayoutGrid } from 'lucide-react';
-import { employees as defaultEmployees, shifts as defaultShifts } from '@/lib/data';
+import { Clock, Phone, Mail, LayoutGrid, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { getPublicData } from '@/app/actions';
 
 type ActiveShift = {
   employee: Employee;
@@ -20,25 +20,38 @@ export default function OndutyPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // This component is public, so it fetches its own data from localStorage.
-    setEmployees(getInitialState('employees', defaultEmployees));
-    setShifts(getInitialState('shifts', defaultShifts));
+    async function fetchData() {
+        try {
+            const result = await getPublicData();
+            if (result.success && result.data) {
+                setEmployees(result.data.employees);
+                setShifts(result.data.shifts);
+            } else {
+                setError(result.error || "Failed to load public data.");
+            }
+        } catch (err) {
+            setError((err as Error).message);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    fetchData();
 
     const timer = setInterval(() => setCurrentTime(new Date()), 60000); // Update every minute
     return () => clearInterval(timer);
   }, []);
   
-  const visibleEmployees = employees.filter(e => e.visibility?.onDuty !== false);
-  const publishedShifts = shifts.filter(s => s.status === 'published' && !s.isDayOff && !s.isHolidayOff);
   const activeShifts: ActiveShift[] = [];
 
   const today = currentTime;
   const yesterday = subDays(today, 1);
   const relevantDays = [today, yesterday];
 
-  publishedShifts.forEach(shift => {
+  shifts.forEach(shift => {
     if (!shift.employeeId) return;
     
     const shiftDate = new Date(shift.date);
@@ -55,7 +68,7 @@ export default function OndutyPage() {
     }
     
     if (currentTime >= startTime && currentTime <= endTime) {
-      const employee = visibleEmployees.find(e => e.id === shift.employeeId);
+      const employee = employees.find(e => e.id === shift.employeeId);
       if (employee) {
         activeShifts.push({ employee, shift });
       }
@@ -77,18 +90,38 @@ export default function OndutyPage() {
   }
 
   const groupOrder = Object.keys(groupedActiveShifts).sort();
-
-  return (
-    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
-      <header className="flex items-center justify-between mb-8">
-        <Link href="/" className="flex items-center gap-2 text-primary">
-            <LayoutGrid className="h-6 w-6" />
-            <h1 className="text-xl font-bold tracking-tight">OnDuty</h1>
-        </Link>
-      </header>
-      <main className="space-y-6">
-        {groupOrder.length > 0 ? (
-          groupOrder.map(groupName => (
+  
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Loading...</CardTitle>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </CardContent>
+        </Card>
+      )
+    }
+    
+    if (error) {
+         return (
+            <Card>
+                <CardHeader>
+                <CardTitle className="text-destructive">Error</CardTitle>
+                </CardHeader>
+                <CardContent>
+                <p className="text-center text-destructive p-8 border-2 border-dashed border-destructive rounded-lg">
+                    Could not load On Duty information. {error}
+                </p>
+                </CardContent>
+            </Card>
+        )
+    }
+    
+    if (groupOrder.length > 0) {
+       return groupOrder.map(groupName => (
             <Card key={groupName}>
               <CardHeader>
                 <CardTitle>{groupName} On Duty</CardTitle>
@@ -133,19 +166,33 @@ export default function OndutyPage() {
                 </div>
               </CardContent>
             </Card>
-          ))
-        ) : (
-          <Card>
+        ));
+    }
+    
+     return (
+        <Card>
             <CardHeader>
-              <CardTitle>No One On Duty</CardTitle>
+            <CardTitle>No One On Duty</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                  There are currently no team members on a published shift.
-              </p>
+            <p className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                There are currently no team members on a published shift.
+            </p>
             </CardContent>
-          </Card>
-        )}
+        </Card>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8">
+      <header className="flex items-center justify-between mb-8">
+        <Link href="/" className="flex items-center gap-2 text-primary">
+            <LayoutGrid className="h-6 w-6" />
+            <h1 className="text-xl font-bold tracking-tight">OnDuty</h1>
+        </Link>
+      </header>
+      <main className="space-y-6">
+        {renderContent()}
       </main>
       <footer className="text-center text-muted-foreground text-sm mt-8">
         <p>&copy; {new Date().getFullYear()} OnDuty. All rights reserved.</p>
