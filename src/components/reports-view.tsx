@@ -10,7 +10,7 @@ import { Download, Upload, Calendar as CalendarIcon, Eye } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { cn, getFullName, getInitialState } from '@/lib/utils';
+import { cn, getFullName } from '@/lib/utils';
 import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
@@ -31,6 +31,10 @@ type ReportsViewProps = {
     leave: Leave[];
     holidays: Holiday[];
     currentUser: Employee;
+    tardyRecords: TardyRecord[];
+    setTardyRecords: React.Dispatch<React.SetStateAction<TardyRecord[]>>;
+    templates: Record<string, string | null>;
+    setTemplates: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
 }
 
 type ReportData = {
@@ -70,7 +74,7 @@ type WorkExtensionRowData = {
 };
 
 
-export default function ReportsView({ employees, shifts, leave, holidays, currentUser }: ReportsViewProps) {
+export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates }: ReportsViewProps) {
     const { toast } = useToast();
     const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
     const [attendanceWeek, setAttendanceWeek] = useState<Date | undefined>();
@@ -79,22 +83,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [wfhCertMonth, setWfhCertMonth] = useState<Date | undefined>();
     const [workExtensionWeek, setWorkExtensionWeek] = useState<Date | undefined>();
 
-
-    const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>(() => getInitialState('tardyRecords', []));
-
-
-    const [workScheduleTemplate, setWorkScheduleTemplate] = useState<string | null>(() => getInitialState('workScheduleTemplate', null));
-    const [attendanceTemplate, setAttendanceTemplate] = useState<string | null>(() => getInitialState('attendanceSheetTemplate', null));
-    const [wfhCertTemplate, setWfhCertTemplate] = useState<string | null>(() => getInitialState('wfhCertificationTemplate', null));
-    const [workExtensionTemplate, setWorkExtensionTemplate] = useState<string | null>(() => getInitialState('workExtensionTemplate', null));
-
-
     const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = useState(false);
     const [isAttendanceUploaderOpen, setIsAttendanceUploaderOpen] = useState(false);
     const [isWfhCertUploaderOpen, setIsWfhCertUploaderOpen] = useState(false);
     const [isTardyImporterOpen, setIsTardyImporterOpen] = useState(false);
     const [isWorkExtensionUploaderOpen, setIsWorkExtensionUploaderOpen] = useState(false);
-
     
     const [previewData, setPreviewData] = useState<ReportData | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -234,6 +227,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             toast({ variant: 'destructive', title: 'Data Missing', description: 'Could not generate data for the report.' });
             return;
         }
+        const workScheduleTemplate = templates.workScheduleTemplate;
         if (!workScheduleTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a work schedule template first.' });
             return;
@@ -379,7 +373,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             toast({ variant: 'destructive', title: 'Data Missing', description: 'Could not generate data for the report.' });
             return;
         }
-         if (!attendanceTemplate) {
+        const attendanceTemplate = templates.attendanceSheetTemplate;
+        if (!attendanceTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
             return;
         }
@@ -689,6 +684,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
     const handleDownloadWfhCertification = async (data: WfhCertRowData[] | null) => {
         if (!data) return;
+        const wfhCertTemplate = templates.wfhCertificationTemplate;
         if (!wfhCertTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a WFH Certification template first.' });
             return;
@@ -871,6 +867,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
     const handleDownloadWorkExtension = async (data: WorkExtensionRowData[] | null) => {
         if (!data) return;
+        const workExtensionTemplate = templates.workExtensionTemplate;
         if (!workExtensionTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a Work Extension template first.' });
             return;
@@ -1109,7 +1106,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                         <Eye className="mr-2 h-4 w-4" />
                                         View Report
                                     </Button>
-                                    <Button onClick={() => handleDirectDownload('workSchedule')} disabled={!workScheduleDateRange || !workScheduleTemplate}>
+                                    <Button onClick={() => handleDirectDownload('workSchedule')} disabled={!workScheduleDateRange || !templates.workScheduleTemplate}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Generate & Download
                                     </Button>
@@ -1162,7 +1159,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                         <Eye className="mr-2 h-4 w-4" />
                                         View Report
                                     </Button>
-                                    <Button onClick={() => handleDirectDownload('attendance')} disabled={!attendanceDateRange || !attendanceTemplate}>
+                                    <Button onClick={() => handleDirectDownload('attendance')} disabled={!attendanceDateRange || !templates.attendanceSheetTemplate}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Generate & Download
                                     </Button>
@@ -1215,7 +1212,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                         <Eye className="mr-2 h-4 w-4" />
                                         View Report
                                     </Button>
-                                    <Button onClick={() => handleDirectDownload('workExtension')} disabled={!workExtensionDateRange || !workExtensionTemplate}>
+                                    <Button onClick={() => handleDirectDownload('workExtension')} disabled={!workExtensionDateRange || !templates.workExtensionTemplate}>
                                         <Download className="mr-2 h-4 w-4" />
                                         Generate & Download
                                     </Button>
@@ -1380,7 +1377,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Report
                             </Button>
-                            <Button onClick={() => handleDirectDownload('wfh')} disabled={!wfhCertMonth || !wfhCertTemplate}>
+                            <Button onClick={() => handleDirectDownload('wfh')} disabled={!wfhCertMonth || !templates.wfhCertificationTemplate}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Generate & Download
                             </Button>
@@ -1392,32 +1389,27 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             <ReportTemplateUploader
                 isOpen={isWorkScheduleUploaderOpen}
                 setIsOpen={setIsWorkScheduleUploaderOpen}
-                onTemplateUpload={setWorkScheduleTemplate}
+                onTemplateUpload={(data) => setTemplates(prev => ({...prev, workScheduleTemplate: data}))}
             />
             <AttendanceTemplateUploader
                 isOpen={isAttendanceUploaderOpen}
                 setIsOpen={setIsAttendanceUploaderOpen}
-                onTemplateUpload={setAttendanceTemplate}
+                onTemplateUpload={(data) => setTemplates(prev => ({...prev, attendanceSheetTemplate: data}))}
             />
              <WorkExtensionTemplateUploader
                 isOpen={isWorkExtensionUploaderOpen}
                 setIsOpen={setIsWorkExtensionUploaderOpen}
-                onTemplateUpload={setWorkExtensionTemplate}
+                onTemplateUpload={(data) => setTemplates(prev => ({...prev, workExtensionTemplate: data}))}
             />
             <WfhCertificationTemplateUploader
                 isOpen={isWfhCertUploaderOpen}
                 setIsOpen={setIsWfhCertUploaderOpen}
-                onTemplateUpload={setWfhCertTemplate}
+                onTemplateUpload={(data) => setTemplates(prev => ({...prev, wfhCertificationTemplate: data}))}
             />
              <TardyImporter
                 isOpen={isTardyImporterOpen}
                 setIsOpen={setIsTardyImporterOpen}
-                onImport={(data) => {
-                    setTardyRecords(data)
-                    if (typeof window !== 'undefined') {
-                        localStorage.setItem('tardyRecords', JSON.stringify(data));
-                    }
-                }}
+                onImport={setTardyRecords}
                 employees={employees}
             />
             <ReportPreviewDialog 
@@ -1430,5 +1422,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-    

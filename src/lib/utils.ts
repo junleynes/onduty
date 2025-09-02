@@ -44,11 +44,6 @@ export const getInitialState = <T>(key: string, defaultValue: T): T => {
     try {
         const item = window.localStorage.getItem(key);
         
-        // Special handling for the raw template string to avoid JSON parsing
-        if (key === 'attendanceSheetTemplate' || key === 'workScheduleTemplate' || key === 'wfhCertificationTemplate' || key === 'workExtensionTemplate') {
-            return (item || defaultValue) as T;
-        }
-
         // A more robust date reviver that handles UTC dates correctly
         const dateReviver = (k: string, v: any) => {
             if (['date', 'birthDate', 'startDate', 'timestamp', 'completedAt', 'dueDate', 'asOfDate'].includes(k) && typeof v === 'string') {

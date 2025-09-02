@@ -1,33 +1,34 @@
 
-CREATE TABLE employees (
+
+CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
     employeeNumber TEXT,
     firstName TEXT NOT NULL,
     lastName TEXT NOT NULL,
     middleInitial TEXT,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT UNIQUE NOT NULL,
     phone TEXT,
     password TEXT,
-    birthDate TEXT,
-    startDate TEXT,
-    lastPromotionDate TEXT,
     position TEXT,
-    role TEXT NOT NULL,
+    role TEXT,
     groupName TEXT,
     avatar TEXT,
-    signature TEXT,
     loadAllocation REAL,
     reportsTo TEXT,
-    visibility TEXT
+    birthDate TEXT,
+    startDate TEXT,
+    signature TEXT,
+    visibility TEXT,
+    lastPromotionDate TEXT
 );
 
-CREATE TABLE shifts (
+CREATE TABLE IF NOT EXISTS shifts (
     id TEXT PRIMARY KEY,
     employeeId TEXT,
     label TEXT,
     startTime TEXT,
     endTime TEXT,
-    date TEXT NOT NULL,
+    date TEXT,
     color TEXT,
     isDayOff INTEGER,
     isHolidayOff INTEGER,
@@ -38,12 +39,12 @@ CREATE TABLE shifts (
     FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
-CREATE TABLE leave (
+CREATE TABLE IF NOT EXISTS leave (
     id TEXT PRIMARY KEY,
     employeeId TEXT NOT NULL,
-    type TEXT NOT NULL,
+    type TEXT,
     color TEXT,
-    date TEXT NOT NULL,
+    date TEXT,
     isAllDay INTEGER,
     startTime TEXT,
     endTime TEXT,
@@ -58,79 +59,48 @@ CREATE TABLE leave (
     FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
-CREATE TABLE notes (
+CREATE TABLE IF NOT EXISTS notes (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
-    title TEXT NOT NULL,
+    date TEXT,
+    title TEXT,
     description TEXT
 );
 
-CREATE TABLE holidays (
+CREATE TABLE IF NOT EXISTS holidays (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
-    title TEXT NOT NULL
+    date TEXT,
+    title TEXT
 );
 
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     shiftId TEXT,
     assigneeId TEXT,
-    scope TEXT NOT NULL,
-    title TEXT NOT NULL,
+    scope TEXT,
+    title TEXT,
     description TEXT,
-    status TEXT NOT NULL,
+    status TEXT,
     completedAt TEXT,
     dueDate TEXT,
-    createdBy TEXT NOT NULL,
-    FOREIGN KEY(shiftId) REFERENCES shifts(id) ON DELETE SET NULL,
-    FOREIGN KEY(assigneeId) REFERENCES employees(id) ON DELETE SET NULL,
-    FOREIGN KEY(createdBy) REFERENCES employees(id) ON DELETE CASCADE
+    createdBy TEXT
 );
 
-CREATE TABLE communication_allowances (
+CREATE TABLE IF NOT EXISTS communication_allowances (
     id TEXT PRIMARY KEY,
-    employeeId TEXT NOT NULL,
-    year INTEGER NOT NULL,
-    month INTEGER NOT NULL,
+    employeeId TEXT,
+    year INTEGER,
+    month INTEGER,
     balance REAL,
     asOfDate TEXT,
     screenshot TEXT,
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE,
-    UNIQUE(employeeId, year, month)
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
-CREATE TABLE shift_templates (
-    name TEXT PRIMARY KEY,
-    label TEXT,
-    startTime TEXT,
-    endTime TEXT,
-    color TEXT,
-    breakStartTime TEXT,
-    breakEndTime TEXT,
-    isUnpaidBreak INTEGER
-);
-
-CREATE TABLE leave_types (
-    type TEXT PRIMARY KEY,
-    color TEXT
-);
-
-CREATE TABLE tardy_records (
-    employeeId TEXT NOT NULL,
-    date TEXT NOT NULL,
-    employeeName TEXT,
-    schedule TEXT,
-    timeIn TEXT,
-    timeOut TEXT,
-    remarks TEXT,
-    PRIMARY KEY (employeeId, date)
-);
-
-CREATE TABLE groups (
+CREATE TABLE IF NOT EXISTS groups (
     name TEXT PRIMARY KEY
 );
 
-CREATE TABLE smtp_settings (
+CREATE TABLE IF NOT EXISTS smtp_settings (
     id INTEGER PRIMARY KEY,
     host TEXT,
     port INTEGER,
@@ -141,3 +111,18 @@ CREATE TABLE smtp_settings (
     fromName TEXT
 );
 
+CREATE TABLE IF NOT EXISTS tardy_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employeeId TEXT NOT NULL,
+    employeeName TEXT NOT NULL,
+    date TEXT NOT NULL,
+    schedule TEXT,
+    timeIn TEXT,
+    timeOut TEXT,
+    remarks TEXT
+);
+
+CREATE TABLE IF NOT EXISTS key_value_store (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);

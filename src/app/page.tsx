@@ -3,13 +3,12 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings } from '@/types';
+import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, TardyRecord } from '@/types';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
-import { getInitialState } from '@/lib/utils';
 import { isSameDay, getMonth, getDate, getYear, format } from 'date-fns';
 import { getData, saveAllData } from '@/lib/db-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +56,8 @@ function AppContent() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [allowances, setAllowances] = useState<CommunicationAllowance[]>([]);
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>({});
+  const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>([]);
+  const [templates, setTemplates] = useState<Record<string, string | null>>({});
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -98,6 +99,8 @@ function AppContent() {
             allowances,
             groups,
             smtpSettings,
+            tardyRecords,
+            templates
         });
         setIsSaving(false);
     };
@@ -105,7 +108,7 @@ function AppContent() {
     const timeoutId = setTimeout(saveData, 1000); // Debounce saves
     return () => clearTimeout(timeoutId);
 
-  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, initialDataLoaded]);
+  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, initialDataLoaded]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -123,6 +126,8 @@ function AppContent() {
         setAllowances(result.data.allowances);
         setGroups(result.data.groups);
         setSmtpSettings(result.data.smtpSettings);
+        setTardyRecords(result.data.tardyRecords);
+        setTemplates(result.data.templates);
         setInitialDataLoaded(true);
 
         const storedUserJson = localStorage.getItem('currentUser');
@@ -132,7 +137,6 @@ function AppContent() {
           
           let userToSet: Employee | null = null;
           
-          // Use DB user if found, otherwise trust localStorage (for hardcoded admin)
           if (userFromDb) {
             userToSet = userFromDb;
           } else if (storedUser.id === 'emp-admin-01') {
@@ -184,7 +188,8 @@ function AppContent() {
 
         const today = new Date();
         const storageKey = `celebrations-notified-${format(today, 'yyyy-MM-dd')}`;
-        const notifiedToday: string[] = getInitialState(storageKey, []);
+        const notifiedToday: string[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
 
         const celebrationsToNotify: { employee: Employee; type: 'birthday' | 'anniversary' }[] = [];
 
@@ -495,7 +500,17 @@ function AppContent() {
       case 'task-manager':
         return <TaskManagerView tasks={tasks} setTasks={setTasks} currentUser={currentUser} employees={employees} />;
       case 'reports':
-          return <ReportsView employees={employees} shifts={shifts} leave={leave} holidays={holidays} currentUser={currentUser} />;
+          return <ReportsView 
+                    employees={employees} 
+                    shifts={shifts} 
+                    leave={leave} 
+                    holidays={holidays} 
+                    currentUser={currentUser} 
+                    tardyRecords={tardyRecords}
+                    setTardyRecords={setTardyRecords}
+                    templates={templates}
+                    setTemplates={setTemplates}
+                  />;
       case 'admin':
         return (
             <AdminPanel 
@@ -525,7 +540,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, currentUser, groups, shiftsForView, addNotification, router, toast, isLoading]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, currentUser, groups, shiftsForView, addNotification, router, toast, isLoading]);
 
   if (isLoading || !currentUser) {
       return (

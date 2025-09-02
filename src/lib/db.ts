@@ -24,14 +24,12 @@ if (!dbExists) {
   try {
     const insertEmployee = db.prepare('INSERT INTO employees (id, employeeNumber, firstName, lastName, email, phone, password, position, role, groupName, avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const insertGroup = db.prepare('INSERT INTO groups (name) VALUES (?)');
-    const insertShiftTemplate = db.prepare('INSERT INTO shift_templates (name, label, startTime, endTime, color, breakStartTime, breakEndTime, isUnpaidBreak) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-    const insertLeaveType = db.prepare('INSERT INTO leave_types (type, color) VALUES (?, ?)');
     const insertSmtpSettings = db.prepare('INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
 
     db.transaction(() => {
         // Seed Employees
         initialDb.employees.forEach(emp => {
-            const visibility = emp.visibility || {};
+            const visibility = (emp as any).visibility || {};
             insertEmployee.run(
                 emp.id,
                 emp.employeeNumber,
@@ -44,11 +42,11 @@ if (!dbExists) {
                 emp.role,
                 emp.group,
                 emp.avatar,
-                emp.loadAllocation,
-                emp.reportsTo,
-                emp.birthDate,
-                emp.startDate,
-                emp.signature,
+                (emp as any).loadAllocation,
+                (emp as any).reportsTo,
+                (emp as any).birthDate,
+                (emp as any).startDate,
+                (emp as any).signature,
                 JSON.stringify(visibility)
             );
         });
@@ -58,16 +56,6 @@ if (!dbExists) {
             insertGroup.run(group);
         });
         
-        // Seed Shift Templates
-        initialDb.shiftTemplates.forEach(st => {
-            insertShiftTemplate.run(st.name, st.label, st.startTime, st.endTime, st.color, st.breakStartTime, st.breakEndTime, st.isUnpaidBreak ? 1 : 0);
-        });
-
-        // Seed Leave Types
-        initialDb.leaveTypes.forEach(lt => {
-            insertLeaveType.run(lt.type, lt.color);
-        });
-
         // Seed SMTP Settings
         if (initialDb.smtpSettings) {
             insertSmtpSettings.run(1, initialDb.smtpSettings.host, initialDb.smtpSettings.port, initialDb.smtpSettings.secure ? 1 : 0, initialDb.smtpSettings.user, initialDb.smtpSettings.pass, initialDb.smtpSettings.fromEmail, initialDb.smtpSettings.fromName);
@@ -84,38 +72,12 @@ if (!dbExists) {
     console.log('Connected to existing database.');
     // Migration for existing databases that might be missing tables or columns
     try {
-        const checkGroups = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='groups'").get();
-        if (!checkGroups) {
-            console.log("`groups` table not found. Creating and seeding it.");
-            db.exec("CREATE TABLE IF NOT EXISTS groups (name TEXT PRIMARY KEY)");
-            const insertGroup = db.prepare('INSERT INTO groups (name) VALUES (?)');
-            db.transaction(() => {
-                initialDb.groups.forEach(group => {
-                    insertGroup.run(group);
-                });
-            })();
-            console.log("`groups` table created and seeded successfully.");
+        const checkKeyValueStore = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='key_value_store'").get();
+        if (!checkKeyValueStore) {
+             console.log("`key_value_store` table not found. Creating it.");
+             db.exec("CREATE TABLE IF NOT EXISTS key_value_store (key TEXT PRIMARY KEY, value TEXT)");
+             console.log("`key_value_store` table created successfully.");
         }
-
-        const checkSmtp = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='smtp_settings'").get();
-        if (!checkSmtp) {
-            console.log("`smtp_settings` table not found. Creating and seeding it.");
-            db.exec("CREATE TABLE IF NOT EXISTS smtp_settings (id INTEGER PRIMARY KEY, host TEXT, port INTEGER, secure INTEGER, user TEXT, pass TEXT, fromEmail TEXT, fromName TEXT)");
-            if (initialDb.smtpSettings) {
-                 const insertSmtpSettings = db.prepare('INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-                 insertSmtpSettings.run(1, initialDb.smtpSettings.host, initialDb.smtpSettings.port, initialDb.smtpSettings.secure ? 1 : 0, initialDb.smtpSettings.user, initialDb.smtpSettings.pass, initialDb.smtpSettings.fromEmail, initialDb.smtpSettings.fromName);
-            }
-            console.log("`smtp_settings` table created and seeded successfully.");
-        }
-
-        const employeeInfo = db.pragma('table_info(employees)') as { name: string }[];
-        const hasLastPromotionDate = employeeInfo.some(col => col.name === 'lastPromotionDate');
-        if (!hasLastPromotionDate) {
-            console.log("Adding `lastPromotionDate` column to `employees` table.");
-            db.exec('ALTER TABLE employees ADD COLUMN lastPromotionDate TEXT');
-            console.log("`lastPromotionDate` column added successfully.");
-        }
-
     } catch(e) {
         console.error("Error during database migration check:", e);
     }

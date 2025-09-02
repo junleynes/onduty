@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from './db';
-import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility } from '@/types';
+import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 function safeParseJSON(jsonString: string | null | undefined, defaultValue: any) {
@@ -25,6 +25,14 @@ export async function getData() {
     const allowances = db.prepare('SELECT * FROM communication_allowances').all() as any[];
     const groups = db.prepare('SELECT name FROM groups').all().map((g: any) => g.name) as string[];
     const smtpSettings: SmtpSettings = db.prepare('SELECT * FROM smtp_settings WHERE id = 1').get() as any || {};
+    const tardyRecords = db.prepare('SELECT * FROM tardy_records').all() as any[];
+    
+    const keyValuePairs = db.prepare('SELECT * FROM key_value_store').all() as {key: string, value: string}[];
+    const templates = keyValuePairs.reduce((acc, { key, value }) => {
+        acc[key] = value;
+        return acc;
+    }, {} as Record<string, string>);
+
 
     // Process data to match client-side types (e.g., parsing JSON, converting dates)
     const processedEmployees: Employee[] = employees.map(e => ({
@@ -73,6 +81,11 @@ export async function getData() {
       dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
     }));
 
+    const processedTardyRecords: TardyRecord[] = tardyRecords.map(t => ({
+        ...t,
+        date: new Date(t.date),
+    }));
+
 
     return {
       success: true,
@@ -85,7 +98,9 @@ export async function getData() {
         tasks: processedTasks,
         allowances,
         groups,
-        smtpSettings
+        smtpSettings,
+        tardyRecords: processedTardyRecords,
+        templates,
       }
     };
   } catch (error) {
@@ -105,6 +120,8 @@ export async function saveAllData({
   allowances,
   groups,
   smtpSettings,
+  tardyRecords,
+  templates,
 }: {
   employees: Employee[];
   shifts: Shift[];
@@ -115,6 +132,8 @@ export async function saveAllData({
   allowances: CommunicationAllowance[];
   groups: string[];
   smtpSettings: SmtpSettings;
+  tardyRecords: TardyRecord[];
+  templates: Record<string, string | null>;
 }) {
   try {
     const upsertEmployeeStmt = db.prepare(`
@@ -182,6 +201,11 @@ export async function saveAllData({
             pass=excluded.pass, fromEmail=excluded.fromEmail, fromName=excluded.fromName
     `);
 
+    const upsertTardyRecordStmt = db.prepare('INSERT INTO tardy_records (employeeId, employeeName, date, schedule, timeIn, timeOut, remarks) VALUES (@employeeId, @employeeName, @date, @schedule, @timeIn, @timeOut, @remarks)');
+    
+    const upsertTemplateStmt = db.prepare('INSERT INTO key_value_store (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+
+
     const saveTransaction = db.transaction(() => {
       // Employees
       const dbEmployees = db.prepare('SELECT id, password FROM employees').all() as {id: string, password?: string}[];
@@ -192,7 +216,6 @@ export async function saveAllData({
         const empToSave = { ...emp };
         const dbEmp = dbEmployeeMap.get(empToSave.id);
         
-        // Preserve existing password if not provided in the update
         if (!empToSave.password && dbEmp) {
             empToSave.password = dbEmp.password;
         }
@@ -207,7 +230,7 @@ export async function saveAllData({
         });
       }
       for (const dbEmp of dbEmployees) {
-          if (!stateEmployeeIds.has(dbEmp.id) && dbEmp.id !== 'emp-admin-01') { // Don't delete hardcoded admin
+          if (!stateEmployeeIds.has(dbEmp.id) && dbEmp.id !== 'emp-admin-01') { 
               deleteEmployeeStmt.run(dbEmp.id);
           }
       }
@@ -308,6 +331,22 @@ export async function saveAllData({
           secure: smtpSettings.secure ? 1 : 0
       });
       
+      // Tardy Records (Import-only, so we just clear and insert)
+      db.prepare('DELETE FROM tardy_records').run();
+      for (const record of tardyRecords) {
+        upsertTardyRecordStmt.run({
+            ...record,
+            date: new Date(record.date).toISOString().split('T')[0]
+        });
+      }
+      
+      // Templates
+      for (const [key, value] of Object.entries(templates)) {
+        if (value) {
+            upsertTemplateStmt.run({ key, value });
+        }
+      }
+
     });
 
     saveTransaction();
