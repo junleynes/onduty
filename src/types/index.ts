@@ -20,6 +20,7 @@ export type Employee = {
   password?: string;
   birthDate?: Date;
   startDate?: Date;
+  lastPromotionDate?: Date;
   position: string;
   role: UserRole;
   group?: string;

@@ -1,8 +1,10 @@
 
 'use server';
 
-import type { SmtpSettings } from '@/types';
+import type { SmtpSettings, Employee } from '@/types';
 import nodemailer from 'nodemailer';
+import { db } from '@/lib/db';
+
 
 type Attachment = {
     filename: string;
@@ -48,6 +50,25 @@ export async function sendEmail(
 
     } catch (error) {
         console.error('Email sending failed:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+
+export async function verifyUser(email: string, password: string): Promise<{ success: boolean; user?: Employee; error?: string; }> {
+    try {
+        const stmt = db.prepare('SELECT * FROM employees WHERE email = ?');
+        const user = stmt.get(email) as Employee | undefined;
+
+        if (user && user.password === password) {
+            // Make sure to return a plain object, not a class instance
+            const userObject = JSON.parse(JSON.stringify(user));
+            return { success: true, user: userObject };
+        } else {
+            return { success: false, error: 'Invalid email or password.' };
+        }
+    } catch (error) {
+        console.error('Login verification failed:', error);
         return { success: false, error: (error as Error).message };
     }
 }

@@ -1,17 +1,15 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { employees as defaultEmployees } from '@/lib/data';
-import type { Employee } from '@/types';
 import { LayoutGrid } from 'lucide-react';
-import { getInitialState } from '@/lib/utils';
+import { verifyUser } from '@/app/actions';
 
 
 export default function LoginPage() {
@@ -20,37 +18,28 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  
-  useEffect(() => {
-    // Load employees from localStorage on component mount
-    setEmployees(getInitialState('employees', defaultEmployees));
-  }, []);
 
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      const user = employees.find(emp => emp.email === email && emp.password === password);
+    const result = await verifyUser(email, password);
 
-      if (user) {
+    if (result.success && result.user) {
         toast({
           title: 'Login Successful',
-          description: `Welcome back, ${user.firstName}!`,
+          description: `Welcome back, ${result.user.firstName}!`,
         });
-        localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('currentUser', JSON.stringify(result.user));
         router.push('/');
       } else {
         toast({
           variant: 'destructive',
           title: 'Login Failed',
-          description: 'Invalid email or password. Please try again.',
+          description: result.error || 'Invalid email or password. Please try again.',
         });
         setIsLoading(false);
       }
-    }, 1000);
   };
 
   return (

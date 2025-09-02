@@ -1,17 +1,18 @@
 
-CREATE TABLE IF NOT EXISTS employees (
+CREATE TABLE employees (
     id TEXT PRIMARY KEY,
     employeeNumber TEXT,
-    firstName TEXT,
-    lastName TEXT,
+    firstName TEXT NOT NULL,
+    lastName TEXT NOT NULL,
     middleInitial TEXT,
-    email TEXT UNIQUE,
+    email TEXT NOT NULL UNIQUE,
     phone TEXT,
     password TEXT,
     birthDate TEXT,
     startDate TEXT,
+    lastPromotionDate TEXT,
     position TEXT,
-    role TEXT,
+    role TEXT NOT NULL,
     groupName TEXT,
     avatar TEXT,
     signature TEXT,
@@ -20,28 +21,29 @@ CREATE TABLE IF NOT EXISTS employees (
     visibility TEXT
 );
 
-CREATE TABLE IF NOT EXISTS shifts (
+CREATE TABLE shifts (
     id TEXT PRIMARY KEY,
     employeeId TEXT,
     label TEXT,
     startTime TEXT,
     endTime TEXT,
-    date TEXT,
+    date TEXT NOT NULL,
     color TEXT,
     isDayOff INTEGER,
     isHolidayOff INTEGER,
     status TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER
+    isUnpaidBreak INTEGER,
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS leave (
+CREATE TABLE leave (
     id TEXT PRIMARY KEY,
-    employeeId TEXT,
-    type TEXT,
+    employeeId TEXT NOT NULL,
+    type TEXT NOT NULL,
     color TEXT,
-    date TEXT,
+    date TEXT NOT NULL,
     isAllDay INTEGER,
     startTime TEXT,
     endTime TEXT,
@@ -52,46 +54,52 @@ CREATE TABLE IF NOT EXISTS leave (
     managedAt TEXT,
     originalShiftDate TEXT,
     originalStartTime TEXT,
-    originalEndTime TEXT
+    originalEndTime TEXT,
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS notes (
+CREATE TABLE notes (
     id TEXT PRIMARY KEY,
-    date TEXT,
-    title TEXT,
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
     description TEXT
 );
 
-CREATE TABLE IF NOT EXISTS holidays (
+CREATE TABLE holidays (
     id TEXT PRIMARY KEY,
-    date TEXT,
-    title TEXT
+    date TEXT NOT NULL,
+    title TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tasks (
+CREATE TABLE tasks (
     id TEXT PRIMARY KEY,
     shiftId TEXT,
     assigneeId TEXT,
-    scope TEXT,
-    title TEXT,
+    scope TEXT NOT NULL,
+    title TEXT NOT NULL,
     description TEXT,
-    status TEXT,
+    status TEXT NOT NULL,
     completedAt TEXT,
     dueDate TEXT,
-    createdBy TEXT
+    createdBy TEXT NOT NULL,
+    FOREIGN KEY(shiftId) REFERENCES shifts(id) ON DELETE SET NULL,
+    FOREIGN KEY(assigneeId) REFERENCES employees(id) ON DELETE SET NULL,
+    FOREIGN KEY(createdBy) REFERENCES employees(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS communication_allowances (
+CREATE TABLE communication_allowances (
     id TEXT PRIMARY KEY,
-    employeeId TEXT,
-    year INTEGER,
-    month INTEGER,
+    employeeId TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    month INTEGER NOT NULL,
     balance REAL,
     asOfDate TEXT,
-    screenshot TEXT
+    screenshot TEXT,
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE,
+    UNIQUE(employeeId, year, month)
 );
 
-CREATE TABLE IF NOT EXISTS shift_templates (
+CREATE TABLE shift_templates (
     name TEXT PRIMARY KEY,
     label TEXT,
     startTime TEXT,
@@ -102,16 +110,27 @@ CREATE TABLE IF NOT EXISTS shift_templates (
     isUnpaidBreak INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS leave_types (
+CREATE TABLE leave_types (
     type TEXT PRIMARY KEY,
     color TEXT
 );
 
-CREATE TABLE IF NOT EXISTS groups (
+CREATE TABLE tardy_records (
+    employeeId TEXT NOT NULL,
+    date TEXT NOT NULL,
+    employeeName TEXT,
+    schedule TEXT,
+    timeIn TEXT,
+    timeOut TEXT,
+    remarks TEXT,
+    PRIMARY KEY (employeeId, date)
+);
+
+CREATE TABLE groups (
     name TEXT PRIMARY KEY
 );
 
-CREATE TABLE IF NOT EXISTS smtp_settings (
+CREATE TABLE smtp_settings (
     id INTEGER PRIMARY KEY,
     host TEXT,
     port INTEGER,
@@ -121,3 +140,4 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
     fromEmail TEXT,
     fromName TEXT
 );
+

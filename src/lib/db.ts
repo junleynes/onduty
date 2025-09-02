@@ -82,7 +82,7 @@ if (!dbExists) {
 
 } else {
     console.log('Connected to existing database.');
-    // Migration for existing databases that might be missing tables
+    // Migration for existing databases that might be missing tables or columns
     try {
         const checkGroups = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='groups'").get();
         if (!checkGroups) {
@@ -107,6 +107,15 @@ if (!dbExists) {
             }
             console.log("`smtp_settings` table created and seeded successfully.");
         }
+
+        const employeeInfo = db.pragma('table_info(employees)') as { name: string }[];
+        const hasLastPromotionDate = employeeInfo.some(col => col.name === 'lastPromotionDate');
+        if (!hasLastPromotionDate) {
+            console.log("Adding `lastPromotionDate` column to `employees` table.");
+            db.exec('ALTER TABLE employees ADD COLUMN lastPromotionDate TEXT');
+            console.log("`lastPromotionDate` column added successfully.");
+        }
+
     } catch(e) {
         console.error("Error during database migration check:", e);
     }

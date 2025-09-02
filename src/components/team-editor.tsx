@@ -42,6 +42,7 @@ const employeeSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters long').optional().or(z.literal('')),
   birthDate: z.date().optional().nullable(),
   startDate: z.date().optional().nullable(),
+  lastPromotionDate: z.date().optional().nullable(),
   position: z.string().optional(),
   role: z.custom<UserRole>().optional(),
   group: z.string().optional(),
@@ -84,6 +85,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             password: '',
             birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
             startDate: employee.startDate ? new Date(employee.startDate) : undefined,
+            lastPromotionDate: employee.lastPromotionDate ? new Date(employee.lastPromotionDate) : undefined,
             visibility: {
               schedule: employee.visibility?.schedule ?? true,
               onDuty: employee.visibility?.onDuty ?? true,
@@ -101,6 +103,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             password: '',
             birthDate: undefined,
             startDate: undefined,
+            lastPromotionDate: undefined,
             position: '',
             role: 'member',
             group: '',
@@ -434,6 +437,25 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                             />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="lastPromotionDate"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Last Promotion Date</FormLabel>
+                                        <DatePicker
+                                            date={field.value || undefined}
+                                            onDateChange={field.onChange}
+                                            dateProps={{
+                                                captionLayout: "dropdown-buttons",
+                                                fromYear: 1950,
+                                                toYear: new Date().getFullYear()
+                                            }}
+                                        />
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="loadAllocation"
