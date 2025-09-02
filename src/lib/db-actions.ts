@@ -162,6 +162,7 @@ export async function saveAllData({
         lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
         visibility: JSON.stringify(emp.visibility || {}),
         reportsTo: emp.reportsTo || null,
+        signature: emp.signature || null,
       });
     }
 
@@ -256,5 +257,3 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
-
-    
