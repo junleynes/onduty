@@ -82,10 +82,10 @@ if (!dbExists) {
 
 } else {
     console.log('Connected to existing database.');
-    // Migration for existing databases that might be missing the groups table
+    // Migration for existing databases that might be missing tables
     try {
-        const tableInfo = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='groups'").get();
-        if (!tableInfo) {
+        const checkGroups = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='groups'").get();
+        if (!checkGroups) {
             console.log("`groups` table not found. Creating and seeding it.");
             db.exec("CREATE TABLE IF NOT EXISTS groups (name TEXT PRIMARY KEY)");
             const insertGroup = db.prepare('INSERT INTO groups (name) VALUES (?)');
@@ -95,6 +95,17 @@ if (!dbExists) {
                 });
             })();
             console.log("`groups` table created and seeded successfully.");
+        }
+
+        const checkSmtp = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='smtp_settings'").get();
+        if (!checkSmtp) {
+            console.log("`smtp_settings` table not found. Creating and seeding it.");
+            db.exec("CREATE TABLE IF NOT EXISTS smtp_settings (id INTEGER PRIMARY KEY, host TEXT, port INTEGER, secure INTEGER, user TEXT, pass TEXT, fromEmail TEXT, fromName TEXT)");
+            if (initialDb.smtpSettings) {
+                 const insertSmtpSettings = db.prepare('INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+                 insertSmtpSettings.run(1, initialDb.smtpSettings.host, initialDb.smtpSettings.port, initialDb.smtpSettings.secure ? 1 : 0, initialDb.smtpSettings.user, initialDb.smtpSettings.pass, initialDb.smtpSettings.fromEmail, initialDb.smtpSettings.fromName);
+            }
+            console.log("`smtp_settings` table created and seeded successfully.");
         }
     } catch(e) {
         console.error("Error during database migration check:", e);
