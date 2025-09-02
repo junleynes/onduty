@@ -31,6 +31,7 @@ export async function getData() {
       ...e,
       birthDate: e.birthDate ? new Date(e.birthDate) : undefined,
       startDate: e.startDate ? new Date(e.startDate) : undefined,
+      lastPromotionDate: e.lastPromotionDate ? new Date(e.lastPromotionDate) : undefined,
       visibility: safeParseJSON(e.visibility, {
         schedule: true,
         onDuty: true,
@@ -186,20 +187,26 @@ export async function saveAllData({
     const saveTransaction = db.transaction(() => {
       // Employees
       const dbEmployees = db.prepare('SELECT id, password FROM employees').all() as {id: string, password?: string}[];
+      const dbEmployeeMap = new Map(dbEmployees.map(e => [e.id, e]));
       const stateEmployeeIds = new Set(employees.map(e => e.id));
       
       for (const emp of employees) {
-        const dbEmp = dbEmployees.find(dbe => dbe.id === emp.id);
-        const password = emp.password || dbEmp?.password || 'password'; // Keep old password if new one isn't provided
+        const empId = emp.id || uuidv4();
+        const dbEmp = dbEmployeeMap.get(empId);
+        // If the incoming employee data has a password, use it.
+        // Otherwise, use the existing password from the DB.
+        // If it's a new user (no dbEmp), use the incoming password or a default.
+        const passwordToSave = emp.password || dbEmp?.password || 'password';
+
         upsertEmployee.run({
             ...emp,
-            id: emp.id || uuidv4(),
-            birthDate: emp.birthDate ? emp.birthDate.toISOString() : null,
-            startDate: emp.startDate ? emp.startDate.toISOString() : null,
-            lastPromotionDate: emp.lastPromotionDate ? emp.lastPromotionDate.toISOString() : null,
-            visibility: JSON.stringify(emp.visibility || {}),
+            id: empId,
+            password: passwordToSave,
             groupName: emp.group,
-            password,
+            birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
+            startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
+            lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
+            visibility: JSON.stringify(emp.visibility || {}),
         });
       }
       for (const dbEmp of dbEmployees) {
@@ -214,7 +221,7 @@ export async function saveAllData({
       for (const shift of shifts) {
           upsertShift.run({
               ...shift,
-              date: shift.date.toISOString().split('T')[0],
+              date: new Date(shift.date).toISOString().split('T')[0],
               isDayOff: shift.isDayOff ? 1 : 0,
               isHolidayOff: shift.isHolidayOff ? 1 : 0,
               isUnpaidBreak: shift.isUnpaidBreak ? 1 : 0
@@ -232,11 +239,11 @@ export async function saveAllData({
        for (const l of leave) {
           upsertLeave.run({
               ...l,
-              date: l.date.toISOString().split('T')[0],
+              date: new Date(l.date).toISOString().split('T')[0],
               isAllDay: l.isAllDay ? 1 : 0,
-              requestedAt: l.requestedAt?.toISOString(),
-              managedAt: l.managedAt?.toISOString(),
-              originalShiftDate: l.originalShiftDate?.toISOString().split('T')[0]
+              requestedAt: l.requestedAt? new Date(l.requestedAt).toISOString() : undefined,
+              managedAt: l.managedAt? new Date(l.managedAt).toISOString() : undefined,
+              originalShiftDate: l.originalShiftDate? new Date(l.originalShiftDate).toISOString().split('T')[0] : undefined
           });
       }
       for (const dbId of dbLeaveIds) {
@@ -249,7 +256,7 @@ export async function saveAllData({
       const dbNoteIds = new Set(db.prepare('SELECT id FROM notes').all().map((n: any) => n.id));
       const stateNoteIds = new Set(notes.map(n => n.id));
       for (const note of notes) {
-        upsertNote.run({ ...note, date: note.date.toISOString().split('T')[0] });
+        upsertNote.run({ ...note, date: new Date(note.date).toISOString().split('T')[0] });
       }
       for (const dbId of dbNoteIds) {
         if (!stateNoteIds.has(dbId)) deleteNote.run(dbId);
@@ -259,7 +266,7 @@ export async function saveAllData({
       const dbHolidayIds = new Set(db.prepare('SELECT id FROM holidays').all().map((h: any) => h.id));
       const stateHolidayIds = new Set(holidays.map(h => h.id));
        for (const holiday of holidays) {
-        upsertHoliday.run({ ...holiday, date: holiday.date.toISOString().split('T')[0] });
+        upsertHoliday.run({ ...holiday, date: new Date(holiday.date).toISOString().split('T')[0] });
       }
       for (const dbId of dbHolidayIds) {
         if (!stateHolidayIds.has(dbId)) deleteHoliday.run(dbId);
@@ -271,8 +278,8 @@ export async function saveAllData({
       for (const task of tasks) {
         upsertTask.run({
             ...task,
-            completedAt: task.completedAt?.toISOString(),
-            dueDate: task.dueDate?.toISOString(),
+            completedAt: task.completedAt? new Date(task.completedAt).toISOString() : undefined,
+            dueDate: task.dueDate? new Date(task.dueDate).toISOString() : undefined,
         });
       }
       for (const dbId of dbTaskIds) {
@@ -285,7 +292,7 @@ export async function saveAllData({
        for (const allowance of allowances) {
         upsertAllowance.run({
             ...allowance,
-            asOfDate: allowance.asOfDate?.toISOString(),
+            asOfDate: allowance.asOfDate? new Date(allowance.asOfDate).toISOString() : undefined,
         });
       }
       for (const dbId of dbAllowanceIds) {
