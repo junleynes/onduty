@@ -91,52 +91,64 @@ function AppContent() {
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('communicationAllowances', JSON.stringify(allowances)); }, [allowances]);
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('smtpSettings', JSON.stringify(smtpSettings)); }, [smtpSettings]);
 
-  // Load initial data from DB
+  // Load initial data from DB and check for user
   useEffect(() => {
-    async function loadData() {
-        setIsLoading(true);
-        const result = await getData();
-        if (result.success && result.data) {
-            setEmployees(result.data.employees);
-            setShifts(result.data.shifts);
-            setLeave(result.data.leave);
-            setNotes(result.data.notes);
-            setHolidays(result.data.holidays);
-            setTasks(result.data.tasks);
-            setAllowances(result.data.allowances);
-            setGroups(result.data.groups);
-            setSmtpSettings(result.data.smtpSettings);
+    async function loadDataAndAuth() {
+      setIsLoading(true);
+      const result = await getData();
 
-             // Check for logged in user *after* data has been loaded
-            const storedUser = localStorage.getItem('currentUser');
-            if (storedUser) {
-                const user: Employee = JSON.parse(storedUser);
-                const updatedUser = result.data.employees.find(emp => emp.id === user.id);
-                if (updatedUser) {
-                    setCurrentUser(updatedUser);
-                    if (updatedUser.role === 'admin') {
-                        setActiveView('admin');
-                    } else if (updatedUser.role === 'manager') {
-                        setActiveView('schedule');
-                    } else {
-                        setActiveView('my-schedule');
-                    }
-                } else {
-                    handleLogout(); // User in localStorage not found in DB
-                }
+      if (result.success && result.data) {
+        setEmployees(result.data.employees);
+        setShifts(result.data.shifts);
+        setLeave(result.data.leave);
+        setNotes(result.data.notes);
+        setHolidays(result.data.holidays);
+        setTasks(result.data.tasks);
+        setAllowances(result.data.allowances);
+        setGroups(result.data.groups);
+        setSmtpSettings(result.data.smtpSettings);
+
+        const storedUserJson = localStorage.getItem('currentUser');
+        if (storedUserJson) {
+          const storedUser: Employee = JSON.parse(storedUserJson);
+          const userFromDb = result.data.employees.find(emp => emp.id === storedUser.id);
+          
+          let userToSet: Employee | null = null;
+          
+          if (userFromDb) {
+            userToSet = userFromDb;
+          } else if (storedUser.email === 'admin@onduty.local') {
+            // This handles the hardcoded admin case
+            userToSet = storedUser;
+          }
+
+          if (userToSet) {
+            setCurrentUser(userToSet);
+            if (userToSet.role === 'admin') {
+              setActiveView('admin');
+            } else if (userToSet.role === 'manager') {
+              setActiveView('schedule');
             } else {
-                router.push('/login');
+              setActiveView('my-schedule');
             }
+          } else {
+            handleLogout(); // User in localStorage not found in DB
+          }
         } else {
-            toast({
-                variant: 'destructive',
-                title: 'Failed to load data',
-                description: result.error || 'Could not connect to the database.',
-            });
+          router.push('/login');
         }
-        setIsLoading(false);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Failed to load data',
+          description: result.error || 'Could not connect to the database.',
+        });
+        // If data fails to load, also log out to prevent inconsistent state
+        handleLogout();
+      }
+      setIsLoading(false);
     }
-    loadData();
+    loadDataAndAuth();
   }, [router, toast]);
 
 
