@@ -37,6 +37,7 @@ export async function getData() {
     // Process data to match client-side types (e.g., parsing JSON, converting dates)
     const processedEmployees: Employee[] = employees.map(e => ({
       ...e,
+      group: e.group,
       birthDate: e.birthDate ? new Date(e.birthDate) : undefined,
       startDate: e.startDate ? new Date(e.startDate) : undefined,
       lastPromotionDate: e.lastPromotionDate ? new Date(e.lastPromotionDate) : undefined,
@@ -138,11 +139,11 @@ export async function saveAllData({
   const saveTransaction = db.transaction(() => {
     // --- EMPLOYEES ---
     const empStmt = db.prepare(`
-      INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, groupName, avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
-      VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @groupName, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
+      INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
+      VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
       ON CONFLICT(id) DO UPDATE SET
         employeeNumber=excluded.employeeNumber, firstName=excluded.firstName, lastName=excluded.lastName, middleInitial=excluded.middleInitial, email=excluded.email, phone=excluded.phone,
-        password=excluded.password, position=excluded.position, role=excluded.role, groupName=excluded.groupName, avatar=excluded.avatar, loadAllocation=excluded.loadAllocation,
+        password=excluded.password, position=excluded.position, role=excluded.role, "group"=excluded."group", avatar=excluded.avatar, loadAllocation=excluded.loadAllocation,
         reportsTo=excluded.reportsTo, birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
     `);
 
@@ -154,7 +155,6 @@ export async function saveAllData({
     for (const emp of employees) {
       empStmt.run({
         ...emp,
-        groupName: emp.group,
         password: emp.password || existingPasswords.get(emp.id) || 'password', // Fallback for new users
         birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
         startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
@@ -252,3 +252,5 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
+
+    
