@@ -82,6 +82,23 @@ if (!dbExists) {
 
 } else {
     console.log('Connected to existing database.');
+    // Migration for existing databases that might be missing the groups table
+    try {
+        const tableInfo = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='groups'").get();
+        if (!tableInfo) {
+            console.log("`groups` table not found. Creating and seeding it.");
+            db.exec("CREATE TABLE IF NOT EXISTS groups (name TEXT PRIMARY KEY)");
+            const insertGroup = db.prepare('INSERT INTO groups (name) VALUES (?)');
+            db.transaction(() => {
+                initialDb.groups.forEach(group => {
+                    insertGroup.run(group);
+                });
+            })();
+            console.log("`groups` table created and seeded successfully.");
+        }
+    } catch(e) {
+        console.error("Error during database migration check:", e);
+    }
 }
 
 // Gracefully close the database connection on exit
