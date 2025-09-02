@@ -34,8 +34,7 @@
     "fromName": ""
   },
   "groups": [
-    "Administration",
-    "MAMS Support"
+    "Administration"
   ],
   "shiftTemplates": [
     { "name": "Morning Shift (06:00-14:00)", "label": "Morning Shift", "startTime": "06:00", "endTime": "14:00", "color": "hsl(var(--chart-2))", "breakStartTime": "10:00", "breakEndTime": "10:30", "isUnpaidBreak": false },
