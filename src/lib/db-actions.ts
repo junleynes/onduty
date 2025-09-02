@@ -155,15 +155,19 @@ export async function saveAllData({
     for (const emp of employees) {
       empStmt.run({
         ...emp,
+        group: emp.group,
         password: emp.password || existingPasswords.get(emp.id) || 'password', // Fallback for new users
         birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
         startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
         lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
         visibility: JSON.stringify(emp.visibility || {}),
+        reportsTo: emp.reportsTo || null,
       });
     }
 
-    const employeesToDelete = Array.from(existingPasswords.keys()).filter(id => !employeeIdsInState.has(id));
+    const allDbEmployeeIds = db.prepare('SELECT id from employees').all().map((row: any) => row.id);
+    const employeesToDelete = allDbEmployeeIds.filter(id => !employeeIdsInState.has(id));
+
     if (employeesToDelete.length > 0) {
       const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
       deleteStmt.run(...employeesToDelete);
