@@ -31,7 +31,7 @@ export async function getData() {
     const templates = keyValuePairs.reduce((acc, { key, value }) => {
         acc[key] = value;
         return acc;
-    }, {} as Record<string, string>);
+    }, {} as Record<string, string | null>);
 
 
     // Process data to match client-side types (e.g., parsing JSON, converting dates)
@@ -218,6 +218,8 @@ export async function saveAllData({
         
         if (!empToSave.password && dbEmp) {
             empToSave.password = dbEmp.password;
+        } else if (!empToSave.password && !dbEmp) {
+            empToSave.password = 'password';
         }
 
         upsertEmployeeStmt.run({
@@ -357,3 +359,5 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
+
+    
