@@ -58,15 +58,20 @@ export async function sendEmail(
 export async function verifyUser(email: string, password: string): Promise<{ success: boolean; user?: Employee; error?: string; }> {
     try {
         const stmt = db.prepare('SELECT * FROM employees WHERE email = ?');
-        const user = stmt.get(email) as Employee | undefined;
+        const userRow = stmt.get(email);
 
-        if (user && user.password === password) {
-            // Make sure to return a plain object, not a class instance
-            const userObject = JSON.parse(JSON.stringify(user));
-            return { success: true, user: userObject };
-        } else {
-            return { success: false, error: 'Invalid email or password.' };
+        if (userRow) {
+            const user = userRow as Employee;
+            if (user.password === password) {
+                // Ensure a plain object is returned, not a database row object.
+                const userObject = JSON.parse(JSON.stringify(user));
+                return { success: true, user: userObject };
+            }
         }
+        
+        // If userRow is null or password doesn't match
+        return { success: false, error: 'Invalid email or password.' };
+
     } catch (error) {
         console.error('Login verification failed:', error);
         return { success: false, error: (error as Error).message };
