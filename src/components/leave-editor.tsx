@@ -36,6 +36,7 @@ const leaveSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   id: z.string().optional(),
+  status: z.enum(['pending', 'approved', 'rejected']).optional(),
 }).refine(data => data.isAllDay || (data.startTime && data.endTime), {
     message: "Start and end times are required for partial day leave.",
     path: ["startTime"],
@@ -65,6 +66,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
       isAllDay: leave?.isAllDay ?? true,
       startTime: leave?.startTime || '',
       endTime: leave?.endTime || '',
+      status: leave?.status || 'approved', // Manually added leave is auto-approved
     },
   });
 
@@ -80,6 +82,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
             isAllDay: leave?.isAllDay ?? true,
             startTime: leave?.startTime || '',
             endTime: leave?.endTime || '',
+            status: leave?.status || 'approved', // Manually added leave is auto-approved
         });
     }
   }, [leave, form, leaveTypes, isOpen]);

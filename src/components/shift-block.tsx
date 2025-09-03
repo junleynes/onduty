@@ -7,6 +7,7 @@ import type { Shift, Leave } from '@/types';
 import { cn } from '@/lib/utils';
 import { getEmployeeById } from '@/lib/data';
 import { getFullName } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 
 const blockVariants = cva(
@@ -60,6 +61,7 @@ const formatLeaveTime = (time: string) => {
 export function ShiftBlock({ item, onClick, interactive, context, employee: employeeProp }: ShiftBlockProps) {
   if (isLeave(item)) {
     const backgroundColor = item.color || '#f97316';
+    const isApprovedRequest = item.status === 'approved';
 
     // For month view, just show the leave type for compactness
     if (context === 'month') {
@@ -70,6 +72,7 @@ export function ShiftBlock({ item, onClick, interactive, context, employee: empl
             style={{ backgroundColor: backgroundColor, color: 'white' }}
           >
             <p className="font-bold text-xs truncate">{item.type}</p>
+            {isApprovedRequest && <Check className="absolute top-0.5 right-0.5 h-3 w-3" />}
           </div>
        );
     }
@@ -81,6 +84,7 @@ export function ShiftBlock({ item, onClick, interactive, context, employee: empl
         className={cn(blockVariants({ type: 'leave', interactive, context }))}
         style={{ backgroundColor: backgroundColor, color: 'white' }}
       >
+        {isApprovedRequest && <Check className="absolute top-1 right-1 h-3.5 w-3.5" />}
         <div className="text-center">
              <p className="font-bold text-xs truncate">{item.type}</p>
             {item.isAllDay ? (
