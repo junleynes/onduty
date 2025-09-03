@@ -17,7 +17,7 @@ import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
-import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
