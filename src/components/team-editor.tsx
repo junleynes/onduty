@@ -20,7 +20,7 @@ import type { Employee, UserRole, AppVisibility } from '@/types';
 import { DatePicker } from './ui/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
-import { getInitials, getFullName, getBackgroundColor, getInitialState } from '@/lib/utils';
+import { getInitials, getFullName, getBackgroundColor } from '@/lib/utils';
 import Image from 'next/image';
 import { Checkbox } from './ui/checkbox';
 
@@ -63,11 +63,11 @@ type TeamEditorProps = {
   context?: 'admin' | 'manager';
   groups: string[];
   setGroups: React.Dispatch<React.SetStateAction<string[]>>;
+  employees: Employee[];
 };
 
-export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups }: TeamEditorProps) {
-    const [allEmployees, setAllEmployees] = useState<Employee[]>(() => getInitialState('employees', []));
-    const [positions] = useState(() => [...new Set(allEmployees.map(e => e.position))]);
+export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups, employees }: TeamEditorProps) {
+    const [positions] = useState(() => [...new Set(employees.map(e => e.position))]);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
     
@@ -368,7 +368,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                         </FormControl>
                                         <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
-                                        {allEmployees
+                                        {employees
                                             .filter(e => e.role === 'manager' && e.id !== employee?.id && e.group === currentGroup)
                                             .map(manager => (
                                             <SelectItem key={manager.id} value={manager.id}>

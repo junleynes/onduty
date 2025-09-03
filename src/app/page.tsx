@@ -602,6 +602,7 @@ function AppContent() {
         context={editorContext}
         groups={groups}
         setGroups={setGroups}
+        employees={employees}
     />
     <MemberImporter
         isOpen={isImporterOpen}

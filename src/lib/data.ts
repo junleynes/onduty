@@ -1,6 +1,7 @@
 
 
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings } from '@/types';
+import { getInitialState } from './utils';
 
 // In a full SQLite implementation, these would be queries to the database.
 // For now, we provide hardcoded initial values.
@@ -71,7 +72,8 @@ export const initialLeaveTypes = [
 
 export const weekDays: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export const getEmployeeById = (id: string | null, employees: Employee[]) => {
+export const getEmployeeById = (id: string | null): Employee | null => {
   if (!id) return null;
-  return employees.find(e => e.id === id);
+  const employees = getInitialState<Employee[]>('employees', []);
+  return employees.find(e => e.id === id) || null;
 };
