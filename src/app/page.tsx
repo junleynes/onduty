@@ -344,18 +344,25 @@ function AppContent() {
 
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
+    // Editing existing employee
     if (employeeData.id) {
-        setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
+        setEmployees(prevEmployees => 
+            prevEmployees.map(emp => {
+                if (emp.id === employeeData.id) {
+                    const updatedEmployee = { ...emp, ...employeeData };
+                    // If the user being edited is the current user, update the current user state
+                    if (currentUser?.id === updatedEmployee.id) {
+                        setCurrentUser(updatedEmployee);
+                        localStorage.setItem('currentUser', JSON.stringify(updatedEmployee));
+                    }
+                    return updatedEmployee;
+                }
+                return emp;
+            })
+        );
         toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
-
-        if (currentUser?.id === employeeData.id) {
-            const updatedUser = { ...currentUser, ...employeeData };
-            setCurrentUser(updatedUser as Employee);
-            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        }
-    } else {
+    } else { // Creating new employee
         const existingEmployeeByEmail = employees.find(emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase());
-
         if (existingEmployeeByEmail) {
             toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
             return;
@@ -364,12 +371,9 @@ function AppContent() {
         const newEmployee: Employee = {
             ...employeeData,
             id: uuidv4(),
-            avatar: employeeData.avatar || '',
-            position: employeeData.position || '',
             role: employeeData.role || 'member',
-            phone: employeeData.phone || '',
         } as Employee;
-        setEmployees([...employees, newEmployee]);
+        setEmployees(prev => [...prev, newEmployee]);
         toast({ title: 'User Added' });
     }
   };

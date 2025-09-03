@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -95,7 +96,7 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
     return (
       <Card>
         <CardHeader>
-          <CardTitle>My Shift Tasks</CardTitle>
+          <CardTitle>My Tasks</CardTitle>
         </CardHeader>
         <CardContent>
           <p>Loading user data...</p>
@@ -105,27 +106,47 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
   }
 
   const myShiftIds = new Set(shifts.filter(s => s.employeeId === currentUser.id).map(s => s.id));
-  const myShiftTasks = tasks.filter(task => task.scope === 'shift' && task.shiftId && myShiftIds.has(task.shiftId));
   
+  const myTasks = tasks.filter(task => {
+    // Include shift tasks assigned to the user's shifts
+    if (task.scope === 'shift' && task.shiftId && myShiftIds.has(task.shiftId)) {
+        return true;
+    }
+    // Include personal tasks assigned to the user
+    if (task.scope === 'personal' && task.assigneeId === currentUser.id) {
+        return true;
+    }
+    return false;
+  });
+
   const shiftsById = new Map(shifts.map(s => [s.id, s]));
   const today = startOfDay(new Date());
 
-  const pendingTasks = myShiftTasks.filter(task => task.status === 'pending');
-  const completedTasks = myShiftTasks.filter(task => task.status === 'completed');
+  const pendingTasks = myTasks.filter(task => task.status === 'pending');
+  const completedTasks = myTasks.filter(task => task.status === 'completed');
+
+  const getTaskDate = (task: Task): Date | null => {
+      if (task.dueDate) return new Date(task.dueDate);
+      if (task.shiftId) {
+          const shift = shiftsById.get(task.shiftId);
+          return shift ? new Date(shift.date) : null;
+      }
+      return null;
+  }
 
   const todaysTasks = pendingTasks.filter(task => {
-    const shift = task.shiftId ? shiftsById.get(task.shiftId) : undefined;
-    return shift && isToday(new Date(shift.date));
+    const taskDate = getTaskDate(task);
+    return taskDate && isToday(taskDate);
   });
 
   const upcomingTasks = pendingTasks.filter(task => {
-      const shift = task.shiftId ? shiftsById.get(task.shiftId) : undefined;
-      return shift && isFuture(new Date(shift.date));
+      const taskDate = getTaskDate(task);
+      return taskDate && isFuture(taskDate);
   });
 
   const overdueTasks = pendingTasks.filter(task => {
-      const shift = task.shiftId ? shiftsById.get(task.shiftId) : undefined;
-      return shift && isPast(new Date(shift.date)) && !isToday(new Date(shift.date));
+      const taskDate = getTaskDate(task);
+      return taskDate && isPast(taskDate) && !isToday(taskDate);
   })
 
   const handleTaskToggle = (taskId: string, isChecked: boolean) => {
@@ -136,13 +157,17 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
     ));
   };
   
-  const sortedCompletedTasks = [...completedTasks].sort((a,b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime());
+  const sortedCompletedTasks = [...completedTasks].sort((a,b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      return dateB - dateA;
+  });
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My Shift Tasks</CardTitle>
-        <CardDescription>A list of tasks assigned to your shifts. Check them off as you complete them.</CardDescription>
+        <CardTitle>My Tasks</CardTitle>
+        <CardDescription>A list of tasks assigned to you or your shifts. Check them off as you complete them.</CardDescription>
       </CardHeader>
       <CardContent>
         <Accordion type="multiple" defaultValue={['overdue-tasks', 'todays-tasks', 'upcoming-tasks', 'completed-tasks']} className="w-full space-y-4">
