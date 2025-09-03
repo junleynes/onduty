@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
 import { initialLeaveTypes } from '@/lib/data';
+import type { LeaveTypeOption } from './leave-type-editor';
 
 type TimeOffViewProps = {
   leaveRequests: Leave[];
@@ -28,7 +29,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
-  const [leaveTypes] = useState(() => getInitialState('leaveTypes', initialLeaveTypes));
+  const [leaveTypes] = useState<LeaveTypeOption[]>(() => getInitialState('leaveTypes', initialLeaveTypes));
 
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
 
@@ -64,12 +65,14 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
       setLeaveRequests(prev => prev.map(r => r.id === editingRequest.id ? { ...r, ...requestData } as Leave : r));
       toast({ title: 'Request Updated' });
     } else { // Creating
+      const leaveTypeDetails = leaveTypes.find(lt => lt.type === requestData.type);
       const newRequest: Leave = {
         id: uuidv4(),
         employeeId: currentUser.id,
         status: 'pending',
         requestedAt: new Date(),
         ...requestData,
+        color: leaveTypeDetails?.color || '#6b7280',
       } as Leave;
       setLeaveRequests(prev => [newRequest, ...prev]);
       toast({ title: 'Request Submitted' });
@@ -170,6 +173,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
         setIsOpen={setIsRequestDialogOpen}
         onSave={handleSaveRequest}
         request={editingRequest}
+        leaveTypes={leaveTypes}
       />
     </>
   );

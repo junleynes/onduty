@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -19,9 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from './ui/date-picker';
 import type { Leave } from '@/types';
 import { Textarea } from './ui/textarea';
-import { initialLeaveTypes } from '@/lib/data';
 import { Separator } from './ui/separator';
 import { Input } from './ui/input';
+import type { LeaveTypeOption } from './leave-type-editor';
 
 const requestSchema = z.object({
   type: z.string().min(1, { message: 'Leave type is required.' }),
@@ -48,9 +49,10 @@ type LeaveRequestDialogProps = {
   setIsOpen: (isOpen: boolean) => void;
   request: Partial<Leave> | null;
   onSave: (request: Partial<Leave>) => void;
+  leaveTypes: LeaveTypeOption[];
 };
 
-export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave }: LeaveRequestDialogProps) {
+export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTypes }: LeaveRequestDialogProps) {
   const form = useForm<z.infer<typeof requestSchema>>({
     resolver: zodResolver(requestSchema),
     defaultValues: {},
@@ -107,7 +109,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave }: Leave
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {initialLeaveTypes.map(lt => (
+                      {leaveTypes.map(lt => (
                         <SelectItem key={lt.type} value={lt.type}>{lt.type}</SelectItem>
                       ))}
                     </SelectContent>
