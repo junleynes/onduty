@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -154,7 +155,10 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         }
     }
     
-    const dataToSave = {...values};
+    let dataToSave: Partial<Employee> = {...values};
+    if (employee?.id) {
+        dataToSave.id = employee.id;
+    }
     // Don't overwrite with empty password if user is just editing other details
     if (values.id && !values.password) {
       delete (dataToSave as any).password;

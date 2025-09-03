@@ -347,6 +347,12 @@ function AppContent() {
     if (employeeData.id) {
         setEmployees(employees.map(emp => (emp.id === employeeData.id ? { ...emp, ...employeeData } as Employee : emp)));
         toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
+
+        if (currentUser?.id === employeeData.id) {
+            const updatedUser = { ...currentUser, ...employeeData };
+            setCurrentUser(updatedUser as Employee);
+            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        }
     } else {
         const existingEmployeeByEmail = employees.find(emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase());
 
@@ -365,12 +371,6 @@ function AppContent() {
         } as Employee;
         setEmployees([...employees, newEmployee]);
         toast({ title: 'User Added' });
-    }
-
-    if (currentUser?.id === employeeData.id) {
-        const updatedUser = { ...currentUser, ...employeeData };
-        setCurrentUser(updatedUser as Employee);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
     }
   };
   
