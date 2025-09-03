@@ -65,6 +65,7 @@ export const initialLeaveTypes = [
     { "type": "ML", "color": "#e74c3c" },
     { "type": "PL", "color": "#9b59b6" },
     { "type": "OFFSET", "color": "#1abc9c" },
+    { "type": "AVL", "color": "#008080" },
     { "type": "Work Extension", "color": "#2ecc71"},
     { "type": "TARDY", "color": "#e67e22" }
 ];
