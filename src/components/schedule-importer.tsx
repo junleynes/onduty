@@ -206,38 +206,17 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                           return;
                       }
 
-                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL', 'TARDY'].includes(upperCellValue)) {
-                          importedLeave.push({ id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, type: upperCellValue, isAllDay: true });
-                          return;
-                      }
-
-                      // Handle "6am - 10am / 0.5 OFFSET" and other variations
+                      // Handle partial-day leave first, e.g., "1pm-5pm / VL"
                       if (cellValue.includes('/')) {
                         const parts = cellValue.split('/').map(p => p.trim());
                         const timeRegex = /(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i;
-                        const leaveTypeRegex = /[a-zA-Z]+/;
-                        
-                        let timePart: string | undefined;
-                        let leavePart: string | undefined;
+                        const timeMatch = parts[0].match(timeRegex);
+                        const leaveType = parts[1]?.toUpperCase();
 
-                        if (timeRegex.test(parts[0])) {
-                            timePart = parts[0];
-                            leavePart = parts[1];
-                        } else if (timeRegex.test(parts[1])) {
-                            timePart = parts[1];
-                            leavePart = parts[0];
-                        }
-                        
-                        if (timePart && leavePart) {
-                            const timeMatch = timePart.match(timeRegex);
-                            const leaveTypeMatch = leavePart.match(leaveTypeRegex);
-
-                            if(timeMatch && leaveTypeMatch) {
-                                const startTime = convertTo24Hour(timeMatch[1]);
-                                const endTime = convertTo24Hour(timeMatch[2]);
-                                const leaveType = leaveTypeMatch[0].toUpperCase();
-                                if (!startTime || !endTime) return;
-
+                        if (timeMatch && leaveType) {
+                            const startTime = convertTo24Hour(timeMatch[1]);
+                            const endTime = convertTo24Hour(timeMatch[2]);
+                            if (startTime && endTime) {
                                 importedLeave.push({
                                     id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`,
                                     employeeId: employee.id,
@@ -246,10 +225,17 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                                     isAllDay: false,
                                     startTime,
                                     endTime,
+                                    status: 'approved',
                                 });
                                 return;
                             }
                         }
+                      }
+                      
+                      // Handle full-day leave, e.g., "VL"
+                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL', 'TARDY'].includes(upperCellValue)) {
+                          importedLeave.push({ id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, type: upperCellValue, isAllDay: true, status: 'approved' });
+                          return;
                       }
                       
                       const timeMatch = cellValue.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i);
