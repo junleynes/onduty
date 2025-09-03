@@ -262,6 +262,8 @@ function AppContent() {
         }
     }, [employees, addNotificationForUser, currentUser]);
 
+  const approvedLeave = useMemo(() => leave.filter(l => l.status === 'approved'), [leave]);
+
   const shiftsForView = useMemo(() => {
     if (currentUser?.role === 'member') {
       return shifts.filter(shift => shift.status === 'published');
@@ -316,32 +318,28 @@ function AppContent() {
 
   const handleDeleteMember = (employeeId: string) => {
     setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
-    
-    const shiftsForEmployee = shifts.filter(s => s.employeeId === employeeId);
-    const shiftIdsForEmployee = new Set(shiftsForEmployee.map(s => s.id));
-
-    setShifts(prev => prev.filter(s => s.employeeId !== employeeId));
+    // The database's ON DELETE CASCADE will handle associated records.
+    // We just need to update the state for other related items if necessary.
     setLeave(prev => prev.filter(l => l.employeeId !== employeeId));
-    setTasks(prev => prev.filter(t => (t.shiftId && shiftIdsForEmployee.has(t.shiftId)) || t.assigneeId === employeeId));
+    setShifts(prev => prev.filter(s => s.employeeId !== employeeId));
+    setTasks(prev => prev.filter(t => t.assigneeId !== employeeId && t.createdBy !== employeeId));
     setAllowances(prev => prev.filter(a => a.employeeId !== employeeId));
 
-    toast({ title: 'User Removed', description: 'All associated shifts, tasks, and allowances have been removed.', variant: 'destructive' });
+    toast({ title: 'User Removed', description: 'The user and all their associated data have been removed.', variant: 'destructive' });
   };
   
   const handleBatchDeleteMembers = (employeeIds: string[]) => {
     const idsToDelete = new Set(employeeIds);
     setEmployees(prev => prev.filter(emp => !idsToDelete.has(emp.id)));
-
-    const shiftsForEmployees = shifts.filter(s => s.employeeId && idsToDelete.has(s.employeeId));
-    const shiftIdsForEmployees = new Set(shiftsForEmployees.map(s => s.id));
     
-    setShifts(prev => prev.filter(s => !s.employeeId || !idsToDelete.has(s.employeeId)));
-    setLeave(prev => prev.filter(l => !idsToDelete.has(l.employeeId)));
+    // Again, rely on CASCADE for DB, just clean up state
+    setLeave(prev => prev.filter(l => l.employeeId && !idsToDelete.has(l.employeeId)));
+    setShifts(prev => prev.filter(s => s.employeeId && !idsToDelete.has(s.employeeId)));
     setTasks(prev => prev.filter(t => 
-        !(t.shiftId && shiftIdsForEmployees.has(t.shiftId)) && 
-        !(t.assigneeId && idsToDelete.has(t.assigneeId))
+        (t.assigneeId && !idsToDelete.has(t.assigneeId)) &&
+        !idsToDelete.has(t.createdBy)
     ));
-    setAllowances(prev => prev.filter(a => !idsToDelete.has(a.employeeId)));
+    setAllowances(prev => prev.filter(a => a.employeeId && !idsToDelete.has(a.employeeId)));
 
     toast({ title: `${employeeIds.length} Users Removed`, description: 'All associated data has been removed.', variant: 'destructive' });
   };
@@ -350,7 +348,7 @@ function AppContent() {
  const handleSaveMember = (data: Partial<Employee>) => {
     setEmployees(prev => {
         if (data.id) { // This is an update
-            const updatedEmployees = prev.map(emp => {
+            return prev.map(emp => {
                 if (emp.id === data.id) {
                     const updatedEmp = { ...emp, ...data };
                     // If the user being edited is the current user, update the current user state
@@ -362,8 +360,6 @@ function AppContent() {
                 }
                 return emp;
             });
-            toast({ title: 'User Updated' });
-            return updatedEmployees;
 
         } else { // This is a new user
             const existingEmployeeByEmail = prev.find(emp => emp.email.toLowerCase() === data.email?.toLowerCase());
@@ -372,9 +368,9 @@ function AppContent() {
                 return prev;
             }
             const newEmployee: Employee = {
-                ...data,
                 id: uuidv4(),
-                role: data.role || 'member',
+                role: 'member',
+                ...data,
             } as Employee;
             toast({ title: 'User Added' });
             return [...prev, newEmployee];
@@ -460,7 +456,7 @@ function AppContent() {
     switch (activeView) {
       case 'schedule': {
         const scheduleEmployees = employees.filter(emp => emp.role !== 'admin');
-        const approvedLeave = leave.filter(l => l.status === 'approved');
+        
         return (
           <ScheduleView 
             employees={scheduleEmployees}
@@ -569,7 +565,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, approvedLeave, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded]);
 
   if (!initialDataLoaded || !currentUser) {
       return (

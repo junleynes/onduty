@@ -1,23 +1,25 @@
+
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
-    employeeNumber TEXT,
+    employeeNumber TEXT UNIQUE,
     firstName TEXT NOT NULL,
     lastName TEXT NOT NULL,
     middleInitial TEXT,
-    email TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL UNIQUE,
     phone TEXT,
     password TEXT,
-    birthDate TEXT, -- ISO 8601 string
-    startDate TEXT, -- ISO 8601 string
-    lastPromotionDate TEXT, -- ISO 8601 string
+    birthDate TEXT,
+    startDate TEXT,
+    lastPromotionDate TEXT,
     position TEXT,
     role TEXT NOT NULL CHECK(role IN ('admin', 'manager', 'member')),
     "group" TEXT,
-    avatar TEXT, -- Base64 encoded image
-    signature TEXT, -- Base64 encoded image
+    avatar TEXT,
+    signature TEXT,
     loadAllocation REAL,
-    reportsTo TEXT, -- Employee ID
-    visibility TEXT -- JSON string for AppVisibility
+    reportsTo TEXT,
+    visibility TEXT,
+    FOREIGN KEY (reportsTo) REFERENCES employees(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS shifts (
@@ -26,32 +28,32 @@ CREATE TABLE IF NOT EXISTS shifts (
     label TEXT,
     startTime TEXT,
     endTime TEXT,
-    date TEXT NOT NULL, -- ISO 8601 string YYYY-MM-DD
+    date TEXT,
     color TEXT,
-    isDayOff INTEGER DEFAULT 0,
-    isHolidayOff INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'published')),
+    isDayOff BOOLEAN DEFAULT FALSE,
+    isHolidayOff BOOLEAN DEFAULT FALSE,
+    status TEXT CHECK(status IN ('draft', 'published')),
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER DEFAULT 0,
-    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE SET NULL
+    isUnpaidBreak BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS leave (
     id TEXT PRIMARY KEY,
     employeeId TEXT NOT NULL,
-    type TEXT NOT NULL,
+    type TEXT,
     color TEXT,
-    date TEXT NOT NULL, -- ISO 8601 string YYYY-MM-DD
-    isAllDay INTEGER DEFAULT 1,
+    date TEXT,
+    isAllDay BOOLEAN,
     startTime TEXT,
     endTime TEXT,
-    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+    status TEXT CHECK(status IN ('pending', 'approved', 'rejected')),
     reason TEXT,
-    requestedAt TEXT, -- ISO 8601 string
-    managedBy TEXT, -- Employee ID of manager
-    managedAt TEXT, -- ISO 8601 string
-    originalShiftDate TEXT, -- ISO 8601 string YYYY-MM-DD
+    requestedAt TEXT,
+    managedBy TEXT,
+    managedAt TEXT,
+    originalShiftDate TEXT,
     originalStartTime TEXT,
     originalEndTime TEXT,
     FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE,
@@ -60,14 +62,14 @@ CREATE TABLE IF NOT EXISTS leave (
 
 CREATE TABLE IF NOT EXISTS notes (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL UNIQUE, -- ISO 8601 string YYYY-MM-DD
+    date TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS holidays (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL, -- ISO 8601 string YYYY-MM-DD
+    date TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL
 );
 
@@ -78,37 +80,36 @@ CREATE TABLE IF NOT EXISTS tasks (
     scope TEXT NOT NULL CHECK(scope IN ('personal', 'global', 'shift')),
     title TEXT NOT NULL,
     description TEXT,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed')),
-    completedAt TEXT, -- ISO 8601 string
-    dueDate TEXT, -- ISO 8601 string
-    createdBy TEXT, -- Employee ID
+    status TEXT NOT NULL CHECK(status IN ('pending', 'completed')),
+    completedAt TEXT,
+    dueDate TEXT,
+    createdBy TEXT NOT NULL,
     FOREIGN KEY (shiftId) REFERENCES shifts(id) ON DELETE CASCADE,
-    FOREIGN KEY (assigneeId) REFERENCES employees(id) ON DELETE CASCADE,
-    FOREIGN KEY (createdBy) REFERENCES employees(id) ON DELETE SET NULL
+    FOREIGN KEY (assigneeId) REFERENCES employees(id) ON DELETE SET NULL,
+    FOREIGN KEY (createdBy) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS communication_allowances (
     id TEXT PRIMARY KEY,
     employeeId TEXT NOT NULL,
     year INTEGER NOT NULL,
-    month INTEGER NOT NULL, -- 0-11
+    month INTEGER NOT NULL,
     balance REAL,
-    asOfDate TEXT, -- ISO 8601 string
-    screenshot TEXT, -- Base64 encoded image
+    asOfDate TEXT,
+    screenshot TEXT,
     UNIQUE(employeeId, year, month),
     FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS groups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL
+    name TEXT PRIMARY KEY NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS smtp_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
+    id INTEGER PRIMARY KEY CHECK(id = 1),
     host TEXT,
     port INTEGER,
-    secure INTEGER,
+    secure BOOLEAN,
     user TEXT,
     pass TEXT,
     fromEmail TEXT,
@@ -119,7 +120,7 @@ CREATE TABLE IF NOT EXISTS tardy_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     employeeId TEXT NOT NULL,
     employeeName TEXT,
-    date TEXT NOT NULL, -- ISO 8601 string YYYY-MM-DD
+    date TEXT,
     schedule TEXT,
     timeIn TEXT,
     timeOut TEXT,
@@ -130,13 +131,13 @@ CREATE TABLE IF NOT EXISTS tardy_records (
 CREATE TABLE IF NOT EXISTS shift_templates (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
-    label TEXT NOT NULL,
-    startTime TEXT NOT NULL,
-    endTime TEXT NOT NULL,
+    label TEXT,
+    startTime TEXT,
+    endTime TEXT,
     color TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER DEFAULT 0
+    isUnpaidBreak BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS key_value_store (
