@@ -162,15 +162,27 @@ export async function saveAllData({
     `);
 
     for (const emp of employees) {
+      const visibility = emp.visibility || {};
       empStmt.run({
-        ...emp,
-        password: emp.password || existingPasswords.get(emp.id) || 'password', // Fallback for new users
+        id: emp.id,
+        employeeNumber: emp.employeeNumber || null,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        middleInitial: emp.middleInitial || null,
+        email: emp.email,
+        phone: emp.phone || null,
+        password: emp.password || existingPasswords.get(emp.id) || 'password', // Fallback
+        position: emp.position || null,
+        role: emp.role,
+        group: emp.group || null,
+        avatar: emp.avatar || null,
+        loadAllocation: emp.loadAllocation || 0,
+        reportsTo: emp.reportsTo || null,
         birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
         startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
-        lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
-        visibility: JSON.stringify(emp.visibility || {}),
-        reportsTo: emp.reportsTo || null,
         signature: emp.signature || null,
+        visibility: JSON.stringify(visibility),
+        lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
       });
     }
     
@@ -224,14 +236,24 @@ export async function saveAllData({
     }
 
     // --- SMTP SETTINGS ---
-    const smtpStmt = db.prepare(`
-      INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName)
-      VALUES (1, @host, @port, @secure, @user, @pass, @fromEmail, @fromName)
-      ON CONFLICT(id) DO UPDATE SET
-          host=excluded.host, port=excluded.port, secure=excluded.secure, user=excluded.user,
-          pass=excluded.pass, fromEmail=excluded.fromEmail, fromName=excluded.fromName
-    `);
-    smtpStmt.run({ ...smtpSettings, secure: smtpSettings.secure ? 1 : 0 });
+    if (smtpSettings && smtpSettings.host) {
+        const smtpStmt = db.prepare(`
+        INSERT INTO smtp_settings (id, host, port, secure, user, pass, fromEmail, fromName)
+        VALUES (1, @host, @port, @secure, @user, @pass, @fromEmail, @fromName)
+        ON CONFLICT(id) DO UPDATE SET
+            host=excluded.host, port=excluded.port, secure=excluded.secure, user=excluded.user,
+            pass=excluded.pass, fromEmail=excluded.fromEmail, fromName=excluded.fromName
+        `);
+        smtpStmt.run({ 
+            host: smtpSettings.host,
+            port: smtpSettings.port,
+            secure: smtpSettings.secure ? 1 : 0,
+            user: smtpSettings.user || null,
+            pass: smtpSettings.pass || null,
+            fromEmail: smtpSettings.fromEmail,
+            fromName: smtpSettings.fromName
+        });
+    }
 
     // --- TARDY RECORDS ---
     db.prepare('DELETE FROM tardy_records').run();
