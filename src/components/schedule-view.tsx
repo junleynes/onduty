@@ -12,7 +12,7 @@ import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from './ui/calendar';
-import { cn, getInitials, getBackgroundColor, getFullName, getInitialState } from '@/lib/utils';
+import { cn, getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
@@ -23,7 +23,7 @@ import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
+import { initialLeaveTypes } from '@/lib/data';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { sendEmail } from '@/app/actions';
@@ -54,9 +54,11 @@ type ScheduleViewProps = {
   onEditNote: (note: Partial<Note>) => void;
   onManageHolidays: () => void;
   smtpSettings: SmtpSettings;
+  shiftTemplates: ShiftTemplate[];
+  setShiftTemplates: React.Dispatch<React.SetStateAction<ShiftTemplate[]>>;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, smtpSettings }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, smtpSettings, shiftTemplates, setShiftTemplates }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
   
   const visibleEmployees = useMemo(() => employees.filter(e => e.visibility?.schedule !== false), [employees]);
@@ -77,12 +79,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
   
   const [isLeaveTypeEditorOpen, setIsLeaveTypeEditorOpen] = useState(false);
-  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(() => getInitialState('leaveTypes', initialLeaveTypes));
+  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>(() => initialLeaveTypes);
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
   
-  const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>(() => getInitialState('shiftTemplates', initialShiftTemplates));
   const [weekTemplate, setWeekTemplate] = useState<Omit<Shift, 'id' | 'date'>[] | null>(null);
   const { toast } = useToast();
 
@@ -645,7 +646,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(new Date(s.date), day)
             ),
             ...leave.filter(
-                (l) => l.employeeId === employee.id && isSameDay(new Date(l.date), day) && l.status === 'approved'
+                (l) => l.employeeId === employee.id && isSameDay(new Date(l.date), day)
             ).map(l => {
                 const leaveType = leaveTypes.find(lt => lt.type === l.type);
                 return { ...l, color: leaveType?.color || l.color };

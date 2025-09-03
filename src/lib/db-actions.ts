@@ -1,9 +1,10 @@
 
+
 'use server';
 
 import { getDb } from './db';
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord } from '@/types';
-import { v4 as uuidv4 } from 'uuid';
+import type { ShiftTemplate } from '@/components/shift-editor';
 
 function safeParseJSON(jsonString: string | null | undefined, defaultValue: any) {
   if (!jsonString) return defaultValue;
@@ -27,6 +28,7 @@ export async function getData() {
     const groups = db.prepare('SELECT name FROM groups').all().map((g: any) => g.name) as string[];
     const smtpSettings: SmtpSettings = db.prepare('SELECT * FROM smtp_settings WHERE id = 1').get() as any || {};
     const tardyRecords = db.prepare('SELECT * FROM tardy_records').all() as any[];
+    const shiftTemplates = db.prepare('SELECT * FROM shift_templates').all() as any[];
     
     const keyValuePairs = db.prepare('SELECT * FROM key_value_store').all() as {key: string, value: string}[];
     const templates = keyValuePairs.reduce((acc, { key, value }) => {
@@ -81,6 +83,11 @@ export async function getData() {
       completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
       dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
     }));
+    
+    const processedShiftTemplates: ShiftTemplate[] = shiftTemplates.map(t => ({
+        ...t,
+        isUnpaidBreak: t.isUnpaidBreak === 1,
+    }));
 
     const processedTardyRecords: TardyRecord[] = tardyRecords.map(t => ({
         ...t,
@@ -102,6 +109,7 @@ export async function getData() {
         smtpSettings,
         tardyRecords: processedTardyRecords,
         templates,
+        shiftTemplates: processedShiftTemplates,
       }
     };
   } catch (error) {
@@ -123,6 +131,7 @@ export async function saveAllData({
   smtpSettings,
   tardyRecords,
   templates,
+  shiftTemplates,
 }: {
   employees: Employee[];
   shifts: Shift[];
@@ -135,6 +144,7 @@ export async function saveAllData({
   smtpSettings: SmtpSettings;
   tardyRecords: TardyRecord[];
   templates: Record<string, string | null>;
+  shiftTemplates: ShiftTemplate[];
 }) {
   const db = getDb();
   const saveTransaction = db.transaction(() => {
@@ -261,8 +271,25 @@ export async function saveAllData({
     for(const record of tardyRecords) {
         tardyStmt.run(record.employeeId, record.employeeName, new Date(record.date).toISOString().split('T')[0], record.schedule, record.timeIn, record.timeOut, record.remarks);
     }
+    
+    // --- SHIFT TEMPLATES ---
+    db.prepare('DELETE FROM shift_templates').run();
+    const shiftTemplateStmt = db.prepare('INSERT INTO shift_templates (id, name, label, startTime, endTime, color, breakStartTime, breakEndTime, isUnpaidBreak) VALUES (@id, @name, @label, @startTime, @endTime, @color, @breakStartTime, @breakEndTime, @isUnpaidBreak)');
+    for(const tpl of shiftTemplates) {
+        shiftTemplateStmt.run({
+            id: tpl.id,
+            name: tpl.name,
+            label: tpl.label,
+            startTime: tpl.startTime,
+            endTime: tpl.endTime,
+            color: tpl.color,
+            breakStartTime: tpl.breakStartTime || null,
+            breakEndTime: tpl.breakEndTime || null,
+            isUnpaidBreak: tpl.isUnpaidBreak ? 1 : 0
+        });
+    }
 
-    // --- TEMPLATES (Key-Value Store) ---
+    // --- KEY-VALUE STORE (e.g. excel templates) ---
     const templateStmt = db.prepare('INSERT INTO key_value_store (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
     for(const [key, value] of Object.entries(templates)) {
       if (value) {

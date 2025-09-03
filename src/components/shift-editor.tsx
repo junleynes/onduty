@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -28,6 +29,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import { DatePicker } from './ui/date-picker';
 import { Textarea } from './ui/textarea';
+import { v4 as uuidv4 } from 'uuid';
 
 
 const shiftSchema = z.object({
@@ -53,6 +55,7 @@ const shiftSchema = z.object({
 
 
 export type ShiftTemplate = {
+  id: string;
   name: string;
   label: string;
   startTime: string;
@@ -199,7 +202,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
             isUnpaidBreak: formValues.isUnpaidBreak,
         };
         setShiftTemplates(prev => 
-            prev.map(t => t.name === editingTemplate.name ? updatedTemplate : t)
+            prev.map(t => t.id === editingTemplate.id ? updatedTemplate : t)
         );
         toast({ title: 'Template Updated', description: `The "${updatedTemplate.name}" template has been updated.` });
         setEditingTemplate(null);
@@ -248,13 +251,13 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
   }
 
   const handleDuplicateTemplate = (templateToDuplicate: typeof shiftTemplates[0]) => {
-    const newTemplate = { ...templateToDuplicate, name: `${templateToDuplicate.name} (Copy)` };
+    const newTemplate = { ...templateToDuplicate, id: uuidv4(), name: `${templateToDuplicate.name} (Copy)` };
     setShiftTemplates(prev => [...prev, newTemplate]);
     toast({ title: 'Template Duplicated' });
   };
 
-  const handleDeleteTemplate = (templateNameToDelete: string) => {
-    setShiftTemplates(prev => prev.filter(t => t.name !== templateNameToDelete));
+  const handleDeleteTemplate = (templateIdToDelete: string) => {
+    setShiftTemplates(prev => prev.filter(t => t.id !== templateIdToDelete));
     toast({ title: 'Template Deleted', variant: 'destructive' });
   };
 
@@ -265,6 +268,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
         return;
     }
     const newTemplate: ShiftTemplate = {
+        id: uuidv4(),
         name: `${currentValues.label} (${currentValues.startTime}-${currentValues.endTime})`,
         label: currentValues.label,
         startTime: currentValues.startTime,
@@ -593,7 +597,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                 <ScrollArea className="h-96">
                     <div className="space-y-2 p-4">
                         {shiftTemplates.map((template) => (
-                           <Card key={template.name} className="p-3 hover:bg-muted group">
+                           <Card key={template.id} className="p-3 hover:bg-muted group">
                                <div className="flex items-center justify-between">
                                    <div className="flex items-start gap-3 cursor-pointer flex-1" onClick={() => handleTemplateClick(template)}>
                                        <FileText className="h-5 w-5 text-muted-foreground mt-1" />
@@ -621,7 +625,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                                                 <Copy className="mr-2 h-4 w-4" />
                                                 <span>Duplicate</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteTemplate(template.name)}>
+                                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => handleDeleteTemplate(template.id)}>
                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                 <span>Delete</span>
                                             </DropdownMenuItem>

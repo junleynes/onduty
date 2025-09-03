@@ -4,6 +4,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, TardyRecord } from '@/types';
+import type { ShiftTemplate } from '@/components/shift-editor';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
@@ -58,6 +59,7 @@ function AppContent() {
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>({});
   const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>([]);
   const [templates, setTemplates] = useState<Record<string, string | null>>({});
+  const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -102,7 +104,8 @@ function AppContent() {
                 groups,
                 smtpSettings,
                 tardyRecords,
-                templates
+                templates,
+                shiftTemplates,
             });
 
             if (!result.success) {
@@ -126,7 +129,7 @@ function AppContent() {
     const timeoutId = setTimeout(saveData, 1500); // Debounce saves
     return () => clearTimeout(timeoutId);
 
-  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, initialDataLoaded, isLoading, toast]);
+  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, initialDataLoaded, isLoading, toast]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -146,6 +149,7 @@ function AppContent() {
         setSmtpSettings(result.data.smtpSettings);
         setTardyRecords(result.data.tardyRecords);
         setTemplates(result.data.templates);
+        setShiftTemplates(result.data.shiftTemplates);
         
         const storedUserJson = localStorage.getItem('currentUser');
         if (storedUserJson) {
@@ -343,47 +347,40 @@ function AppContent() {
   };
 
 
-  const handleSaveMember = (employeeData: Partial<Employee>) => {
-    setEmployees(prevEmployees => {
-      // Check if it's an update or a new user
-      if (employeeData.id) {
-        // This is an update
-        const userIndex = prevEmployees.findIndex(emp => emp.id === employeeData.id);
-        if (userIndex === -1) {
-          toast({ variant: 'destructive', title: 'Update Failed', description: 'User not found.' });
-          return prevEmployees;
-        }
+ const handleSaveMember = (data: Partial<Employee>) => {
+    setEmployees(prev => {
+        if (data.id) { // This is an update
+            const updatedEmployees = prev.map(emp => {
+                if (emp.id === data.id) {
+                    const updatedEmp = { ...emp, ...data };
+                    // If the user being edited is the current user, update the current user state
+                    if (currentUser?.id === updatedEmp.id) {
+                        setCurrentUser(updatedEmp);
+                        localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
+                    }
+                    return updatedEmp;
+                }
+                return emp;
+            });
+            toast({ title: 'User Updated' });
+            return updatedEmployees;
 
-        const updatedEmployees = [...prevEmployees];
-        const updatedEmployee = { ...updatedEmployees[userIndex], ...employeeData };
-        updatedEmployees[userIndex] = updatedEmployee;
-
-        // If the user being edited is the current user, update the current user state
-        if (currentUser?.id === updatedEmployee.id) {
-          setCurrentUser(updatedEmployee);
-          localStorage.setItem('currentUser', JSON.stringify(updatedEmployee));
+        } else { // This is a new user
+            const existingEmployeeByEmail = prev.find(emp => emp.email.toLowerCase() === data.email?.toLowerCase());
+            if (existingEmployeeByEmail) {
+                toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
+                return prev;
+            }
+            const newEmployee: Employee = {
+                ...data,
+                id: uuidv4(),
+                role: data.role || 'member',
+            } as Employee;
+            toast({ title: 'User Added' });
+            return [...prev, newEmployee];
         }
-
-        toast({ title: 'User Updated' });
-        return updatedEmployees;
-      } else {
-        // This is a new user
-        const existingEmployeeByEmail = prevEmployees.find(emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase());
-        if (existingEmployeeByEmail) {
-          toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
-          return prevEmployees;
-        }
-        
-        const newEmployee: Employee = {
-          ...employeeData,
-          id: uuidv4(),
-          role: employeeData.role || 'member',
-        } as Employee;
-        toast({ title: 'User Added' });
-        return [...prevEmployees, newEmployee];
-      }
     });
-  };
+};
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
       const newEmployees: Employee[] = newMembers.map((member) => ({
@@ -488,6 +485,8 @@ function AppContent() {
             onEditNote={handleEditNote}
             onManageHolidays={() => setIsHolidayEditorOpen(true)}
             smtpSettings={smtpSettings}
+            shiftTemplates={shiftTemplates}
+            setShiftTemplates={setShiftTemplates}
           />
         );
       }
@@ -570,7 +569,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded]);
 
   if (!initialDataLoaded || !currentUser) {
       return (
