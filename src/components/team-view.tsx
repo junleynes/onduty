@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { Employee } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Pencil, Mail, Phone, CalendarDays, Award, Download, UserCheck } from 'lucide-react';
+import { MoreHorizontal, Pencil, Mail, Phone, CalendarDays, Award, Download, UserCheck, Cake } from 'lucide-react';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -175,6 +175,12 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
                                                     <Phone className="h-4 w-4 text-muted-foreground" /> 
                                                     <a href={`tel:${employee.phone}`} className="hover:underline">{employee.phone}</a>
                                                 </div>
+                                                 {employee.birthDate && (
+                                                    <div className="flex items-center gap-2">
+                                                        <Cake className="h-4 w-4 text-muted-foreground" />
+                                                        <span>{format(new Date(employee.birthDate), 'MMMM d')}</span>
+                                                    </div>
+                                                )}
                                                 {employee.startDate && (
                                                   <>
                                                     <div className="flex items-center gap-2">
@@ -186,12 +192,6 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
                                                         <span>Tenure: {calculateTenure(new Date(employee.startDate))}</span>
                                                     </div>
                                                   </>
-                                                )}
-                                                 {employee.lastPromotionDate && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Award className="h-4 w-4 text-muted-foreground" />
-                                                        <span>Last Promotion: {format(new Date(employee.lastPromotionDate), 'MMM d, yyyy')}</span>
-                                                    </div>
                                                 )}
                                             </div>
                                         </CardContent>
