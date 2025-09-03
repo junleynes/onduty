@@ -1,26 +1,28 @@
+
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
 // In a serverless environment, the filesystem can be read-only, except for the /tmp directory.
 // We will work with a copy of the database in the /tmp directory.
-const DB_SOURCE_PATH = path.join(process.cwd(), 'src', 'lib', 'seed.db');
-const DB_PATH = process.env.NODE_ENV === 'development' ? DB_SOURCE_PATH : path.join('/tmp', 'local.db');
+const DB_PATH = process.env.NODE_ENV === 'development' ? path.join(process.cwd(), 'src', 'lib', 'local.db') : path.join('/tmp', 'local.db');
+const SCHEMA_PATH = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
 
 
 /**
- * Copies the seed database to the temporary writable directory if it doesn't exist.
- * This function is called when the database is first requested.
+ * Initializes a new database from the schema if one doesn't exist.
  */
 function initializeDatabase() {
-  if (process.env.NODE_ENV !== 'development' && !fs.existsSync(DB_PATH)) {
-    console.log(`No database found at ${DB_PATH}. Copying seed database...`);
+  if (!fs.existsSync(DB_PATH)) {
+    console.log(`No database found at ${DB_PATH}. Creating a new one from schema...`);
     try {
-      const dbSource = fs.readFileSync(DB_SOURCE_PATH);
-      fs.writeFileSync(DB_PATH, dbSource);
-      console.log('Database successfully copied to /tmp/local.db');
+      const db = new Database(DB_PATH);
+      const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
+      db.exec(schema);
+      console.log('Database successfully created and schema applied.');
+      db.close();
     } catch (error) {
-        console.error('Failed to copy seed database:', error);
+        console.error('Failed to initialize database from schema:', error);
         // If we can't create the DB, we can't run the app.
         process.exit(1);
     }
