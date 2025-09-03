@@ -91,26 +91,27 @@ function AppContent() {
   useEffect(() => {
     if (!initialDataLoaded || isLoading) return;
     
+    const dataToSave = {
+        employees,
+        shifts,
+        leave,
+        notes,
+        holidays,
+        tasks,
+        allowances,
+        groups,
+        smtpSettings,
+        tardyRecords,
+        templates,
+        shiftTemplates,
+        leaveTypes,
+    };
+
     const saveData = async () => {
         setIsSaving(true);
         console.log("Attempting to save data to DB...");
         try {
-            const result = await saveAllData({
-                employees,
-                shifts,
-                leave,
-                notes,
-                holidays,
-                tasks,
-                allowances,
-                groups,
-                smtpSettings,
-                tardyRecords,
-                templates,
-                shiftTemplates,
-                leaveTypes,
-            });
-
+            const result = await saveAllData(dataToSave);
             if (!result.success) {
                  toast({
                     variant: 'destructive',
@@ -132,7 +133,7 @@ function AppContent() {
     const timeoutId = setTimeout(saveData, 1500); // Debounce saves
     return () => clearTimeout(timeoutId);
 
-  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, leaveTypes, initialDataLoaded, isLoading, toast]);
+  }, [initialDataLoaded, isLoading, toast, employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, leaveTypes]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -350,49 +351,51 @@ function AppContent() {
 
 
  const handleSaveMember = (employeeData: Partial<Employee>) => {
-    if (employeeData.id) {
-        // It's an update
-        setEmployees(prev =>
-            prev.map(emp => {
-                if (emp.id === employeeData.id) {
-                    const updatedEmp = { ...emp, ...employeeData };
-                     // Update current user in state and localStorage if they are editing their own profile
-                    if (currentUser?.id === updatedEmp.id) {
-                        setCurrentUser(updatedEmp);
-                        localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
-                    }
-                    return updatedEmp;
-                }
-                return emp;
-            })
-        );
+    setEmployees(prevEmployees => {
+      // Check if it's an update or a new employee
+      if (employeeData.id) {
+        // This is an update
+        const updatedEmployees = prevEmployees.map(emp => {
+          if (emp.id === employeeData.id) {
+            const updatedEmp = { ...emp, ...employeeData };
+            // Update current user in state and localStorage if they are editing their own profile
+            if (currentUser?.id === updatedEmp.id) {
+              setCurrentUser(updatedEmp);
+              localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
+            }
+            return updatedEmp;
+          }
+          return emp;
+        });
         toast({ title: 'User Updated' });
-    } else {
-        // If it's a new user, check for email duplicates first.
-        const emailExists = employees.some(
-            (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
+        return updatedEmployees;
+      } else {
+        // This is a new employee
+        // First, check for email duplicates
+        const emailExists = prevEmployees.some(
+          (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
         );
         if (emailExists) {
-            toast({
-                title: 'Email Already Exists',
-                description: 'An employee with this email address already exists.',
-                variant: 'destructive',
-            });
-            return; // Stop the save process
+          toast({
+            title: 'Email Already Exists',
+            description: 'An employee with this email address already exists.',
+            variant: 'destructive',
+          });
+          return prevEmployees; // Return original state if email exists
         }
         
-        // Create a new employee
+        // Create the new employee
         const newEmployee: Employee = {
-            id: uuidv4(),
-            role: 'member', // Default role
-            ...employeeData,
+          id: uuidv4(),
+          role: 'member', // Default role
+          ...employeeData,
         } as Employee;
         
-        setEmployees(prev => [...prev, newEmployee]);
         toast({ title: 'User Added' });
-
-    }
-};
+        return [...prevEmployees, newEmployee];
+      }
+    });
+  };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
       const newEmployees: Employee[] = newMembers.map((member) => ({
