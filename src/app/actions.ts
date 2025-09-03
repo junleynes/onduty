@@ -3,7 +3,7 @@
 
 import type { SmtpSettings, Employee, Shift, AppVisibility } from '@/types';
 import nodemailer from 'nodemailer';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 
 type Attachment = {
@@ -56,6 +56,7 @@ export async function sendEmail(
 
 
 export async function verifyUser(email: string, password: string): Promise<{ success: boolean; user?: Employee; error?: string; }> {
+    const db = getDb();
     // Hardcode check for the default admin user to bypass any potential DB issues.
     if (email.toLowerCase() === 'admin@onduty.local') {
         if (password === 'P@ssw0rd') {
@@ -112,6 +113,7 @@ export async function getPublicData(): Promise<{
     data?: { employees: Employee[], shifts: Shift[] };
     error?: string;
 }> {
+    const db = getDb();
     try {
         const allEmployees = db.prepare('SELECT * FROM employees').all() as any[];
         const allShifts = db.prepare('SELECT * FROM shifts').all() as any[];

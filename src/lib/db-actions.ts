@@ -1,7 +1,7 @@
 
 'use server';
 
-import { db } from './db';
+import { getDb } from './db';
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,6 +15,7 @@ function safeParseJSON(jsonString: string | null | undefined, defaultValue: any)
 }
 
 export async function getData() {
+  const db = getDb();
   try {
     const employees = db.prepare('SELECT * FROM employees').all() as any[];
     const shifts = db.prepare('SELECT * FROM shifts').all() as any[];
@@ -135,6 +136,7 @@ export async function saveAllData({
   tardyRecords: TardyRecord[];
   templates: Record<string, string | null>;
 }) {
+  const db = getDb();
   const saveTransaction = db.transaction(() => {
     // --- EMPLOYEES ---
     const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
