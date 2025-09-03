@@ -148,8 +148,8 @@ function AppContent() {
         setGroups(result.data.groups);
         setSmtpSettings(result.data.smtpSettings);
         setTardyRecords(result.data.tardyRecords);
-        setTemplates(result.data.templates);
         setShiftTemplates(result.data.shiftTemplates);
+        setTemplates(result.data.templates);
         
         const storedUserJson = localStorage.getItem('currentUser');
         if (storedUserJson) {
@@ -347,36 +347,34 @@ function AppContent() {
 
  const handleSaveMember = (employeeData: Partial<Employee>) => {
     setEmployees(prev => {
-        const existingEmployee = employeeData.id ? prev.find(e => e.id === employeeData.id) : undefined;
-        
-        if (existingEmployee) {
-            // Update
+        if (employeeData.id) {
+            // This is an update
             return prev.map(emp => {
-                if (emp.id === existingEmployee.id) {
+                if (emp.id === employeeData.id) {
                     const updatedEmp = { ...emp, ...employeeData };
                     if (currentUser?.id === updatedEmp.id) {
                         setCurrentUser(updatedEmp);
                          localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
                     }
+                    toast({ title: 'User Updated' });
                     return updatedEmp;
                 }
                 return emp;
             });
         } else {
-            // Create new
+            // This is a new user
+            const existingEmployeeByEmail = prev.find(emp => emp.email && emp.email.toLowerCase() === employeeData.email?.toLowerCase());
+            if (existingEmployeeByEmail) {
+                toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
+                return prev; // Return previous state without changes
+            }
+            
             const newEmployee: Employee = {
                 id: uuidv4(),
                 role: 'member',
                 ...employeeData,
             } as Employee;
             
-             // Check for email duplicates on creation
-            const existingEmployeeByEmail = prev.find(emp => emp.email.toLowerCase() === newEmployee.email?.toLowerCase());
-            if (existingEmployeeByEmail) {
-                toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
-                return prev;
-            }
-
             toast({ title: 'User Added' });
             return [...prev, newEmployee];
         }
