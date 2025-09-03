@@ -158,11 +158,7 @@ export async function saveAllData({
       deleteStmt.run(...employeesToDelete);
     }
     
-    const existingPasswords = new Map(
-      db.prepare('SELECT id, password FROM employees').all().map((e: any) => [e.id, e.password])
-    );
-    
-    const empStmt = db.prepare(`
+    const empUpsertStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
       ON CONFLICT(id) DO UPDATE SET
@@ -171,9 +167,19 @@ export async function saveAllData({
         reportsTo=excluded.reportsTo, birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
     `);
 
+    const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
+
     for (const emp of employees) {
+      let finalPassword = emp.password;
+
+      // If password is not being set (i.e., it's an edit without password change), fetch the existing one.
+      if (!finalPassword) {
+        const existing = getPasswordStmt.get(emp.id);
+        finalPassword = existing ? (existing as any).password : 'password'; // Default for new users if somehow missed
+      }
+      
       const visibility = emp.visibility || {};
-      empStmt.run({
+      empUpsertStmt.run({
         id: emp.id,
         employeeNumber: emp.employeeNumber || null,
         firstName: emp.firstName,
@@ -181,7 +187,7 @@ export async function saveAllData({
         middleInitial: emp.middleInitial || null,
         email: emp.email,
         phone: emp.phone || null,
-        password: emp.password || existingPasswords.get(emp.id) || 'password', // Fallback
+        password: finalPassword,
         position: emp.position || null,
         role: emp.role,
         group: emp.group || null,
