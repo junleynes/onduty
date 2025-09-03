@@ -346,39 +346,48 @@ function AppContent() {
 
 
  const handleSaveMember = (employeeData: Partial<Employee>) => {
-    setEmployees(prev => {
-        if (employeeData.id) {
-            // This is an update
-            return prev.map(emp => {
+    // If it's a new user, check for email duplicates first.
+    if (!employeeData.id) {
+        const emailExists = employees.some(
+            (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
+        );
+        if (emailExists) {
+            toast({
+                title: 'Email Already Exists',
+                description: 'An employee with this email address already exists.',
+                variant: 'destructive',
+            });
+            return; // Stop the save process
+        }
+        
+        // Create a new employee
+        const newEmployee: Employee = {
+            id: uuidv4(),
+            role: 'member', // Default role
+            ...employeeData,
+        } as Employee;
+        
+        setEmployees(prev => [...prev, newEmployee]);
+        toast({ title: 'User Added' });
+
+    } else {
+        // It's an update
+        setEmployees(prev =>
+            prev.map(emp => {
                 if (emp.id === employeeData.id) {
                     const updatedEmp = { ...emp, ...employeeData };
+                     // Update current user in state and localStorage if they are editing their own profile
                     if (currentUser?.id === updatedEmp.id) {
                         setCurrentUser(updatedEmp);
-                         localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
+                        localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
                     }
-                    toast({ title: 'User Updated' });
                     return updatedEmp;
                 }
                 return emp;
-            });
-        } else {
-            // This is a new user
-            const existingEmployeeByEmail = prev.find(emp => emp.email && emp.email.toLowerCase() === employeeData.email?.toLowerCase());
-            if (existingEmployeeByEmail) {
-                toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
-                return prev; // Return previous state without changes
-            }
-            
-            const newEmployee: Employee = {
-                id: uuidv4(),
-                role: 'member',
-                ...employeeData,
-            } as Employee;
-            
-            toast({ title: 'User Added' });
-            return [...prev, newEmployee];
-        }
-    });
+            })
+        );
+        toast({ title: 'User Updated' });
+    }
 };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
