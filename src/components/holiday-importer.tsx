@@ -46,7 +46,6 @@ export function HolidayImporter({ isOpen, setIsOpen, onImport }: HolidayImporter
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      dynamicTyping: true,
       complete: (results) => {
         try {
           if (results.errors.length) {
@@ -64,7 +63,7 @@ export function HolidayImporter({ isOpen, setIsOpen, onImport }: HolidayImporter
 
           const newHolidays: Partial<Holiday>[] = results.data.map((row: any) => {
             const date = new Date(row['Date']);
-            if (!row['Title'] || !isDate(date)) {
+            if (!row['Title'] || !isDate(date) || isNaN(date.getTime())) {
                 console.warn(`Invalid data for row:`, row);
                 return null;
             }
