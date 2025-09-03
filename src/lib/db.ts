@@ -16,7 +16,7 @@ function initializeDatabase() {
         try {
             const schema = fs.readFileSync(schemaPath, 'utf8');
             db.exec(schema);
-            console.log('Database successfully initialized from schema.');
+            console.log('Database schema applied successfully.');
         } catch(e) {
             console.error('Failed to initialize database from schema:', e);
             throw e; // re-throw the error to fail startup
@@ -30,18 +30,7 @@ function initializeDatabase() {
 export function getDb() {
   if (!dbInstance) {
     console.log(`Connecting to database at ${DB_PATH}`);
-    if (process.env.NODE_ENV !== 'development' && fs.existsSync(DB_PATH)) {
-        // In a deployed environment, always start fresh from schema if not the first launch
-        // to avoid issues with stale/restored temporary files.
-        // For this specific environment, we'll just delete to ensure it gets recreated.
-        fs.unlinkSync(DB_PATH);
-    }
-    if (!fs.existsSync(DB_PATH)) {
-      console.log('Database file does not exist, initializing...');
-      dbInstance = initializeDatabase();
-    } else {
-      dbInstance = new Database(DB_PATH);
-    }
+    dbInstance = initializeDatabase();
 
     // Gracefully close the database connection on exit
     process.on('exit', () => {
