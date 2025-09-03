@@ -155,12 +155,16 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         }
     }
     
-    // This is the corrected logic.
-    // It passes the original ID for updates, and lets the main save handler generate a new one for new users.
-    let dataToSave: Partial<Employee> = { ...values, id: employee?.id };
+    // Correctly prepare data for saving
+    let dataToSave: Partial<Employee> = { ...values };
 
-    // Don't overwrite with empty password if user is just editing other details
-    if (dataToSave.id && !values.password) {
+    // If we are editing, ensure the ID is passed.
+    if (employee?.id) {
+        dataToSave.id = employee.id;
+    }
+
+    // Don't overwrite with an empty password if user is just editing other details
+    if (employee?.id && !values.password) {
       delete (dataToSave as any).password;
     }
 
@@ -568,4 +572,3 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     </Dialog>
   );
 }
-
