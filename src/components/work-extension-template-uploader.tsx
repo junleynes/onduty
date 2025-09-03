@@ -49,7 +49,6 @@ export function WorkExtensionTemplateUploader({ isOpen, setIsOpen, onTemplateUpl
             if (typeof data !== 'string') {
                 throw new Error("Failed to read file data.");
             }
-            localStorage.setItem('workExtensionTemplate', data);
             onTemplateUpload(data);
             toast({ title: 'Template Uploaded', description: 'The new work extension template has been saved.' });
             setIsOpen(false);

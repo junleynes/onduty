@@ -49,7 +49,6 @@ export function ReportTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }: 
             if (typeof data !== 'string') {
                 throw new Error("Failed to read file data.");
             }
-            localStorage.setItem('workScheduleTemplate', data);
             onTemplateUpload(data);
             toast({ title: 'Template Uploaded', description: 'The new work schedule template has been saved.' });
             setIsOpen(false);

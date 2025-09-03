@@ -49,7 +49,6 @@ export function WfhCertificationTemplateUploader({ isOpen, setIsOpen, onTemplate
             if (typeof data !== 'string') {
                 throw new Error("Failed to read file data.");
             }
-            localStorage.setItem('wfhCertificationTemplate', data);
             onTemplateUpload(data);
             toast({ title: 'Template Uploaded', description: 'The new WFH certification template has been saved.' });
             setIsOpen(false);

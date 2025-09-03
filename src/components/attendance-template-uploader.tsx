@@ -49,7 +49,6 @@ export function AttendanceTemplateUploader({ isOpen, setIsOpen, onTemplateUpload
             if (typeof data !== 'string') {
                 throw new Error("Failed to read file data.");
             }
-            localStorage.setItem('attendanceSheetTemplate', data);
             onTemplateUpload(data);
             toast({ title: 'Template Uploaded', description: 'The new attendance sheet template has been saved.' });
             setIsOpen(false);
