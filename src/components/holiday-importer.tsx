@@ -46,6 +46,7 @@ export function HolidayImporter({ isOpen, setIsOpen, onImport }: HolidayImporter
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      dynamicTyping: true,
       complete: (results) => {
         try {
           if (results.errors.length) {

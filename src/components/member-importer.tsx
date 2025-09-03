@@ -45,6 +45,7 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      dynamicTyping: true,
       complete: (results) => {
         try {
           if (results.errors.length) {
