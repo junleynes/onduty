@@ -645,7 +645,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(new Date(s.date), day)
             ),
             ...leave.filter(
-                (l) => l.employeeId === employee.id && isSameDay(new Date(l.date), day)
+                (l) => l.employeeId === employee.id && isSameDay(new Date(l.date), day) && l.status === 'approved'
             ).map(l => {
                 const leaveType = leaveTypes.find(lt => lt.type === l.type);
                 return { ...l, color: leaveType?.color || l.color };

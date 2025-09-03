@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -8,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { getFullName } from '@/lib/utils';
+import { getFullName, getInitialState } from '@/lib/utils';
 import { PlusCircle, Check, X } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
+import { initialLeaveTypes } from '@/lib/data';
 
 type TimeOffViewProps = {
   leaveRequests: Leave[];
@@ -26,6 +28,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
+  const [leaveTypes] = useState(() => getInitialState('leaveTypes', initialLeaveTypes));
 
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
 
@@ -75,11 +78,19 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
   };
   
   const handleManageRequest = (requestId: string, newStatus: 'approved' | 'rejected') => {
-    setLeaveRequests(prev => prev.map(req => 
-      req.id === requestId 
-        ? { ...req, status: newStatus, managedBy: currentUser.id, managedAt: new Date() } 
-        : req
-    ));
+    setLeaveRequests(prev => prev.map(req => {
+      if (req.id === requestId) {
+        const leaveTypeDetails = leaveTypes.find(lt => lt.type === req.type);
+        return { 
+          ...req, 
+          status: newStatus, 
+          managedBy: currentUser.id, 
+          managedAt: new Date(),
+          color: leaveTypeDetails?.color || req.color
+        };
+      }
+      return req;
+    }));
     toast({ title: `Request ${newStatus}` });
   };
   

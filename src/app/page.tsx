@@ -344,37 +344,45 @@ function AppContent() {
 
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
-    if (employeeData.id) { // Editing existing employee
-        setEmployees(prevEmployees => 
-            prevEmployees.map(emp => {
-                if (emp.id === employeeData.id) {
-                    const updatedEmployee = { ...emp, ...employeeData };
-                    // If the user being edited is the current user, update the current user state
-                    if (currentUser?.id === updatedEmployee.id) {
-                        setCurrentUser(updatedEmployee);
-                        localStorage.setItem('currentUser', JSON.stringify(updatedEmployee));
-                    }
-                    return updatedEmployee;
-                }
-                return emp;
-            })
-        );
-        toast({ title: isPasswordResetMode ? 'Password Reset Successfully' : 'User Updated' });
-    } else { // Creating new employee
-        const existingEmployeeByEmail = employees.find(emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase());
+    setEmployees(prevEmployees => {
+      // Check if it's an update or a new user
+      if (employeeData.id) {
+        // This is an update
+        const userIndex = prevEmployees.findIndex(emp => emp.id === employeeData.id);
+        if (userIndex === -1) {
+          toast({ variant: 'destructive', title: 'Update Failed', description: 'User not found.' });
+          return prevEmployees;
+        }
+
+        const updatedEmployees = [...prevEmployees];
+        const updatedEmployee = { ...updatedEmployees[userIndex], ...employeeData };
+        updatedEmployees[userIndex] = updatedEmployee;
+
+        // If the user being edited is the current user, update the current user state
+        if (currentUser?.id === updatedEmployee.id) {
+          setCurrentUser(updatedEmployee);
+          localStorage.setItem('currentUser', JSON.stringify(updatedEmployee));
+        }
+
+        toast({ title: 'User Updated' });
+        return updatedEmployees;
+      } else {
+        // This is a new user
+        const existingEmployeeByEmail = prevEmployees.find(emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase());
         if (existingEmployeeByEmail) {
-            toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
-            return;
+          toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
+          return prevEmployees;
         }
         
         const newEmployee: Employee = {
-            ...employeeData,
-            id: uuidv4(),
-            role: employeeData.role || 'member',
+          ...employeeData,
+          id: uuidv4(),
+          role: employeeData.role || 'member',
         } as Employee;
-        setEmployees(prev => [...prev, newEmployee]);
         toast({ title: 'User Added' });
-    }
+        return [...prevEmployees, newEmployee];
+      }
+    });
   };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
@@ -455,13 +463,14 @@ function AppContent() {
     switch (activeView) {
       case 'schedule': {
         const scheduleEmployees = employees.filter(emp => emp.role !== 'admin');
+        const approvedLeave = leave.filter(l => l.status === 'approved');
         return (
           <ScheduleView 
             employees={scheduleEmployees}
             setEmployees={setEmployees}
             shifts={shiftsForView}
             setShifts={setShifts}
-            leave={leave}
+            leave={approvedLeave}
             setLeave={setLeave}
             notes={notes}
             setNotes={setNotes}
