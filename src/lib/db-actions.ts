@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { getDb } from './db';
@@ -84,6 +83,11 @@ export async function getData() {
       dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
     }));
     
+    const processedAllowances: CommunicationAllowance[] = allowances.map(a => ({
+        ...a,
+        asOfDate: a.asOfDate ? new Date(a.asOfDate) : undefined,
+    }));
+    
     const processedShiftTemplates: ShiftTemplate[] = shiftTemplates.map(t => ({
         ...t,
         isUnpaidBreak: t.isUnpaidBreak === 1,
@@ -104,7 +108,7 @@ export async function getData() {
         notes: processedNotes,
         holidays: processedHolidays,
         tasks: processedTasks,
-        allowances,
+        allowances: processedAllowances,
         groups,
         smtpSettings,
         tardyRecords: processedTardyRecords,
@@ -241,7 +245,7 @@ export async function saveAllData({
     db.prepare('DELETE FROM communication_allowances').run();
     const allowanceStmt = db.prepare('INSERT INTO communication_allowances (id, employeeId, year, month, balance, asOfDate, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)');
     for(const allowance of allowances) {
-        allowanceStmt.run(allowance.id, allowance.employeeId, allowance.year, allowance.month, allowance.balance, allowance.asOfDate?.toISOString(), allowance.screenshot);
+        allowanceStmt.run(allowance.id, allowance.employeeId, allowance.year, allowance.month, allowance.balance, allowance.asOfDate ? new Date(allowance.asOfDate).toISOString() : null, allowance.screenshot);
     }
     
     // --- GROUPS ---
