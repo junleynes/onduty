@@ -350,8 +350,25 @@ function AppContent() {
 
 
  const handleSaveMember = (employeeData: Partial<Employee>) => {
-    // If it's a new user, check for email duplicates first.
-    if (!employeeData.id) {
+    if (employeeData.id) {
+        // It's an update
+        setEmployees(prev =>
+            prev.map(emp => {
+                if (emp.id === employeeData.id) {
+                    const updatedEmp = { ...emp, ...employeeData };
+                     // Update current user in state and localStorage if they are editing their own profile
+                    if (currentUser?.id === updatedEmp.id) {
+                        setCurrentUser(updatedEmp);
+                        localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
+                    }
+                    return updatedEmp;
+                }
+                return emp;
+            })
+        );
+        toast({ title: 'User Updated' });
+    } else {
+        // If it's a new user, check for email duplicates first.
         const emailExists = employees.some(
             (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
         );
@@ -374,23 +391,6 @@ function AppContent() {
         setEmployees(prev => [...prev, newEmployee]);
         toast({ title: 'User Added' });
 
-    } else {
-        // It's an update
-        setEmployees(prev =>
-            prev.map(emp => {
-                if (emp.id === employeeData.id) {
-                    const updatedEmp = { ...emp, ...employeeData };
-                     // Update current user in state and localStorage if they are editing their own profile
-                    if (currentUser?.id === updatedEmp.id) {
-                        setCurrentUser(updatedEmp);
-                        localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
-                    }
-                    return updatedEmp;
-                }
-                return emp;
-            })
-        );
-        toast({ title: 'User Updated' });
     }
 };
   
@@ -687,5 +687,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-
-    

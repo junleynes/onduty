@@ -168,15 +168,6 @@ export async function saveAllData({
   const db = getDb();
   const saveTransaction = db.transaction(() => {
     // --- EMPLOYEES ---
-    const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
-    const employeeIdsInState = new Set(employees.map(e => e.id));
-    
-    const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id));
-    if (employeesToDelete.length > 0) {
-      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
-      deleteStmt.run(...employeesToDelete);
-    }
-    
     const empUpsertStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
@@ -187,10 +178,8 @@ export async function saveAllData({
     `);
 
     const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
-
     for (const emp of employees) {
       let finalPassword = emp.password;
-
       if (!finalPassword) {
         const existing = getPasswordStmt.get(emp.id);
         finalPassword = existing ? (existing as any).password : 'password'; 
@@ -218,6 +207,13 @@ export async function saveAllData({
         visibility: JSON.stringify(visibility),
         lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
       });
+    }
+    const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
+    const employeeIdsInState = new Set(employees.map(e => e.id));
+    const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id));
+    if (employeesToDelete.length > 0) {
+      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
+      deleteStmt.run(...employeesToDelete);
     }
     
     // --- SHIFTS ---
@@ -337,5 +333,3 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
-
-    
