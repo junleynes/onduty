@@ -748,7 +748,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
+                         <DropdownMenuGroup>
                              <DropdownMenuItem onClick={() => setIsLeaveTypeEditorOpen(true)}>
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Manage Leave Types</span>
@@ -877,6 +877,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         onImport={handleImportedData}
         employees={employees}
         shiftTemplates={shiftTemplates}
+        leaveTypes={leaveTypes}
       />
        <TemplateImporter 
         isOpen={isTemplateImporterOpen}

@@ -18,6 +18,7 @@ import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
 import type { Shift, Leave, Employee } from '@/types';
 import type { ShiftTemplate } from './shift-editor';
+import type { LeaveTypeOption } from './leave-type-editor';
 
 type ScheduleImporterProps = {
   isOpen: boolean;
@@ -30,6 +31,7 @@ type ScheduleImporterProps = {
   }) => void;
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
+  leaveTypes: LeaveTypeOption[];
 };
 
 const normalizeName = (name: string): string => {
@@ -94,7 +96,7 @@ const convertTo24Hour = (time: string): string => {
     return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shiftTemplates }: ScheduleImporterProps) {
+export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shiftTemplates, leaveTypes }: ScheduleImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
@@ -144,6 +146,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
           if (scheduleBlocks.length === 0) {
               throw new Error("Could not find any schedule blocks in the file.");
           }
+          
+          const validLeaveTypes = new Set(leaveTypes.map(lt => lt.type.toUpperCase()));
 
           scheduleBlocks.forEach((block, blockIndex) => {
               const headerRow = block[0];
@@ -213,9 +217,10 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                         const timeMatch = parts[0].match(timeRegex);
                         const leaveType = parts[1]?.toUpperCase();
 
-                        if (timeMatch && leaveType) {
+                        if (timeMatch && leaveType && validLeaveTypes.has(leaveType)) {
                             const startTime = convertTo24Hour(timeMatch[1]);
                             const endTime = convertTo24Hour(timeMatch[2]);
+                            const leaveTypeDetails = leaveTypes.find(lt => lt.type.toUpperCase() === leaveType);
                             if (startTime && endTime) {
                                 importedLeave.push({
                                     id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`,
@@ -226,6 +231,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                                     startTime,
                                     endTime,
                                     status: 'approved',
+                                    color: leaveTypeDetails?.color
                                 });
                                 return;
                             }
@@ -233,8 +239,17 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       }
                       
                       // Handle full-day leave, e.g., "VL"
-                      if (['VL', 'EL', 'SL', 'BL', 'PL', 'ML', 'OFFSET', 'AVL', 'TARDY'].includes(upperCellValue)) {
-                          importedLeave.push({ id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, type: upperCellValue, isAllDay: true, status: 'approved' });
+                      if (validLeaveTypes.has(upperCellValue)) {
+                          const leaveTypeDetails = leaveTypes.find(lt => lt.type.toUpperCase() === upperCellValue);
+                          importedLeave.push({ 
+                              id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, 
+                              employeeId: employee.id, 
+                              date, 
+                              type: upperCellValue, 
+                              isAllDay: true, 
+                              status: 'approved',
+                              color: leaveTypeDetails?.color
+                          });
                           return;
                       }
                       
