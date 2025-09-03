@@ -178,7 +178,7 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
                                                  {employee.birthDate && (
                                                     <div className="flex items-center gap-2">
                                                         <Cake className="h-4 w-4 text-muted-foreground" />
-                                                        <span>{format(new Date(employee.birthDate), 'MMMM d')}</span>
+                                                        <span>{format(new Date(employee.birthDate), 'MMMM d, yyyy')}</span>
                                                     </div>
                                                 )}
                                                 {employee.startDate && (
