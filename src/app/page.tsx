@@ -351,11 +351,10 @@ function AppContent() {
 
 
  const handleSaveMember = (employeeData: Partial<Employee>) => {
-    setEmployees(prevEmployees => {
-      // Check if it's an update or a new employee
-      if (employeeData.id) {
-        // This is an update
-        const updatedEmployees = prevEmployees.map(emp => {
+    // This is an update
+    if (employeeData.id) {
+      setEmployees(prevEmployees => 
+        prevEmployees.map(emp => {
           if (emp.id === employeeData.id) {
             const updatedEmp = { ...emp, ...employeeData };
             // Update current user in state and localStorage if they are editing their own profile
@@ -366,36 +365,33 @@ function AppContent() {
             return updatedEmp;
           }
           return emp;
-        });
-        toast({ title: 'User Updated' });
-        return updatedEmployees;
-      } else {
+        })
+      );
+      toast({ title: 'User Updated' });
+    } else {
         // This is a new employee
-        // First, check for email duplicates
-        const emailExists = prevEmployees.some(
-          (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
+        const emailExists = employees.some(
+            (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
         );
         if (emailExists) {
-          toast({
-            title: 'Email Already Exists',
-            description: 'An employee with this email address already exists.',
-            variant: 'destructive',
-          });
-          return prevEmployees; // Return original state if email exists
+            toast({
+                title: 'Email Already Exists',
+                description: 'An employee with this email address already exists.',
+                variant: 'destructive',
+            });
+            return;
         }
         
-        // Create the new employee
         const newEmployee: Employee = {
-          id: uuidv4(),
-          role: 'member', // Default role
-          ...employeeData,
+            id: uuidv4(),
+            role: 'member', // Default role
+            ...employeeData,
         } as Employee;
         
+        setEmployees(prev => [...prev, newEmployee]);
         toast({ title: 'User Added' });
-        return [...prevEmployees, newEmployee];
-      }
-    });
-  };
+    }
+};
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
       const newEmployees: Employee[] = newMembers.map((member) => ({
