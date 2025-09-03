@@ -143,31 +143,30 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
   };
 
   const onSubmit = (values: z.infer<typeof employeeSchema>) => {
+    let dataToSave: Partial<Employee> = { ...values };
+
     if (isPasswordResetMode) {
         if (!values.password) {
             form.setError('password', { type: 'manual', message: 'A new password is required.' });
             return;
         }
     } else {
+        // If we are creating a new user, password is required.
         if (!employee?.id && !values.password) {
             form.setError('password', { type: 'manual', message: 'Password is required for new members.' });
             return;
         }
+        // If we are editing, don't overwrite with an empty password.
+        if (employee?.id && !values.password) {
+            delete (dataToSave as any).password;
+        }
     }
     
-    // Correctly prepare data for saving
-    let dataToSave: Partial<Employee> = { ...values };
-
-    // If we are editing, ensure the ID is passed.
+    // If we are editing, ensure the original ID is passed along.
     if (employee?.id) {
         dataToSave.id = employee.id;
     }
-
-    // Don't overwrite with an empty password if user is just editing other details
-    if (employee?.id && !values.password) {
-      delete (dataToSave as any).password;
-    }
-
+    
     onSave(dataToSave);
     
     if (values.group && !groups.includes(values.group)) {
@@ -176,6 +175,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
 
     setIsOpen(false);
   };
+
 
   const isSimplifiedView = context === 'admin' && !isPasswordResetMode;
 
