@@ -1,5 +1,3 @@
-
-
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
@@ -7,14 +5,15 @@ import path from 'path';
 // In a serverless environment, the filesystem can be read-only, except for the /tmp directory.
 // We will work with a copy of the database in the /tmp directory.
 const DB_SOURCE_PATH = path.join(process.cwd(), 'src', 'lib', 'seed.db');
-const DB_PATH = path.join('/tmp', 'local.db');
+const DB_PATH = process.env.NODE_ENV === 'development' ? DB_SOURCE_PATH : path.join('/tmp', 'local.db');
+
 
 /**
  * Copies the seed database to the temporary writable directory if it doesn't exist.
  * This function is called when the database is first requested.
  */
 function initializeDatabase() {
-  if (!fs.existsSync(DB_PATH)) {
+  if (process.env.NODE_ENV !== 'development' && !fs.existsSync(DB_PATH)) {
     console.log(`No database found at ${DB_PATH}. Copying seed database...`);
     try {
       const dbSource = fs.readFileSync(DB_SOURCE_PATH);
