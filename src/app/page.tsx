@@ -345,33 +345,38 @@ function AppContent() {
   };
 
 
- const handleSaveMember = (data: Partial<Employee>) => {
+ const handleSaveMember = (employeeData: Partial<Employee>) => {
     setEmployees(prev => {
-        if (data.id) { // This is an update
+        const existingEmployee = employeeData.id ? prev.find(e => e.id === employeeData.id) : undefined;
+        
+        if (existingEmployee) {
+            // Update
             return prev.map(emp => {
-                if (emp.id === data.id) {
-                    const updatedEmp = { ...emp, ...data };
-                    // If the user being edited is the current user, update the current user state
+                if (emp.id === existingEmployee.id) {
+                    const updatedEmp = { ...emp, ...employeeData };
                     if (currentUser?.id === updatedEmp.id) {
                         setCurrentUser(updatedEmp);
-                        localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
+                         localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
                     }
                     return updatedEmp;
                 }
                 return emp;
             });
-
-        } else { // This is a new user
-            const existingEmployeeByEmail = prev.find(emp => emp.email.toLowerCase() === data.email?.toLowerCase());
+        } else {
+            // Create new
+            const newEmployee: Employee = {
+                id: uuidv4(),
+                role: 'member',
+                ...employeeData,
+            } as Employee;
+            
+             // Check for email duplicates on creation
+            const existingEmployeeByEmail = prev.find(emp => emp.email.toLowerCase() === newEmployee.email?.toLowerCase());
             if (existingEmployeeByEmail) {
                 toast({ title: 'Email Exists', description: 'An employee with this email already exists.', variant: 'destructive' });
                 return prev;
             }
-            const newEmployee: Employee = {
-                id: uuidv4(),
-                role: 'member',
-                ...data,
-            } as Employee;
+
             toast({ title: 'User Added' });
             return [...prev, newEmployee];
         }
