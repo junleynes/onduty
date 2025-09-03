@@ -155,7 +155,9 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         }
     }
     
-    let dataToSave: Partial<Employee> = {...values, id: employee?.id};
+    // This is the corrected logic.
+    // It passes the original ID for updates, and lets the main save handler generate a new one for new users.
+    let dataToSave: Partial<Employee> = { ...values, id: employee?.id };
 
     // Don't overwrite with empty password if user is just editing other details
     if (dataToSave.id && !values.password) {
