@@ -344,8 +344,7 @@ function AppContent() {
 
 
   const handleSaveMember = (employeeData: Partial<Employee>) => {
-    // Editing existing employee
-    if (employeeData.id) {
+    if (employeeData.id) { // Editing existing employee
         setEmployees(prevEmployees => 
             prevEmployees.map(emp => {
                 if (emp.id === employeeData.id) {

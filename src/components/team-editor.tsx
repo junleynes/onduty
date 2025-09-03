@@ -149,7 +149,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             return;
         }
     } else {
-        if (!values.id && !values.password) {
+        if (!employee?.id && !values.password) {
             form.setError('password', { type: 'manual', message: 'Password is required for new members.' });
             return;
         }
@@ -159,8 +159,9 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     if (employee?.id) {
         dataToSave.id = employee.id;
     }
+
     // Don't overwrite with empty password if user is just editing other details
-    if (values.id && !values.password) {
+    if (dataToSave.id && !values.password) {
       delete (dataToSave as any).password;
     }
 
