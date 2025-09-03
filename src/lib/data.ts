@@ -1,58 +1,77 @@
 
 
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings } from '@/types';
-import initialDb from './db.json';
 
-// While transitioning to SQLite, we keep the JSON as a fallback for initial data.
 // In a full SQLite implementation, these would be queries to the database.
+// For now, we provide hardcoded initial values.
 
-export const employees: Employee[] = initialDb.employees.map(e => ({
-    ...e,
-    birthDate: e.birthDate ? new Date(e.birthDate) : undefined,
-    startDate: e.startDate ? new Date(e.startDate) : undefined,
-}));
+export const initialEmployees: Employee[] = [];
+export const initialShifts: Shift[] = [];
+export const initialLeave: Leave[] = [];
+export const initialTasks: Task[] = [];
+export const initialCommunicationAllowances: CommunicationAllowance[] = [];
+export const initialSmtpSettings: SmtpSettings = {};
+export const initialNotes: Note[] = [];
+export const initialHolidays: Holiday[] = [];
+export const initialGroups: string[] = ['Administration'];
 
-export const shifts: Shift[] = initialDb.shifts.map(s => ({
-    ...s,
-    date: new Date(s.date),
-}));
+export const initialShiftTemplates = [
+    {
+      "name": "Opening Shift (6am-2pm)",
+      "label": "Open",
+      "startTime": "06:00",
+      "endTime": "14:00",
+      "color": "hsl(var(--chart-2))"
+    },
+    {
+      "name": "Mid Shift (10am-6pm)",
+      "label": "Mid",
+      "startTime": "10:00",
+      "endTime": "18:00",
+      "color": "hsl(var(--chart-4))"
+    },
+    {
+      "name": "Closing Shift (2pm-10pm)",
+      "label": "Close",
+      "startTime": "14:00",
+      "endTime": "22:00",
+      "color": "hsl(var(--chart-1))"
+    },
+    {
+      "name": "Manager Shift (9am-5pm)",
+      "label": "Manager",
+      "startTime": "09:00",
+      "endTime": "17:00",
+      "color": "hsl(var(--chart-5))",
+      "breakStartTime": "12:00",
+      "breakEndTime": "13:00",
+      "isUnpaidBreak": true
+    },
+    {
+      "name": "Work From Home",
+      "label": "WFH",
+      "startTime": "09:00",
+      "endTime": "17:00",
+      "color": "#3498db"
+    }
+];
 
-export const leave: Leave[] = initialDb.leave.map((l: any) => ({
-    ...l,
-    date: new Date(l.date),
-    requestedAt: l.requestedAt ? new Date(l.requestedAt) : undefined,
-    managedAt: l.managedAt ? new Date(l.managedAt) : undefined,
-}));
+export const initialLeaveTypes = [
+    { "type": "VL", "color": "#3498db" },
+    { "type": "SL", "color": "#e74c3c" },
+    { "type": "EL", "color": "#f1c40f" },
+    { "type": "BL", "color": "#9b59b6" },
+    { "type": "ML", "color": "#e74c3c" },
+    { "type": "PL", "color": "#9b59b6" },
+    { "type": "OFFSET", "color": "#1abc9c" },
+    { "type": "Work Extension", "color": "#2ecc71"},
+    { "type": "TARDY", "color": "#e67e22" }
+];
 
-
-export const tasks: Task[] = initialDb.tasks.map((t: any) => ({
-    ...t,
-    completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
-    dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
-}));
-
-export const communicationAllowances: CommunicationAllowance[] = initialDb.communicationAllowances;
-export const initialSmtpSettings: SmtpSettings = (initialDb as any).smtpSettings || {};
-
-export const initialGroups: string[] = initialDb.groups;
-export const initialShiftTemplates = initialDb.shiftTemplates;
-export const initialLeaveTypes = initialDb.leaveTypes;
-export const initialTasks: Task[] = tasks;
-
-export const initialNotes: Note[] = initialDb.notes.map(n => ({
-    ...n,
-    date: new Date(n.date),
-}));
-export const initialHolidays: Holiday[] = initialDb.holidays.map(h => ({
-    ...h, 
-    date: new Date(h.date)
-}));
 
 export const weekDays: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export const getEmployeeById = (id: string | null) => {
+export const getEmployeeById = (id: string | null, employees: Employee[]) => {
   if (!id) return null;
-  // This function will now be less effective as it's reading from a static import,
-  // but the app passes the live employee list as props where needed.
   return employees.find(e => e.id === id);
 };
