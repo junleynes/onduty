@@ -155,10 +155,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         }
     }
     
-    let dataToSave: Partial<Employee> = {...values};
-    if (employee?.id) {
-        dataToSave.id = employee.id;
-    }
+    let dataToSave: Partial<Employee> = {...values, id: employee?.id};
 
     // Don't overwrite with empty password if user is just editing other details
     if (dataToSave.id && !values.password) {

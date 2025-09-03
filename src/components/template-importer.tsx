@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -76,13 +77,18 @@ export function TemplateImporter({ isOpen, setIsOpen, onImport }: TemplateImport
           const newTemplates: ShiftTemplate[] = results.data.map((row: any) => {
             const colorName = (row['Shift Color'] || 'default').toLowerCase();
             const colorValue = shiftColorMap[colorName] || shiftColorMap['default'];
+            const isUnpaidValue = (row['Is Unpaid Break'] || 'false').toLowerCase();
+            const isUnpaidBreak = ['true', '1'].includes(isUnpaidValue);
 
             return {
               label: row['Shift Label'] || '',
               startTime: row['Start Time'] || '',
               endTime: row['End Time'] || '',
               color: colorValue,
-              name: `${row['Shift Label']} (${row['Start Time']}-${row['End Time']})`
+              name: `${row['Shift Label']} (${row['Start Time']}-${row['End Time']})`,
+              breakStartTime: row['Break Start'] || '',
+              breakEndTime: row['Break End'] || '',
+              isUnpaidBreak: isUnpaidBreak,
             };
           });
 
@@ -111,7 +117,7 @@ export function TemplateImporter({ isOpen, setIsOpen, onImport }: TemplateImport
         <DialogHeader>
           <DialogTitle>Import Shift Templates from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with template data. Headers must be: Shift Label, Start Time, End Time, Shift Color.
+            Upload a CSV file with template data. Required headers: Shift Label, Start Time, End Time, Shift Color. Optional headers: Break Start, Break End, Is Unpaid Break.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
