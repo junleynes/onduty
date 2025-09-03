@@ -4,8 +4,7 @@
 import { getDb } from './db';
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord } from '@/types';
 import type { ShiftTemplate } from '@/components/shift-editor';
-import { initialLeaveTypes, initialShiftTemplates } from './data';
-import type { LeaveTypeOption } from '@/components/leave-type-editor';
+import type { LeaveTypeOption } from './leave-type-editor';
 
 function safeParseJSON(jsonString: string | null | undefined, defaultValue: any) {
   if (!jsonString) return defaultValue;
@@ -30,15 +29,8 @@ export async function getData() {
     const smtpSettings: SmtpSettings = db.prepare('SELECT * FROM smtp_settings WHERE id = 1').get() as any || {};
     const tardyRecords = db.prepare('SELECT * FROM tardy_records').all() as any[];
     
-    let shiftTemplates = db.prepare('SELECT * FROM shift_templates').all() as any[];
-    if (shiftTemplates.length === 0) {
-        shiftTemplates = initialShiftTemplates;
-    }
-    
-    let leaveTypes = db.prepare('SELECT * FROM leave_types').all() as any[];
-    if (leaveTypes.length === 0) {
-      leaveTypes = initialLeaveTypes;
-    }
+    const shiftTemplates = db.prepare('SELECT * FROM shift_templates').all() as any[];
+    const leaveTypes = db.prepare('SELECT * FROM leave_types').all() as any[];
     
     const keyValuePairs = db.prepare('SELECT * FROM key_value_store').all() as {key: string, value: string}[];
     const templates = keyValuePairs.reduce((acc, { key, value }) => {
