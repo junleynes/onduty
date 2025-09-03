@@ -39,6 +39,7 @@ import SmtpSettingsView from '@/components/smtp-settings-view';
 import { HolidayImporter } from '@/components/holiday-importer';
 import ReportsView from '@/components/reports-view';
 import TimeOffView from '@/components/time-off-view';
+import type { LeaveTypeOption } from '@/components/leave-type-editor';
 
 
 export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings' | 'reports' | 'time-off';
@@ -60,6 +61,7 @@ function AppContent() {
   const [tardyRecords, setTardyRecords] = useState<TardyRecord[]>([]);
   const [templates, setTemplates] = useState<Record<string, string | null>>({});
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>([]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -106,6 +108,7 @@ function AppContent() {
                 tardyRecords,
                 templates,
                 shiftTemplates,
+                leaveTypes,
             });
 
             if (!result.success) {
@@ -129,7 +132,7 @@ function AppContent() {
     const timeoutId = setTimeout(saveData, 1500); // Debounce saves
     return () => clearTimeout(timeoutId);
 
-  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, initialDataLoaded, isLoading, toast]);
+  }, [employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, leaveTypes, initialDataLoaded, isLoading, toast]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -149,6 +152,7 @@ function AppContent() {
         setSmtpSettings(result.data.smtpSettings);
         setTardyRecords(result.data.tardyRecords);
         setShiftTemplates(result.data.shiftTemplates);
+        setLeaveTypes(result.data.leaveTypes);
         setTemplates(result.data.templates);
         
         const storedUserJson = localStorage.getItem('currentUser');
@@ -495,6 +499,8 @@ function AppContent() {
             smtpSettings={smtpSettings}
             shiftTemplates={shiftTemplates}
             setShiftTemplates={setShiftTemplates}
+            leaveTypes={leaveTypes}
+            setLeaveTypes={setLeaveTypes}
           />
         );
       }
@@ -520,6 +526,7 @@ function AppContent() {
                   setLeaveRequests={setLeave}
                   currentUser={currentUser}
                   employees={employees}
+                  leaveTypes={leaveTypes}
                />;
       case 'allowance':
         return <AllowanceView 
@@ -547,6 +554,8 @@ function AppContent() {
                     setTardyRecords={setTardyRecords}
                     templates={templates}
                     setTemplates={setTemplates}
+                    shiftTemplates={shiftTemplates}
+                    leaveTypes={leaveTypes}
                   />;
       case 'admin':
         return (
@@ -577,7 +586,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, approvedLeave, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, approvedLeave, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded, leaveTypes]);
 
   if (!initialDataLoaded || !currentUser) {
       return (
@@ -678,3 +687,5 @@ export default function Home() {
     </SidebarProvider>
   );
 }
+
+    

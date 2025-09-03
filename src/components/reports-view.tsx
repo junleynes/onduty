@@ -18,11 +18,11 @@ import { WfhCertificationTemplateUploader } from './wfh-certification-template-u
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { useToast } from '@/hooks/use-toast';
-import { initialShiftTemplates, initialLeaveTypes } from '@/lib/data';
 import type { ShiftTemplate } from './shift-editor';
 import { ReportPreviewDialog } from './report-preview-dialog';
 import { TardyImporter } from './tardy-importer';
 import { WorkExtensionTemplateUploader } from './work-extension-template-uploader';
+import type { LeaveTypeOption } from './leave-type-editor';
 
 
 type ReportsViewProps = {
@@ -35,6 +35,8 @@ type ReportsViewProps = {
     setTardyRecords: React.Dispatch<React.SetStateAction<TardyRecord[]>>;
     templates: Record<string, string | null>;
     setTemplates: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
+    shiftTemplates: ShiftTemplate[];
+    leaveTypes: LeaveTypeOption[];
 }
 
 type ReportData = {
@@ -74,7 +76,7 @@ type WorkExtensionRowData = {
 };
 
 
-export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates }: ReportsViewProps) {
+export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes }: ReportsViewProps) {
     const { toast } = useToast();
     const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
     const [attendanceWeek, setAttendanceWeek] = useState<Date | undefined>();
@@ -136,7 +138,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
     const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
         const defaultShiftName = employee.role === 'manager' ? "manager shift" : "mid shift";
-        return initialShiftTemplates.find(t => t.name.toLowerCase().includes(defaultShiftName));
+        return shiftTemplates.find(t => t.name.toLowerCase().includes(defaultShiftName));
     };
 
     const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
@@ -463,8 +465,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         }
 
         const groupEmployees = employees.filter(e => e.group === currentUser.group);
-        const leaveTypes = initialLeaveTypes.map(lt => lt.type);
-        const headers = ['Employee Name', 'Total Shifts', 'Total Hours', ...leaveTypes];
+        const leaveTypeStrings = leaveTypes.map(lt => lt.type);
+        const headers = ['Employee Name', 'Total Shifts', 'Total Hours', ...leaveTypeStrings];
         const rows: (string | number)[][] = [];
         
         const daysInInterval = eachDayOfInterval({ start: summaryDateRange.from, end: summaryDateRange.to });
@@ -501,7 +503,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 return acc + (diff - breakHours);
             }, 0);
             
-            const leaveCounts = leaveTypes.map(type => 
+            const leaveCounts = leaveTypeStrings.map(type => 
                 leaveInRange.filter(l => l.type === type).length
             );
             
@@ -1422,3 +1424,5 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    

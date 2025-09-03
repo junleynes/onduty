@@ -9,13 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { getFullName, getInitialState } from '@/lib/utils';
+import { getFullName } from '@/lib/utils';
 import { PlusCircle, Check, X } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
-import { initialLeaveTypes } from '@/lib/data';
 import type { LeaveTypeOption } from './leave-type-editor';
 
 type TimeOffViewProps = {
@@ -23,13 +22,13 @@ type TimeOffViewProps = {
   setLeaveRequests: React.Dispatch<React.SetStateAction<Leave[]>>;
   currentUser: Employee;
   employees: Employee[];
+  leaveTypes: LeaveTypeOption[];
 };
 
-export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUser, employees }: TimeOffViewProps) {
+export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUser, employees, leaveTypes }: TimeOffViewProps) {
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
-  const [leaveTypes] = useState<LeaveTypeOption[]>(() => getInitialState('leaveTypes', initialLeaveTypes));
 
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
 
@@ -178,3 +177,5 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
     </>
   );
 }
+
+    
