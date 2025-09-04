@@ -65,7 +65,7 @@ export async function getData() {
     const processedLeave: Leave[] = leave.map((l: any) => ({
       ...l,
       startDate: new Date(l.startDate),
-      endDate: l.endDate ? new Date(l.endDate) : new Date(l.startDate),
+      endDate: new Date(l.endDate),
       isAllDay: l.isAllDay === 1,
       requestedAt: l.requestedAt ? new Date(l.requestedAt) : undefined,
       managedAt: l.managedAt ? new Date(l.managedAt) : undefined,
@@ -220,29 +220,26 @@ export async function saveAllData({
     // --- LEAVE ---
     db.prepare('DELETE FROM leave').run();
     const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    
     for(const l of leave) {
-        if (l.startDate && l.endDate) {
-            leaveStmt.run(
-                l.id, 
-                l.employeeId, 
-                l.type, 
-                l.color, 
-                new Date(l.startDate).toISOString(),
-                new Date(l.endDate).toISOString(),
-                l.isAllDay ? 1 : 0, 
-                l.startTime, 
-                l.endTime, 
-                l.status, 
-                l.reason, 
-                l.requestedAt?.toISOString(), 
-                l.managedBy, 
-                l.managedAt?.toISOString(),
-                l.originalShiftDate?.toISOString(),
-                l.originalStartTime,
-                l.originalEndTime
-            );
-        }
+        leaveStmt.run(
+            l.id, 
+            l.employeeId, 
+            l.type, 
+            l.color, 
+            new Date(l.startDate).toISOString(),
+            new Date(l.endDate).toISOString(),
+            l.isAllDay ? 1 : 0, 
+            l.startTime, 
+            l.endTime, 
+            l.status, 
+            l.reason, 
+            l.requestedAt?.toISOString(), 
+            l.managedBy, 
+            l.managedAt?.toISOString(),
+            l.originalShiftDate?.toISOString(),
+            l.originalStartTime,
+            l.originalEndTime
+        );
     }
 
 

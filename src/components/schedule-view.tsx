@@ -361,11 +361,6 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   }) => {
     const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells } = importedData;
 
-    // This logic needs to be adapted for date ranges in leave
-    // For simplicity, we'll assume the importer still provides single-day leave entries for now.
-    // A more robust solution would expand multi-day leave into single day entries for grid display.
-    // This is a placeholder for that logic.
-
     const cellsToOverwrite = new Set(
       overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
     );
@@ -373,11 +368,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const remainingShifts = shifts.filter(s => 
         !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
     );
-    // This filtering is now more complex with date ranges.
-    // For now, we'll just add the imported leave, which might create duplicates that need manual cleanup.
-    // A better approach would be to check for overlaps.
+
     const remainingLeave = leave.filter(l => 
-        !cellsToOverwrite.has(`${l.employeeId}-${format(new Date(l.startDate), 'yyyy-MM-dd')}`)
+      !l.employeeId || !isWithinInterval(new Date(l.startDate), {start: overwrittenCells[0].date, end: overwrittenCells[overwrittenCells.length-1].date})
     );
     
     const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
@@ -611,7 +604,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   )
 
   const renderEmployeeRow = (employee: Employee, days: Date[]) => {
-    const getItemsForDay = (day: Date) => {
+    const getItemsForDay = (day: Date): (Shift | Leave)[] => {
         const shiftsForDay = shifts.filter(
             (s) => (s.employeeId === employee.id || (employee.id === 'unassigned' && s.employeeId === null)) && isSameDay(new Date(s.date), day)
         );

@@ -35,7 +35,7 @@ const leaveSchema = z.object({
   color: z.string().optional(),
   dateRange: z.object({
       from: z.date({ required_error: "A start date is required."}),
-      to: z.date({ required_error: "An end date is required."}),
+      to: z.date().optional(),
   }),
   isAllDay: z.boolean(),
   startTime: z.string().optional(),
@@ -90,7 +90,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
       ...values, 
       color: selectedType?.color,
       startDate: values.dateRange.from,
-      endDate: values.dateRange.to,
+      endDate: values.dateRange.to || values.dateRange.from,
     });
   };
   
@@ -206,7 +206,7 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
                                     variant={"outline"}
                                     className={cn(
                                         "w-full justify-start text-left font-normal",
-                                        !field.value && "text-muted-foreground"
+                                        !field.value.from && "text-muted-foreground"
                                     )}
                                 >
                                     <CalendarIcon className="mr-2 h-4 w-4" />
