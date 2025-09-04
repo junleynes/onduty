@@ -104,6 +104,24 @@ export async function getData() {
         date: new Date(t.date),
     }));
 
+    const adminUser: Employee = {
+        id: "emp-admin-01",
+        employeeNumber: "001",
+        firstName: "Super",
+        lastName: "Admin",
+        email: "admin@onduty.local",
+        phone: "123-456-7890",
+        position: "System Administrator",
+        role: "admin",
+        group: "Administration",
+        password: "P@ssw0rd"
+    };
+
+    const adminInDb = processedEmployees.some(e => e.id === adminUser.id);
+    if (!adminInDb) {
+        processedEmployees.push(adminUser);
+    }
+
 
     return {
       success: true,
@@ -162,17 +180,10 @@ export async function saveAllData({
   const db = getDb();
   const saveTransaction = db.transaction(() => {
     
-    // --- EMPLOYEES & GROUPS ---
+    // --- EMPLOYEES ---
     const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
     const employeeIdsInState = new Set(employees.map(e => e.id));
-    const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id));
 
-    if (employeesToDelete.length > 0) {
-      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
-      deleteStmt.run(...employeesToDelete);
-    }
-    
-    // Upsert all current employees first to ensure foreign keys are valid.
     const empUpsertStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
@@ -184,6 +195,8 @@ export async function saveAllData({
 
     const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
     for (const emp of employees) {
+      if(emp.id === 'emp-admin-01') continue; // Skip default admin user
+
       let finalPassword = emp.password;
       if (!finalPassword && emp.id) {
         const existing = getPasswordStmt.get(emp.id);
@@ -216,16 +229,28 @@ export async function saveAllData({
       });
     }
 
-    // Now that employees are updated, sync the groups table.
-    // This order prevents foreign key constraint errors.
-    db.prepare('DELETE FROM groups').run();
-    const groupStmt = db.prepare('INSERT INTO groups (name) VALUES (?)');
-    for (const group of groups) {
-      if (group) { // Ensure not to insert empty group names
-          groupStmt.run(group);
-      }
+    const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id) && id !== 'emp-admin-01');
+    if (employeesToDelete.length > 0) {
+      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
+      deleteStmt.run(...employeesToDelete);
     }
     
+    // --- GROUPS (Sync after employees are updated) ---
+    const dbGroups = new Set(db.prepare('SELECT name FROM groups').all().map((g: any) => g.name));
+    const stateGroups = new Set(groups);
+
+    const groupsToAdd = [...stateGroups].filter(g => !dbGroups.has(g));
+    const groupsToDelete = [...dbGroups].filter(g => !stateGroups.has(g));
+
+    if (groupsToAdd.length > 0) {
+        const insertStmt = db.prepare('INSERT INTO groups (name) VALUES (?)');
+        groupsToAdd.forEach(g => insertStmt.run(g));
+    }
+    if (groupsToDelete.length > 0) {
+        const deleteStmt = db.prepare(`DELETE FROM groups WHERE name IN (${groupsToDelete.map(() => '?').join(',')})`);
+        deleteStmt.run(...groupsToDelete);
+    }
+
     // --- SHIFTS ---
     db.prepare('DELETE FROM shifts').run();
     const shiftStmt = db.prepare('INSERT INTO shifts (id, employeeId, label, startTime, endTime, date, color, isDayOff, isHolidayOff, status, breakStartTime, breakEndTime, isUnpaidBreak) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -362,3 +387,5 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
+
+    
