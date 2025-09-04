@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -182,6 +182,13 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
   const title = isPasswordResetMode ? 'Reset Your Password' : (isSimplifiedView ? 'Edit User' : (employee?.id ? 'Edit Team Member' : 'Add Team Member'));
   const description = isPasswordResetMode ? 'Enter a new password for your account.' : (isSimplifiedView ? "Update the user's core credentials and role." : (employee?.id ? "Update the details for this team member." : "Fill in the details for the new team member."));
 
+  const availableManagers = useMemo(() => {
+    return employees.filter(e => 
+        e.role === 'manager' && 
+        e.id !== employee?.id && 
+        e.group === selectedGroup
+    );
+  }, [employees, selectedGroup, employee?.id]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -375,13 +382,11 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                         </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                        <SelectItem value="null">None</SelectItem>
-                                        {employees
-                                            .filter(e => e.role === 'manager' && e.id !== employee?.id && e.group === selectedGroup)
-                                            .map(manager => (
-                                            <SelectItem key={manager.id} value={manager.id}>
-                                                {getFullName(manager)}
-                                            </SelectItem>
+                                            <SelectItem value="null">None</SelectItem>
+                                            {availableManagers.map(manager => (
+                                                <SelectItem key={manager.id} value={manager.id}>
+                                                    {getFullName(manager)}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -572,3 +577,5 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     </Dialog>
   );
 }
+
+    

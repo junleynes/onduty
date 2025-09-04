@@ -186,14 +186,14 @@ export async function saveAllData({
   const db = getDb();
   const saveTransaction = db.transaction(() => {
     
-    // --- EMPLOYEES ---
-    const empUpsertStmt = db.prepare(`
-      INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
-      VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
+    // --- EMPLOYEES (PASS 1: Core data without relationships) ---
+    const empUpsertStmtPass1 = db.prepare(`
+      INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate)
+      VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
       ON CONFLICT(id) DO UPDATE SET
         employeeNumber=excluded.employeeNumber, firstName=excluded.firstName, lastName=excluded.lastName, middleInitial=excluded.middleInitial, email=excluded.email, phone=excluded.phone,
         password=excluded.password, position=excluded.position, role=excluded.role, "group"=excluded."group", avatar=excluded.avatar, loadAllocation=excluded.loadAllocation,
-        reportsTo=excluded.reportsTo, birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
+        birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
     `);
     const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
     
@@ -201,18 +201,15 @@ export async function saveAllData({
       if(emp.id === 'emp-admin-01') continue;
 
       let finalPassword = emp.password;
-      // If editing an existing user and the password field is empty/falsy, keep the old password.
       if (emp.id && !emp.password) { 
         const existing = getPasswordStmt.get(emp.id) as { password?: string } | undefined;
         finalPassword = existing?.password; 
       }
-      // If creating a new user and password is not provided, set a default.
       if (!emp.id && !finalPassword) {
         finalPassword = 'password';
       }
       
-      const visibility = emp.visibility || {};
-      empUpsertStmt.run({
+      empUpsertStmtPass1.run({
         id: emp.id,
         employeeNumber: emp.employeeNumber || null,
         firstName: emp.firstName,
@@ -226,11 +223,10 @@ export async function saveAllData({
         group: emp.group || null,
         avatar: emp.avatar || null,
         loadAllocation: emp.loadAllocation || 0,
-        reportsTo: emp.reportsTo || null,
         birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
         startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
         signature: emp.signature || null,
-        visibility: JSON.stringify(visibility),
+        visibility: JSON.stringify(emp.visibility || {}),
         lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
       });
     }
@@ -246,7 +242,6 @@ export async function saveAllData({
     // --- GROUPS (Sync after employees are updated) ---
     const dbGroups = new Set(db.prepare('SELECT name FROM groups').all().map((g: any) => g.name));
     const stateGroups = new Set(groups);
-
     const groupsToAdd = [...stateGroups].filter(g => !dbGroups.has(g));
     const groupsToDelete = [...dbGroups].filter(g => !stateGroups.has(g));
 
@@ -255,19 +250,18 @@ export async function saveAllData({
         groupsToAdd.forEach(g => insertStmt.run(g));
     }
     if (groupsToDelete.length > 0) {
-        // Ensure no employees are referencing the groups to be deleted BEFORE deleting them.
-        // The employee update above should handle this, but this is a safeguard.
-        const checkStmt = db.prepare('SELECT COUNT(*) as count FROM employees WHERE "group" = ?');
-        const safeToDelete = groupsToDelete.filter(g => {
-            const result = checkStmt.get(g) as {count: number};
-            return result.count === 0;
-        });
-        
-        if (safeToDelete.length > 0) {
-            const deleteStmt = db.prepare(`DELETE FROM groups WHERE name IN (${safeToDelete.map(() => '?').join(',')})`);
-            deleteStmt.run(...safeToDelete);
+        const deleteGroupStmt = db.prepare('DELETE FROM groups WHERE name = ?');
+        groupsToDelete.forEach(g => deleteGroupStmt.run(g));
+    }
+    
+    // --- EMPLOYEES (PASS 2: Update `reportsTo` relationship) ---
+    const empUpdateReportsToStmt = db.prepare('UPDATE employees SET reportsTo = ? WHERE id = ?');
+    for (const emp of employees) {
+        if(emp.id !== 'emp-admin-01') {
+            empUpdateReportsToStmt.run(emp.reportsTo || null, emp.id);
         }
     }
+
 
     // --- SHIFTS ---
     db.prepare('DELETE FROM shifts').run();
@@ -405,3 +399,5 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
+
+    
