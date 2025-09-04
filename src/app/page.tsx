@@ -468,9 +468,11 @@ function AppContent() {
         )
     }
 
+    const membersOfMyGroup = employees.filter(e => e.group === currentUser.group);
+
     switch (activeView) {
       case 'schedule': {
-        const scheduleEmployees = employees.filter(emp => emp.role !== 'admin');
+        const scheduleEmployees = (currentUser.role === 'admin' ? employees : membersOfMyGroup).filter(e => e.role !== 'admin');
         
         return (
           <ScheduleView 
@@ -508,9 +510,9 @@ function AppContent() {
         return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
       }
       case 'onduty':
-        return <OndutyView employees={employees} shifts={shifts} currentUser={currentUser} />;
+        return <OndutyView employees={membersOfMyGroup} shifts={shifts} currentUser={currentUser} />;
        case 'org-chart':
-        return <OrgChartView employees={employees} currentUser={currentUser} />;
+        return <OrgChartView employees={membersOfMyGroup} currentUser={currentUser} />;
       case 'celebrations':
         return <CelebrationsView employees={employees} />;
       case 'holidays':
