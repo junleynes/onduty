@@ -117,8 +117,7 @@ export async function getData() {
         password: "P@ssw0rd"
     };
 
-    const adminInDb = processedEmployees.some(e => e.id === adminUser.id);
-    if (!adminInDb) {
+    if (!employees.some(e => e.id === adminUser.id)) {
         processedEmployees.push(adminUser);
     }
 
@@ -195,13 +194,13 @@ export async function saveAllData({
 
     const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
     for (const emp of employees) {
-      if(emp.id === 'emp-admin-01') continue; // Skip default admin user
+      if(emp.id === 'emp-admin-01') continue;
 
       let finalPassword = emp.password;
-      if (!finalPassword && emp.id) {
-        const existing = getPasswordStmt.get(emp.id);
-        finalPassword = existing ? (existing as any).password : 'password'; 
-      } else if (!finalPassword && !emp.id) {
+      if (!finalPassword && emp.id) { // Editing existing user without new password
+        const existing = getPasswordStmt.get(emp.id) as { password?: string } | undefined;
+        finalPassword = existing?.password; 
+      } else if (!finalPassword && !emp.id) { // Creating new user without password
         finalPassword = 'password';
       }
       
