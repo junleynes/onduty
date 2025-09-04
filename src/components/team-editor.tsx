@@ -185,10 +185,9 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
   const availableManagers = useMemo(() => {
     return employees.filter(e => 
         e.role === 'manager' && 
-        e.id !== employee?.id &&
-        e.group === selectedGroup
+        e.id !== employee?.id
     );
-  }, [employees, employee?.id, selectedGroup]);
+  }, [employees, employee?.id]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
