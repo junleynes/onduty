@@ -191,6 +191,8 @@ export async function saveAllData({
       if (!finalPassword && emp.id) {
         const existing = getPasswordStmt.get(emp.id);
         finalPassword = existing ? (existing as any).password : 'password'; 
+      } else if (!finalPassword && !emp.id) {
+        finalPassword = 'password';
       }
       
       const visibility = emp.visibility || {};

@@ -24,6 +24,7 @@ import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
 import { getInitials, getFullName, getBackgroundColor } from '@/lib/utils';
 import Image from 'next/image';
 import { Checkbox } from './ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
 
 const visibilitySchema = z.object({
   schedule: z.boolean().optional(),
@@ -68,6 +69,7 @@ type TeamEditorProps = {
 };
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups, employees }: TeamEditorProps) {
+    const { toast } = useToast();
     const [positions] = useState(() => [...new Set(employees.map(e => e.position))]);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
@@ -172,7 +174,8 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     if (values.group && !groups.includes(values.group)) {
       setGroups(prev => [...prev, values.group!]);
     }
-
+    
+    toast({ title: 'Success', description: 'Team member information has been saved.' });
     setIsOpen(false);
   };
 
