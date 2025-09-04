@@ -219,19 +219,44 @@ export async function saveAllData({
 
     // --- LEAVE ---
     db.prepare('DELETE FROM leave').run();
-    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    
     for(const l of leave) {
-      const startDate = new Date(l.startDate).toISOString().split('T')[0];
-      const endDate = l.endDate ? new Date(l.endDate).toISOString().split('T')[0] : startDate;
-      leaveStmt.run(l.id, l.employeeId, l.type, l.color, startDate, endDate, l.isAllDay ? 1 : 0, l.startTime, l.endTime, l.status, l.reason, l.requestedAt?.toISOString(), l.managedBy, l.managedAt?.toISOString(), l.originalShiftDate?.toISOString().split('T')[0], l.originalStartTime, l.originalEndTime);
+        if (l.startDate && l.endDate) {
+            const days = eachDayOfInterval({
+                start: new Date(l.startDate),
+                end: new Date(l.endDate)
+            });
+            days.forEach((day, index) => {
+                // For multi-day leave, we create a record for each day.
+                // We generate a unique ID for each day's record.
+                 leaveStmt.run(
+                    `${l.id}-${index}`, 
+                    l.employeeId, 
+                    l.type, 
+                    l.color, 
+                    day.toISOString().split('T')[0],
+                    l.isAllDay ? 1 : 0, 
+                    l.startTime, 
+                    l.endTime, 
+                    l.status, 
+                    l.reason, 
+                    l.requestedAt?.toISOString(), 
+                    l.managedBy, 
+                    l.managedAt?.toISOString(),
+                    l.originalShiftDate?.toISOString().split('T')[0],
+                    l.originalStartTime,
+                    l.originalEndTime
+                );
+            });
+        }
     }
+
 
     // --- NOTES ---
     db.prepare('DELETE FROM notes').run();
     const noteStmt = db.prepare('INSERT INTO notes (id, date, title, description) VALUES (?, ?, ?, ?)');
-    // Expand multi-day notes into single day notes for storage
     notes.forEach(note => {
-        // This part seems wrong, notes are single-day. Let's keep it as is.
         noteStmt.run(note.id, new Date(note.date).toISOString().split('T')[0], note.title, note.description);
     });
 
