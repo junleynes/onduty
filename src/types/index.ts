@@ -56,7 +56,8 @@ export type Leave = {
   employeeId: string;
   type: LeaveType;
   color?: string;
-  date: Date;
+  startDate: Date;
+  endDate: Date;
   isAllDay: boolean;
   startTime?: string;
   endTime?: string;

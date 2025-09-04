@@ -22,16 +22,21 @@ import { Checkbox } from './ui/checkbox';
 import { Input } from './ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, CalendarIcon } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn, getFullName } from '@/lib/utils';
 import type { LeaveTypeOption } from './leave-type-editor';
+import { Calendar } from './ui/calendar';
+import { format } from 'date-fns';
 
 const leaveSchema = z.object({
   employeeId: z.string().min(1, { message: 'Employee is required.' }),
   type: z.string().min(1, { message: 'Leave type is required.' }),
   color: z.string().optional(),
-  date: z.date({ required_error: 'A date is required.' }),
+  dateRange: z.object({
+      from: z.date({ required_error: "A start date is required."}),
+      to: z.date({ required_error: "An end date is required."}),
+  }),
   isAllDay: z.boolean(),
   startTime: z.string().optional(),
   endTime: z.string().optional(),
@@ -57,28 +62,20 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
 
   const form = useForm<z.infer<typeof leaveSchema>>({
     resolver: zodResolver(leaveSchema),
-    defaultValues: {
-      id: leave?.id || undefined,
-      employeeId: leave?.employeeId || '',
-      type: leave?.type || 'OFFSET',
-      color: leave?.color || '#6b7280',
-      date: leave?.date || new Date(),
-      isAllDay: leave?.isAllDay ?? true,
-      startTime: leave?.startTime || '',
-      endTime: leave?.endTime || '',
-      status: leave?.status || 'approved', // Manually added leave is auto-approved
-    },
+    defaultValues: {},
   });
 
   useEffect(() => {
     if (isOpen) {
+        const fromDate = leave?.startDate ? new Date(leave.startDate) : new Date();
+        const toDate = leave?.endDate ? new Date(leave.endDate) : fromDate;
         const selectedType = leaveTypes.find(lt => lt.type === (leave?.type || 'VL'));
         form.reset({
             id: leave?.id || undefined,
             employeeId: leave?.employeeId || '',
             type: leave?.type || 'VL',
             color: leave?.color || selectedType?.color || '#3b82f6',
-            date: leave?.date ? new Date(leave.date) : new Date(),
+            dateRange: { from: fromDate, to: toDate },
             isAllDay: leave?.isAllDay ?? true,
             startTime: leave?.startTime || '',
             endTime: leave?.endTime || '',
@@ -89,7 +86,12 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
 
   const onSubmit = (values: z.infer<typeof leaveSchema>) => {
     const selectedType = leaveTypes.find(lt => lt.type === values.type);
-    onSave({ ...values, color: selectedType?.color });
+    onSave({ 
+      ...values, 
+      color: selectedType?.color,
+      startDate: values.dateRange.from,
+      endDate: values.dateRange.to,
+    });
   };
   
   const handleDelete = () => {
@@ -192,18 +194,53 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
             
             <FormField
               control={form.control}
-              name="date"
+              name="dateRange"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Date</FormLabel>
-                   <DatePicker
-                        date={field.value}
-                        onDateChange={(date) => field.onChange(date)}
-                    />
-                  <FormMessage />
+                    <FormLabel>Leave Dates</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <FormControl>
+                                <Button
+                                    id="date"
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value?.from ? (
+                                        field.value.to ? (
+                                            <>
+                                                {format(field.value.from, "LLL dd, y")} -{" "}
+                                                {format(field.value.to, "LLL dd, y")}
+                                            </>
+                                        ) : (
+                                            format(field.value.from, "LLL dd, y")
+                                        )
+                                    ) : (
+                                        <span>Pick a date range</span>
+                                    )}
+                                </Button>
+                            </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                initialFocus
+                                mode="range"
+                                defaultMonth={field.value?.from}
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                numberOfMonths={2}
+                            />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="isAllDay"
@@ -273,5 +310,3 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
     </Dialog>
   );
 }
-
-    

@@ -225,7 +225,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                                 importedLeave.push({
                                     id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`,
                                     employeeId: employee.id,
-                                    date,
+                                    startDate: date,
+                                    endDate: date,
                                     type: leaveType,
                                     isAllDay: false,
                                     startTime,
@@ -244,7 +245,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                           importedLeave.push({ 
                               id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, 
                               employeeId: employee.id, 
-                              date, 
+                              startDate: date,
+                              endDate: date,
                               type: upperCellValue, 
                               isAllDay: true, 
                               status: 'approved',

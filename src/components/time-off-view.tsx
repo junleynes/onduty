@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { getFullName } from '@/lib/utils';
 import { PlusCircle, Check, X } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
@@ -102,7 +102,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
             <TableRow>
             {forManagerView && <TableHead>Employee</TableHead>}
             <TableHead>Type</TableHead>
-            <TableHead>Date</TableHead>
+            <TableHead>Dates</TableHead>
             <TableHead>Reason</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -111,11 +111,17 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
         <TableBody>
             {requests.map(req => {
               const employee = employees.find(e => e.id === req.employeeId);
+              const startDate = new Date(req.startDate);
+              const endDate = new Date(req.endDate);
+              const dateDisplay = isSameDay(startDate, endDate)
+                ? format(startDate, 'MMM d, yyyy')
+                : `${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`;
+
               return (
                 <TableRow key={req.id}>
                     {forManagerView && <TableCell>{employee ? getFullName(employee) : 'Unknown'}</TableCell>}
                     <TableCell className="font-medium">{req.type}</TableCell>
-                    <TableCell>{format(new Date(req.date), 'MMM d, yyyy')}</TableCell>
+                    <TableCell>{dateDisplay}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{req.reason}</TableCell>
                     <TableCell><Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge></TableCell>
                     <TableCell className="text-right">
@@ -177,5 +183,3 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
     </>
   );
 }
-
-    
