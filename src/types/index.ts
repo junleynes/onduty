@@ -52,12 +52,14 @@ export type LeaveType = string;
 export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export type Leave = {
-  id: string;
+  id: string; // The unique ID of the original request
+  requestId?: string; // The original request ID, for grouped records
   employeeId: string;
   type: LeaveType;
   color?: string;
-  startDate: Date;
-  endDate: Date;
+  date: Date; // The specific date this record applies to
+  startDate: Date; // The start of the original requested range
+  endDate: Date; // The end of the original requested range
   isAllDay: boolean;
   startTime?: string;
   endTime?: string;
@@ -135,3 +137,5 @@ export type TardyRecord = {
   timeOut: string;
   remarks: string;
 }
+
+    

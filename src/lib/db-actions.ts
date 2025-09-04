@@ -64,7 +64,8 @@ export async function getData() {
     
     const processedLeave: Leave[] = leave.map((l: any) => ({
       ...l,
-      startDate: new Date(l.startDate),
+      date: new Date(l.date), // Each row is a single day now
+      startDate: new Date(l.startDate), // Keep original range for context if needed
       endDate: new Date(l.endDate),
       isAllDay: l.isAllDay === 1,
       requestedAt: l.requestedAt ? new Date(l.requestedAt) : undefined,
@@ -219,27 +220,34 @@ export async function saveAllData({
 
     // --- LEAVE ---
     db.prepare('DELETE FROM leave').run();
-    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const leaveStmt = db.prepare('INSERT INTO leave (id, requestId, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime, startDate, endDate) VALUES (@id, @requestId, @employeeId, @type, @color, @date, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime, @startDate, @endDate)');
     for(const l of leave) {
-        leaveStmt.run(
-            l.id, 
-            l.employeeId, 
-            l.type, 
-            l.color, 
-            new Date(l.startDate).toISOString(),
-            new Date(l.endDate).toISOString(),
-            l.isAllDay ? 1 : 0, 
-            l.startTime, 
-            l.endTime, 
-            l.status, 
-            l.reason, 
-            l.requestedAt?.toISOString(), 
-            l.managedBy, 
-            l.managedAt?.toISOString(),
-            l.originalShiftDate?.toISOString(),
-            l.originalStartTime,
-            l.originalEndTime
-        );
+        if (!l.endDate) l.endDate = l.startDate; // ensure endDate exists
+        const days = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
+        
+        for (const day of days) {
+           leaveStmt.run({
+                id: `leave-${l.employeeId}-${format(day, 'yyyy-MM-dd')}`,
+                requestId: l.id,
+                employeeId: l.employeeId,
+                type: l.type,
+                color: l.color,
+                date: day.toISOString().split('T')[0],
+                isAllDay: l.isAllDay ? 1 : 0, 
+                startTime: l.startTime, 
+                endTime: l.endTime, 
+                status: l.status, 
+                reason: l.reason, 
+                requestedAt: l.requestedAt?.toISOString(), 
+                managedBy: l.managedBy, 
+                managedAt: l.managedAt?.toISOString(),
+                originalShiftDate: l.originalShiftDate?.toISOString(),
+                originalStartTime: l.originalStartTime,
+                originalEndTime: l.originalEndTime,
+                startDate: new Date(l.startDate).toISOString(), // Store original range
+                endDate: new Date(l.endDate).toISOString(),
+            });
+        }
     }
 
 
@@ -346,3 +354,5 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
+
+    
