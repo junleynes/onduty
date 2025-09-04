@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { getDb } from './db';
@@ -117,8 +118,15 @@ export async function getData() {
         password: "P@ssw0rd"
     };
 
-    if (!employees.some(e => e.id === adminUser.id)) {
+    const adminInDb = employees.find(e => e.id === adminUser.id);
+    if (!adminInDb) {
         processedEmployees.push(adminUser);
+    } else {
+        // Ensure admin password is correct in the loaded data
+        const adminIndex = processedEmployees.findIndex(e => e.id === adminUser.id);
+        if (adminIndex > -1) {
+            processedEmployees[adminIndex].password = adminUser.password;
+        }
     }
 
 
@@ -180,9 +188,6 @@ export async function saveAllData({
   const saveTransaction = db.transaction(() => {
     
     // --- EMPLOYEES ---
-    const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
-    const employeeIdsInState = new Set(employees.map(e => e.id));
-
     const empUpsertStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
@@ -191,16 +196,19 @@ export async function saveAllData({
         password=excluded.password, position=excluded.position, role=excluded.role, "group"=excluded."group", avatar=excluded.avatar, loadAllocation=excluded.loadAllocation,
         reportsTo=excluded.reportsTo, birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
     `);
-
     const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
+    
     for (const emp of employees) {
       if(emp.id === 'emp-admin-01') continue;
 
       let finalPassword = emp.password;
-      if (!finalPassword && emp.id) { // Editing existing user without new password
+      // If editing an existing user and the password field is empty/falsy, keep the old password.
+      if (emp.id && !emp.password) { 
         const existing = getPasswordStmt.get(emp.id) as { password?: string } | undefined;
         finalPassword = existing?.password; 
-      } else if (!finalPassword && !emp.id) { // Creating new user without password
+      }
+      // If creating a new user and password is not provided, set a default.
+      if (!emp.id && !finalPassword) {
         finalPassword = 'password';
       }
       
@@ -228,6 +236,8 @@ export async function saveAllData({
       });
     }
 
+    const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
+    const employeeIdsInState = new Set(employees.map(e => e.id));
     const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id) && id !== 'emp-admin-01');
     if (employeesToDelete.length > 0) {
       const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
@@ -246,8 +256,18 @@ export async function saveAllData({
         groupsToAdd.forEach(g => insertStmt.run(g));
     }
     if (groupsToDelete.length > 0) {
-        const deleteStmt = db.prepare(`DELETE FROM groups WHERE name IN (${groupsToDelete.map(() => '?').join(',')})`);
-        deleteStmt.run(...groupsToDelete);
+        // Ensure no employees are referencing the groups to be deleted BEFORE deleting them.
+        // The employee update above should handle this, but this is a safeguard.
+        const checkStmt = db.prepare('SELECT COUNT(*) as count FROM employees WHERE "group" = ?');
+        const safeToDelete = groupsToDelete.filter(g => {
+            const result = checkStmt.get(g) as {count: number};
+            return result.count === 0;
+        });
+        
+        if (safeToDelete.length > 0) {
+            const deleteStmt = db.prepare(`DELETE FROM groups WHERE name IN (${safeToDelete.map(() => '?').join(',')})`);
+            deleteStmt.run(...safeToDelete);
+        }
     }
 
     // --- SHIFTS ---

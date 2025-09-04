@@ -41,7 +41,7 @@ const employeeSchema = z.object({
   middleInitial: z.string().max(1).optional(),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters long').optional().or(z.literal('')),
+  password: z.string().optional(),
   birthDate: z.date().optional().nullable(),
   startDate: z.date().optional().nullable(),
   lastPromotionDate: z.date().optional().nullable(),
@@ -80,22 +80,11 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     });
   
   const currentGroup = form.watch('group');
+  const isNewEmployee = !employee?.id;
 
   useEffect(() => {
     if(isOpen) {
-        const defaultValues = employee?.id ? {
-            ...employee,
-            password: '',
-            birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
-            startDate: employee.startDate ? new Date(employee.startDate) : undefined,
-            lastPromotionDate: employee.lastPromotionDate ? new Date(employee.lastPromotionDate) : undefined,
-            visibility: {
-              schedule: employee.visibility?.schedule ?? true,
-              onDuty: employee.visibility?.onDuty ?? true,
-              orgChart: employee.visibility?.orgChart ?? true,
-              mobileLoad: employee.visibility?.mobileLoad ?? true,
-            }
-        } : {
+        const defaultValues = isNewEmployee ? {
             id: undefined,
             employeeNumber: '',
             firstName: '',
@@ -120,12 +109,24 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
               orgChart: true,
               mobileLoad: true,
             },
+        } : {
+            ...employee,
+            password: '', // Always start with an empty password field for editing
+            birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
+            startDate: employee.startDate ? new Date(employee.startDate) : undefined,
+            lastPromotionDate: employee.lastPromotionDate ? new Date(employee.lastPromotionDate) : undefined,
+            visibility: {
+              schedule: employee.visibility?.schedule ?? true,
+              onDuty: employee.visibility?.onDuty ?? true,
+              orgChart: employee.visibility?.orgChart ?? true,
+              mobileLoad: employee.visibility?.mobileLoad ?? true,
+            }
         };
         form.reset(defaultValues);
         setAvatarPreview(employee?.avatar || null);
         setSignaturePreview(employee?.signature || null);
     }
-  }, [employee, form, isOpen]);
+  }, [employee, form, isOpen, isNewEmployee]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'avatar' | 'signature') => {
       const file = e.target.files?.[0];
@@ -148,14 +149,19 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     let dataToSave: Partial<Employee> = { ...values };
 
     if (isPasswordResetMode) {
-        if (!values.password) {
-            form.setError('password', { type: 'manual', message: 'A new password is required.' });
+        if (!values.password || values.password.length < 6) {
+            form.setError('password', { type: 'manual', message: 'Password must be at least 6 characters.' });
             return;
         }
     } else {
-        // If we are creating a new user, password is required.
-        if (!employee?.id && !values.password) {
-            form.setError('password', { type: 'manual', message: 'Password is required for new members.' });
+        // If creating a new user, a password is required.
+        if (isNewEmployee && (!values.password || values.password.length < 6)) {
+            form.setError('password', { type: 'manual', message: 'Password must be at least 6 characters for new members.' });
+            return;
+        }
+        // For existing users, if a password is provided, it must be valid.
+        if (!isNewEmployee && values.password && values.password.length > 0 && values.password.length < 6) {
+             form.setError('password', { type: 'manual', message: 'Password must be at least 6 characters.' });
             return;
         }
     }
@@ -265,7 +271,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                         <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                            <Input type="password" {...field} placeholder={employee?.id ? 'Leave blank to keep current password' : ''} />
+                            <Input type="password" {...field} placeholder={!isNewEmployee ? 'Leave blank to keep current password' : ''} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -566,3 +572,4 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     </Dialog>
   );
 }
+
