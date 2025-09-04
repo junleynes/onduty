@@ -5,7 +5,7 @@ import { getDb } from './db';
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord } from '@/types';
 import type { ShiftTemplate } from '@/components/shift-editor';
 import type { LeaveTypeOption } from './leave-type-editor';
-import { eachDayOfInterval } from 'date-fns';
+import { eachDayOfInterval, format } from 'date-fns';
 
 function safeParseJSON(jsonString: string | null | undefined, defaultValue: any) {
   if (!jsonString) return defaultValue;
@@ -174,7 +174,7 @@ export async function saveAllData({
     const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
     for (const emp of employees) {
       let finalPassword = emp.password;
-      if (!finalPassword) {
+      if (!finalPassword && emp.id) {
         const existing = getPasswordStmt.get(emp.id);
         finalPassword = existing ? (existing as any).password : 'password'; 
       }

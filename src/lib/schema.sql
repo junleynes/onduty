@@ -1,5 +1,5 @@
 
-
+-- Main tables
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
     employeeNumber TEXT,
@@ -13,15 +13,13 @@ CREATE TABLE IF NOT EXISTS employees (
     startDate TEXT,
     lastPromotionDate TEXT,
     position TEXT,
-    role TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
     "group" TEXT,
     avatar TEXT,
     signature TEXT,
     loadAllocation REAL,
     reportsTo TEXT,
-    visibility TEXT,
-    FOREIGN KEY(reportsTo) REFERENCES employees(id) ON DELETE SET NULL,
-    FOREIGN KEY("group") REFERENCES groups(name) ON DELETE SET NULL
+    visibility TEXT
 );
 
 CREATE TABLE IF NOT EXISTS shifts (
@@ -38,7 +36,7 @@ CREATE TABLE IF NOT EXISTS shifts (
     breakStartTime TEXT,
     breakEndTime TEXT,
     isUnpaidBreak BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS leave (
@@ -59,22 +57,23 @@ CREATE TABLE IF NOT EXISTS leave (
     originalShiftDate TEXT,
     originalStartTime TEXT,
     originalEndTime TEXT,
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE,
-    FOREIGN KEY(managedBy) REFERENCES employees(id) ON DELETE SET NULL
+    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE,
+    FOREIGN KEY (managedBy) REFERENCES employees(id) ON DELETE SET NULL
 );
-
 
 CREATE TABLE IF NOT EXISTS notes (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL UNIQUE,
+    date TEXT NOT NULL,
     title TEXT NOT NULL,
-    description TEXT
+    description TEXT,
+    UNIQUE(date)
 );
 
 CREATE TABLE IF NOT EXISTS holidays (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL UNIQUE,
-    title TEXT NOT NULL
+    date TEXT NOT NULL,
+    title TEXT NOT NULL,
+    UNIQUE(date)
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -84,13 +83,13 @@ CREATE TABLE IF NOT EXISTS tasks (
     scope TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
     completedAt TEXT,
     dueDate TEXT,
-    createdBy TEXT NOT NULL,
-    FOREIGN KEY(shiftId) REFERENCES shifts(id) ON DELETE CASCADE,
-    FOREIGN KEY(assigneeId) REFERENCES employees(id) ON DELETE CASCADE,
-    FOREIGN KEY(createdBy) REFERENCES employees(id) ON DELETE CASCADE
+    createdBy TEXT,
+    FOREIGN KEY (shiftId) REFERENCES shifts(id) ON DELETE CASCADE,
+    FOREIGN KEY (assigneeId) REFERENCES employees(id) ON DELETE CASCADE,
+    FOREIGN KEY (createdBy) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS communication_allowances (
@@ -102,15 +101,15 @@ CREATE TABLE IF NOT EXISTS communication_allowances (
     asOfDate TEXT,
     screenshot TEXT,
     UNIQUE(employeeId, year, month),
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS groups (
-    name TEXT PRIMARY KEY NOT NULL
+    name TEXT PRIMARY KEY
 );
 
 CREATE TABLE IF NOT EXISTS smtp_settings (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY DEFAULT 1,
     host TEXT,
     port INTEGER,
     secure BOOLEAN,
@@ -129,15 +128,16 @@ CREATE TABLE IF NOT EXISTS tardy_records (
     timeIn TEXT,
     timeOut TEXT,
     remarks TEXT,
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    UNIQUE(employeeId, date),
+    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS shift_templates (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    label TEXT NOT NULL,
-    startTime TEXT NOT NULL,
-    endTime TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
+    label TEXT,
+    startTime TEXT,
+    endTime TEXT,
     color TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
@@ -146,14 +146,13 @@ CREATE TABLE IF NOT EXISTS shift_templates (
 
 CREATE TABLE IF NOT EXISTS leave_types (
     type TEXT PRIMARY KEY,
-    color TEXT
+    color TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS key_value_store (
     key TEXT PRIMARY KEY,
     value TEXT
 );
-
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_shifts_employee_date ON shifts(employeeId, date);
@@ -162,8 +161,23 @@ CREATE INDEX IF NOT EXISTS idx_tasks_shiftId ON tasks(shiftId);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigneeId ON tasks(assigneeId);
 CREATE INDEX IF NOT EXISTS idx_allowances_employee_year_month ON communication_allowances(employeeId, year, month);
 
--- Default Data
-INSERT OR IGNORE INTO groups (name) VALUES ('Default Group');
-INSERT OR IGNORE INTO leave_types (type, color) VALUES ('VL', '#3b82f6'), ('SL', '#f97316'), ('EL', '#ef4444'), ('Work Extension', '#8b5cf6');
+-- Triggers for data integrity
+CREATE TRIGGER IF NOT EXISTS delete_employee_cleanup_trigger
+AFTER DELETE ON employees
+FOR EACH ROW
+BEGIN
+    DELETE FROM shifts WHERE employeeId = OLD.id;
+    DELETE FROM leave WHERE employeeId = OLD.id;
+    DELETE FROM tasks WHERE assigneeId = OLD.id OR createdBy = OLD.id;
+    DELETE FROM communication_allowances WHERE employeeId = OLD.id;
+END;
 
-
+CREATE TRIGGER IF NOT EXISTS update_employee_leave_trigger
+AFTER UPDATE OF "group" ON employees
+FOR EACH ROW
+WHEN OLD."group" IS NOT NEW."group"
+BEGIN
+    -- Example of a trigger that could be expanded, e.g., re-evaluating rules.
+    -- For now, it serves as a placeholder for more complex logic.
+    UPDATE leave SET status = 'pending' WHERE employeeId = NEW.id AND status = 'approved';
+END;
