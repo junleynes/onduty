@@ -162,7 +162,20 @@ export async function saveAllData({
 }) {
   const db = getDb();
   const saveTransaction = db.transaction(() => {
+    
     // --- EMPLOYEES ---
+    // First, figure out which employees are being deleted
+    const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
+    const employeeIdsInState = new Set(employees.map(e => e.id));
+    const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id));
+
+    // Delete employees who are no longer in the state. ON DELETE CASCADE will handle related data.
+    if (employeesToDelete.length > 0) {
+      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
+      deleteStmt.run(...employeesToDelete);
+    }
+    
+    // Now, upsert all current employees
     const empUpsertStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, reportsTo, birthDate, startDate, signature, visibility, lastPromotionDate)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @reportsTo, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
@@ -203,23 +216,16 @@ export async function saveAllData({
         lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
       });
     }
-    const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
-    const employeeIdsInState = new Set(employees.map(e => e.id));
-    const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id));
-    if (employeesToDelete.length > 0) {
-      const deleteStmt = db.prepare(`DELETE FROM employees WHERE id IN (${employeesToDelete.map(() => '?').join(',')})`);
-      deleteStmt.run(...employeesToDelete);
-    }
     
     // --- SHIFTS ---
-    db.prepare('DELETE FROM shifts').run();
+    db.prepare('DELETE FROM shifts WHERE employeeId IS NULL OR employeeId IN (SELECT id FROM employees)').run();
     const shiftStmt = db.prepare('INSERT INTO shifts (id, employeeId, label, startTime, endTime, date, color, isDayOff, isHolidayOff, status, breakStartTime, breakEndTime, isUnpaidBreak) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     for(const shift of shifts) {
       shiftStmt.run(shift.id, shift.employeeId, shift.label, shift.startTime, shift.endTime, new Date(shift.date).toISOString().split('T')[0], shift.color, shift.isDayOff ? 1 : 0, shift.isHolidayOff ? 1 : 0, shift.status, shift.breakStartTime, shift.breakEndTime, shift.isUnpaidBreak ? 1 : 0);
     }
 
     // --- LEAVE ---
-    db.prepare('DELETE FROM leave').run();
+    db.prepare('DELETE FROM leave WHERE employeeId IN (SELECT id FROM employees)').run();
     const leaveStmt = db.prepare('INSERT INTO leave (id, requestId, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime, startDate, endDate) VALUES (@id, @requestId, @employeeId, @type, @color, @date, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime, @startDate, @endDate)');
     for(const l of leave) {
         if (!l.endDate) l.endDate = l.startDate; 
@@ -266,14 +272,14 @@ export async function saveAllData({
     }
 
     // --- TASKS ---
-    db.prepare('DELETE FROM tasks').run();
+    db.prepare('DELETE FROM tasks WHERE createdBy IN (SELECT id FROM employees)').run();
     const taskStmt = db.prepare('INSERT INTO tasks (id, shiftId, assigneeId, scope, title, description, status, completedAt, dueDate, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     for(const task of tasks) {
       taskStmt.run(task.id, task.shiftId, task.assigneeId, task.scope, task.title, task.description, task.status, task.completedAt?.toISOString(), task.dueDate?.toISOString(), task.createdBy);
     }
 
     // --- ALLOWANCES ---
-    db.prepare('DELETE FROM communication_allowances').run();
+    db.prepare('DELETE FROM communication_allowances WHERE employeeId IN (SELECT id FROM employees)').run();
     const allowanceStmt = db.prepare('INSERT INTO communication_allowances (id, employeeId, year, month, balance, asOfDate, screenshot) VALUES (?, ?, ?, ?, ?, ?, ?)');
     for(const allowance of allowances) {
         allowanceStmt.run(allowance.id, allowance.employeeId, allowance.year, allowance.month, allowance.balance, allowance.asOfDate ? new Date(allowance.asOfDate).toISOString() : null, allowance.screenshot);
@@ -307,7 +313,7 @@ export async function saveAllData({
     }
 
     // --- TARDY RECORDS ---
-    db.prepare('DELETE FROM tardy_records').run();
+    db.prepare('DELETE FROM tardy_records WHERE employeeId IN (SELECT id FROM employees)').run();
     const tardyStmt = db.prepare('INSERT INTO tardy_records (employeeId, employeeName, date, schedule, timeIn, timeOut, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)');
     for(const record of tardyRecords) {
         tardyStmt.run(record.employeeId, record.employeeName, new Date(record.date).toISOString().split('T')[0], record.schedule, record.timeIn, record.timeOut, record.remarks);

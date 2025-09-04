@@ -1,4 +1,7 @@
 
+
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
     employeeNumber TEXT,
@@ -8,17 +11,18 @@ CREATE TABLE IF NOT EXISTS employees (
     email TEXT NOT NULL UNIQUE,
     phone TEXT,
     password TEXT,
-    birthDate TEXT,
-    startDate TEXT,
-    lastPromotionDate TEXT,
     position TEXT,
     role TEXT NOT NULL,
     "group" TEXT,
     avatar TEXT,
-    signature TEXT,
+    birthDate TEXT,
+    startDate TEXT,
+    lastPromotionDate TEXT,
     loadAllocation REAL,
     reportsTo TEXT,
-    visibility TEXT
+    signature TEXT,
+    visibility TEXT,
+    FOREIGN KEY (reportsTo) REFERENCES employees(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS shifts (
@@ -29,23 +33,25 @@ CREATE TABLE IF NOT EXISTS shifts (
     endTime TEXT,
     date TEXT NOT NULL,
     color TEXT,
-    isDayOff BOOLEAN DEFAULT FALSE,
-    isHolidayOff BOOLEAN DEFAULT FALSE,
-    status TEXT,
+    isDayOff INTEGER DEFAULT 0,
+    isHolidayOff INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'draft',
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak BOOLEAN,
+    isUnpaidBreak INTEGER DEFAULT 0,
     FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS leave (
     id TEXT PRIMARY KEY,
-    requestId TEXT NOT NULL,
+    requestId TEXT,
     employeeId TEXT NOT NULL,
     type TEXT NOT NULL,
     color TEXT,
     date TEXT NOT NULL,
-    isAllDay BOOLEAN NOT NULL,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay INTEGER NOT NULL,
     startTime TEXT,
     endTime TEXT,
     status TEXT,
@@ -56,8 +62,6 @@ CREATE TABLE IF NOT EXISTS leave (
     originalShiftDate TEXT,
     originalStartTime TEXT,
     originalEndTime TEXT,
-    startDate TEXT NOT NULL,
-    endDate TEXT NOT NULL,
     FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE,
     FOREIGN KEY (managedBy) REFERENCES employees(id) ON DELETE SET NULL
 );
@@ -91,6 +95,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     FOREIGN KEY (createdBy) REFERENCES employees(id) ON DELETE CASCADE
 );
 
+
 CREATE TABLE IF NOT EXISTS communication_allowances (
     id TEXT PRIMARY KEY,
     employeeId TEXT NOT NULL,
@@ -99,23 +104,7 @@ CREATE TABLE IF NOT EXISTS communication_allowances (
     balance REAL NOT NULL,
     asOfDate TEXT,
     screenshot TEXT,
-    UNIQUE(employeeId, year, month),
     FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS groups (
-    name TEXT PRIMARY KEY
-);
-
-CREATE TABLE IF NOT EXISTS smtp_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
-    host TEXT,
-    port INTEGER,
-    secure BOOLEAN,
-    user TEXT,
-    pass TEXT,
-    fromEmail TEXT,
-    fromName TEXT
 );
 
 CREATE TABLE IF NOT EXISTS tardy_records (
@@ -132,19 +121,30 @@ CREATE TABLE IF NOT EXISTS tardy_records (
 
 CREATE TABLE IF NOT EXISTS shift_templates (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     label TEXT NOT NULL,
     startTime TEXT NOT NULL,
     endTime TEXT NOT NULL,
     color TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak BOOLEAN
+    isUnpaidBreak INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS leave_types (
     type TEXT PRIMARY KEY,
-    color TEXT NOT NULL
+    color TEXT
+);
+
+CREATE TABLE IF NOT EXISTS smtp_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    host TEXT,
+    port INTEGER,
+    secure INTEGER,
+    user TEXT,
+    pass TEXT,
+    fromEmail TEXT,
+    fromName TEXT
 );
 
 CREATE TABLE IF NOT EXISTS key_value_store (
@@ -152,7 +152,16 @@ CREATE TABLE IF NOT EXISTS key_value_store (
     value TEXT
 );
 
--- Triggers to maintain data integrity
+CREATE TABLE IF NOT EXISTS groups (
+    name TEXT PRIMARY KEY
+);
+
+
+-- INDEXES for performance
+CREATE INDEX IF NOT EXISTS idx_shifts_employeeId_date ON shifts(employeeId, date);
+CREATE INDEX IF NOT EXISTS idx_leave_employeeId_date ON leave(employeeId, date);
+
+-- TRIGGERS for data integrity
 CREATE TRIGGER IF NOT EXISTS delete_employee_cleanup_trigger
 AFTER DELETE ON employees
 FOR EACH ROW
@@ -161,5 +170,11 @@ BEGIN
     DELETE FROM leave WHERE employeeId = OLD.id;
     DELETE FROM tasks WHERE assigneeId = OLD.id OR createdBy = OLD.id;
     DELETE FROM communication_allowances WHERE employeeId = OLD.id;
-    DELETE FROM tardy_records WHERE employeeId = OLD.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_employee_leave_trigger
+AFTER UPDATE OF employeeId ON leave
+FOR EACH ROW
+BEGIN
+    UPDATE leave SET employeeId = NEW.employeeId WHERE id = OLD.id;
 END;
