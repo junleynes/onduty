@@ -186,22 +186,23 @@ export async function saveAllData({
   const db = getDb();
   const saveTransaction = db.transaction(() => {
     
-    // --- EMPLOYEES (PASS 1: Core data without relationships) ---
-    const empUpsertStmtPass1 = db.prepare(`
-      INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate)
-      VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate)
+    // --- EMPLOYEES ---
+    const empUpsertStmt = db.prepare(`
+      INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate, reportsTo)
+      VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate, @reportsTo)
       ON CONFLICT(id) DO UPDATE SET
         employeeNumber=excluded.employeeNumber, firstName=excluded.firstName, lastName=excluded.lastName, middleInitial=excluded.middleInitial, email=excluded.email, phone=excluded.phone,
         password=excluded.password, position=excluded.position, role=excluded.role, "group"=excluded."group", avatar=excluded.avatar, loadAllocation=excluded.loadAllocation,
-        birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate
+        birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate, reportsTo=excluded.reportsTo
     `);
+    
     const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
     
     for (const emp of employees) {
       if(emp.id === 'emp-admin-01') continue;
 
       let finalPassword = emp.password;
-      if (emp.id && !emp.password) { 
+      if (emp.id && (!emp.password || emp.password.trim() === '')) { 
         const existing = getPasswordStmt.get(emp.id) as { password?: string } | undefined;
         finalPassword = existing?.password; 
       }
@@ -209,7 +210,7 @@ export async function saveAllData({
         finalPassword = 'password';
       }
       
-      empUpsertStmtPass1.run({
+      empUpsertStmt.run({
         id: emp.id,
         employeeNumber: emp.employeeNumber || null,
         firstName: emp.firstName,
@@ -228,6 +229,7 @@ export async function saveAllData({
         signature: emp.signature || null,
         visibility: JSON.stringify(emp.visibility || {}),
         lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
+        reportsTo: emp.reportsTo || null,
       });
     }
 
@@ -239,7 +241,7 @@ export async function saveAllData({
       deleteStmt.run(...employeesToDelete);
     }
     
-    // --- GROUPS (Sync after employees are updated) ---
+    // --- GROUPS ---
     const dbGroups = new Set(db.prepare('SELECT name FROM groups').all().map((g: any) => g.name));
     const stateGroups = new Set(groups);
     const groupsToAdd = [...stateGroups].filter(g => !dbGroups.has(g));
@@ -254,15 +256,6 @@ export async function saveAllData({
         groupsToDelete.forEach(g => deleteGroupStmt.run(g));
     }
     
-    // --- EMPLOYEES (PASS 2: Update `reportsTo` relationship) ---
-    const empUpdateReportsToStmt = db.prepare('UPDATE employees SET reportsTo = ? WHERE id = ?');
-    for (const emp of employees) {
-        if(emp.id !== 'emp-admin-01') {
-            empUpdateReportsToStmt.run(emp.reportsTo || null, emp.id);
-        }
-    }
-
-
     // --- SHIFTS ---
     db.prepare('DELETE FROM shifts').run();
     const shiftStmt = db.prepare('INSERT INTO shifts (id, employeeId, label, startTime, endTime, date, color, isDayOff, isHolidayOff, status, breakStartTime, breakEndTime, isUnpaidBreak) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
@@ -399,5 +392,3 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
-
-    
