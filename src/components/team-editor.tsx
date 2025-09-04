@@ -80,6 +80,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     });
   
   const isNewEmployee = !employee?.id;
+  const selectedGroup = form.watch("group");
 
   useEffect(() => {
     if(isOpen) {
@@ -376,7 +377,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                         <SelectContent>
                                         <SelectItem value="null">None</SelectItem>
                                         {employees
-                                            .filter(e => e.role === 'manager' && e.id !== employee?.id)
+                                            .filter(e => e.role === 'manager' && e.id !== employee?.id && e.group === selectedGroup)
                                             .map(manager => (
                                             <SelectItem key={manager.id} value={manager.id}>
                                                 {getFullName(manager)}
