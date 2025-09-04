@@ -222,12 +222,12 @@ export async function saveAllData({
     db.prepare('DELETE FROM leave').run();
     const leaveStmt = db.prepare('INSERT INTO leave (id, requestId, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime, startDate, endDate) VALUES (@id, @requestId, @employeeId, @type, @color, @date, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime, @startDate, @endDate)');
     for(const l of leave) {
-        if (!l.endDate) l.endDate = l.startDate; // ensure endDate exists
+        if (!l.endDate) l.endDate = l.startDate; 
         const days = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
         
         for (const day of days) {
            leaveStmt.run({
-                id: `leave-${l.employeeId}-${format(day, 'yyyy-MM-dd')}`,
+                id: `${l.id}-${format(day, 'yyyy-MM-dd')}`,
                 requestId: l.id,
                 employeeId: l.employeeId,
                 type: l.type,
@@ -244,7 +244,7 @@ export async function saveAllData({
                 originalShiftDate: l.originalShiftDate?.toISOString(),
                 originalStartTime: l.originalStartTime,
                 originalEndTime: l.originalEndTime,
-                startDate: new Date(l.startDate).toISOString(), // Store original range
+                startDate: new Date(l.startDate).toISOString(), 
                 endDate: new Date(l.endDate).toISOString(),
             });
         }

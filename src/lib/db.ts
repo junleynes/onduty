@@ -10,27 +10,29 @@ const DB_PATH = process.env.NODE_ENV === 'development'
 let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
-    // In development, delete the old DB file to ensure schema changes are applied
-    if (process.env.NODE_ENV === 'development' && fs.existsSync(DB_PATH)) {
-        console.log('Development mode: Deleting old database to re-apply schema.');
-        fs.unlinkSync(DB_PATH);
+    const db = new Database(DB_PATH);
+    
+    // Check if tables exist
+    const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'").get();
+
+    if (!tableCheck) {
+        console.log('Database appears to be empty. Applying schema...');
+        const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
+        if (fs.existsSync(schemaPath)) {
+            try {
+                const schema = fs.readFileSync(schemaPath, 'utf8');
+                db.exec(schema);
+                console.log('Database schema applied successfully.');
+            } catch(e) {
+                console.error('Failed to initialize database from schema:', e);
+                throw e;
+            }
+        } else {
+             console.error(`CRITICAL: Schema file not found at ${schemaPath}. Cannot initialize database.`);
+             throw new Error(`Schema file not found at ${schemaPath}`);
+        }
     }
     
-    const db = new Database(DB_PATH, { fileMustExist: false });
-    const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
-
-    if (fs.existsSync(schemaPath)) {
-        try {
-            const schema = fs.readFileSync(schemaPath, 'utf8');
-            db.exec(schema);
-            console.log('Database schema applied successfully.');
-        } catch(e) {
-            console.error('Failed to initialize database from schema:', e);
-            throw e; // re-throw the error to fail startup
-        }
-    } else {
-        console.warn(`Schema file not found at ${schemaPath}. Starting with an empty database.`);
-    }
     return db;
 }
 
@@ -39,7 +41,6 @@ export function getDb() {
     console.log(`Connecting to database at ${DB_PATH}`);
     dbInstance = initializeDatabase();
 
-    // Gracefully close the database connection on exit
     process.on('exit', () => {
         if (dbInstance && dbInstance.open) {
             console.log('Closing database connection.');
@@ -54,6 +55,4 @@ export function getDb() {
   return dbInstance;
 }
 
-// For convenience, you can still export a direct db object.
-// The getDb() function will ensure it is initialized on first access.
 export const db = getDb();
