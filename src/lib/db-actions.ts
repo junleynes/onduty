@@ -114,8 +114,7 @@ export async function getData() {
         phone: "123-456-7890",
         position: "System Administrator",
         role: "admin",
-        group: "Administration",
-        password: "P@ssw0rd"
+        group: "Administration"
     };
 
     const adminInDb = employees.find(e => e.id === adminUser.id);
@@ -124,8 +123,8 @@ export async function getData() {
     } else {
         // Ensure admin password is correct in the loaded data
         const adminIndex = processedEmployees.findIndex(e => e.id === adminUser.id);
-        if (adminIndex > -1) {
-            processedEmployees[adminIndex].password = adminUser.password;
+        if (adminIndex > -1 && processedEmployees[adminIndex]) {
+            (processedEmployees[adminIndex] as any).password = "P@ssw0rd";
         }
     }
 
