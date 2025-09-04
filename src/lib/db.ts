@@ -10,8 +10,15 @@ const DB_PATH = process.env.NODE_ENV === 'development'
 let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
+    // In development, delete the old DB file to ensure schema changes are applied
+    if (process.env.NODE_ENV === 'development' && fs.existsSync(DB_PATH)) {
+        console.log('Development mode: Deleting old database to re-apply schema.');
+        fs.unlinkSync(DB_PATH);
+    }
+    
     const db = new Database(DB_PATH, { fileMustExist: false });
     const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
+
     if (fs.existsSync(schemaPath)) {
         try {
             const schema = fs.readFileSync(schemaPath, 'utf8');
