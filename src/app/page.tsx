@@ -394,17 +394,46 @@ function AppContent() {
 };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
-      const newEmployees: Employee[] = newMembers.map((member) => ({
-        ...member,
-        id: uuidv4(),
-        avatar: member.avatar || '',
-        position: member.position || '',
-        role: member.role || 'member',
-        phone: member.phone || '',
-      } as Employee));
+    let newCount = 0;
+    let updatedCount = 0;
 
-      setEmployees(prev => [...prev, ...newEmployees]);
-      toast({ title: 'Import Successful', description: `${newEmployees.length} new members added.`})
+    setEmployees(prevEmployees => {
+      const updatedEmployees = [...prevEmployees];
+      const existingEmails = new Map(prevEmployees.map(e => [e.email.toLowerCase(), e]));
+
+      newMembers.forEach(member => {
+        if (!member.email) return;
+
+        const existingEmployee = existingEmails.get(member.email.toLowerCase());
+
+        if (existingEmployee) {
+          // Update existing employee
+          const index = updatedEmployees.findIndex(e => e.id === existingEmployee.id);
+          if (index !== -1) {
+            updatedEmployees[index] = { ...existingEmployee, ...member };
+            updatedCount++;
+          }
+        } else {
+          // Add new employee
+          const newEmployee: Employee = {
+            ...member,
+            id: uuidv4(),
+            avatar: member.avatar || '',
+            position: member.position || '',
+            role: member.role || 'member',
+            phone: member.phone || '',
+          } as Employee;
+          updatedEmployees.push(newEmployee);
+          newCount++;
+        }
+      });
+      return updatedEmployees;
+    });
+
+    toast({
+      title: 'Import Complete',
+      description: `${newCount} new member(s) added and ${updatedCount} member(s) updated.`
+    });
   }
 
   const handleImportHolidays = (newHolidays: Partial<Holiday>[]) => {
