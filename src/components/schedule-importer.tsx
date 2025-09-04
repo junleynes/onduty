@@ -19,6 +19,7 @@ import { Loader2 } from 'lucide-react';
 import type { Shift, Leave, Employee } from '@/types';
 import type { ShiftTemplate } from './shift-editor';
 import type { LeaveTypeOption } from './leave-type-editor';
+import { v4 as uuidv4 } from 'uuid';
 
 type ScheduleImporterProps = {
   isOpen: boolean;
@@ -202,11 +203,11 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       const upperCellValue = cellValue.toUpperCase();
 
                       if (upperCellValue === 'OFF') {
-                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'OFF', color: 'transparent', isDayOff: true, status: 'draft' });
+                          importedShifts.push({ id: uuidv4(), employeeId: employee.id, date, startTime: '', endTime: '', label: 'OFF', color: 'transparent', isDayOff: true, status: 'draft' });
                           return;
                       }
                       if (upperCellValue === 'HOL-OFF') {
-                          importedShifts.push({ id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`, employeeId: employee.id, date, startTime: '', endTime: '', label: 'HOL-OFF', color: 'transparent', isHolidayOff: true, status: 'draft' });
+                          importedShifts.push({ id: uuidv4(), employeeId: employee.id, date, startTime: '', endTime: '', label: 'HOL-OFF', color: 'transparent', isHolidayOff: true, status: 'draft' });
                           return;
                       }
 
@@ -223,7 +224,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                             const leaveTypeDetails = leaveTypes.find(lt => lt.type.toUpperCase() === leaveType);
                             if (startTime && endTime) {
                                 importedLeave.push({
-                                    id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`,
+                                    id: uuidv4(),
                                     employeeId: employee.id,
                                     startDate: date,
                                     endDate: date,
@@ -243,7 +244,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       if (validLeaveTypes.has(upperCellValue)) {
                           const leaveTypeDetails = leaveTypes.find(lt => lt.type.toUpperCase() === upperCellValue);
                           importedLeave.push({ 
-                              id: `imp-lv-${blockIndex}-${rowIndex}-${colIndex}`, 
+                              id: uuidv4(), 
                               employeeId: employee.id, 
                               startDate: date,
                               endDate: date,
@@ -263,7 +264,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                           
                           const matchedTemplate = shiftTemplates.find(t => t.startTime === startTime && t.endTime === endTime);
                           importedShifts.push({
-                              id: `imp-sh-${blockIndex}-${rowIndex}-${colIndex}`,
+                              id: uuidv4(),
                               employeeId: employee.id,
                               date,
                               startTime,
