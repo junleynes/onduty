@@ -10,14 +10,7 @@ const DB_PATH = process.env.NODE_ENV === 'development'
 let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
-    // In development, force a clean state by deleting the old DB file.
-    // This ensures schema changes are always applied to a fresh database.
-    if (process.env.NODE_ENV === 'development' && fs.existsSync(DB_PATH)) {
-        console.log('Development environment detected. Deleting old database file to ensure a clean state.');
-        fs.unlinkSync(DB_PATH);
-    }
-
-    const db = new Database(DB_PATH);
+    const db = new Database(DB_PATH, { fileMustExist: false });
     const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
     if (fs.existsSync(schemaPath)) {
         try {
