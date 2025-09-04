@@ -1,4 +1,5 @@
 
+
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
     employeeNumber TEXT,
@@ -19,23 +20,24 @@ CREATE TABLE IF NOT EXISTS employees (
     loadAllocation REAL,
     reportsTo TEXT,
     visibility TEXT,
-    FOREIGN KEY(reportsTo) REFERENCES employees(id) ON DELETE SET NULL
+    FOREIGN KEY(reportsTo) REFERENCES employees(id) ON DELETE SET NULL,
+    FOREIGN KEY("group") REFERENCES groups(name) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS shifts (
     id TEXT PRIMARY KEY,
     employeeId TEXT,
-    label TEXT NOT NULL,
-    startTime TEXT NOT NULL,
-    endTime TEXT NOT NULL,
+    label TEXT,
+    startTime TEXT,
+    endTime TEXT,
     date TEXT NOT NULL,
     color TEXT,
-    isDayOff BOOLEAN DEFAULT 0,
-    isHolidayOff BOOLEAN DEFAULT 0,
-    status TEXT,
+    isDayOff BOOLEAN DEFAULT FALSE,
+    isHolidayOff BOOLEAN DEFAULT FALSE,
+    status TEXT DEFAULT 'draft',
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak BOOLEAN DEFAULT 0,
+    isUnpaidBreak BOOLEAN DEFAULT FALSE,
     FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
@@ -46,10 +48,10 @@ CREATE TABLE IF NOT EXISTS leave (
     color TEXT,
     startDate TEXT NOT NULL,
     endDate TEXT NOT NULL,
-    isAllDay BOOLEAN DEFAULT 1,
+    isAllDay BOOLEAN DEFAULT TRUE,
     startTime TEXT,
     endTime TEXT,
-    status TEXT,
+    status TEXT DEFAULT 'pending',
     reason TEXT,
     requestedAt TEXT,
     managedBy TEXT,
@@ -61,9 +63,10 @@ CREATE TABLE IF NOT EXISTS leave (
     FOREIGN KEY(managedBy) REFERENCES employees(id) ON DELETE SET NULL
 );
 
+
 CREATE TABLE IF NOT EXISTS notes (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
+    date TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
     description TEXT
 );
@@ -103,11 +106,11 @@ CREATE TABLE IF NOT EXISTS communication_allowances (
 );
 
 CREATE TABLE IF NOT EXISTS groups (
-    name TEXT PRIMARY KEY
+    name TEXT PRIMARY KEY NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS smtp_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
+    id INTEGER PRIMARY KEY,
     host TEXT,
     port INTEGER,
     secure BOOLEAN,
@@ -118,6 +121,7 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
 );
 
 CREATE TABLE IF NOT EXISTS tardy_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     employeeId TEXT NOT NULL,
     employeeName TEXT NOT NULL,
     date TEXT NOT NULL,
@@ -125,19 +129,19 @@ CREATE TABLE IF NOT EXISTS tardy_records (
     timeIn TEXT,
     timeOut TEXT,
     remarks TEXT,
-    PRIMARY KEY (employeeId, date)
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS shift_templates (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     label TEXT NOT NULL,
     startTime TEXT NOT NULL,
     endTime TEXT NOT NULL,
     color TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak BOOLEAN DEFAULT 0
+    isUnpaidBreak BOOLEAN
 );
 
 CREATE TABLE IF NOT EXISTS leave_types (
@@ -151,37 +155,15 @@ CREATE TABLE IF NOT EXISTS key_value_store (
 );
 
 
--- Create Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_shifts_employeeId_date ON shifts(employeeId, date);
-CREATE INDEX IF NOT EXISTS idx_leave_employeeId_dates ON leave(employeeId, startDate, endDate);
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_shifts_employee_date ON shifts(employeeId, date);
+CREATE INDEX IF NOT EXISTS idx_leave_employee_date ON leave(employeeId, startDate, endDate);
 CREATE INDEX IF NOT EXISTS idx_tasks_shiftId ON tasks(shiftId);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigneeId ON tasks(assigneeId);
+CREATE INDEX IF NOT EXISTS idx_allowances_employee_year_month ON communication_allowances(employeeId, year, month);
 
-
--- Create Triggers for data integrity
-CREATE TRIGGER IF NOT EXISTS delete_employee_cleanup_trigger
-AFTER DELETE ON employees
-FOR EACH ROW
-BEGIN
-    -- This trigger is now mostly redundant due to ON DELETE CASCADE,
-    -- but can be kept for explicit clarity or extended for logging.
-    -- Example: INSERT INTO audit_log (action, details) VALUES ('delete_employee', OLD.id);
-    DELETE FROM leave WHERE employeeId = OLD.id;
-    DELETE FROM shifts WHERE employeeId = OLD.id;
-    DELETE FROM tasks WHERE assigneeId = OLD.id OR createdBy = OLD.id;
-    DELETE FROM communication_allowances WHERE employeeId = OLD.id;
-END;
-
-
--- Seed initial data if tables are empty
+-- Default Data
 INSERT OR IGNORE INTO groups (name) VALUES ('Default Group');
+INSERT OR IGNORE INTO leave_types (type, color) VALUES ('VL', '#3b82f6'), ('SL', '#f97316'), ('EL', '#ef4444'), ('Work Extension', '#8b5cf6');
 
-INSERT OR IGNORE INTO leave_types (type, color) VALUES 
-('VL', '#3b82f6'), ('SL', '#f97316'), ('EL', '#ef4444'), ('WFH', '#14b8a6'), ('TARDY', '#eab308'), ('Work Extension', '#9b59b6');
-
-INSERT OR IGNORE INTO shift_templates (id, name, label, startTime, endTime, color, breakStartTime, breakEndTime, isUnpaidBreak) VALUES
-('tpl-1', 'Morning Shift (08:00-17:00)', 'Morning Shift', '08:00', '17:00', 'hsl(var(--chart-2))', '12:00', '13:00', 1),
-('tpl-2', 'Mid Shift (13:00-22:00)', 'Mid Shift', '13:00', '22:00', 'hsl(var(--chart-4))', '17:00', '18:00', 1),
-('tpl-3', 'Night Shift (22:00-07:00)', 'Night Shift', '22:00', '07:00', 'hsl(var(--chart-3))', '02:00', '03:00', 1),
-('tpl-4', 'Manager Shift (09:00-18:00)', 'Manager Shift', '09:00', '18:00', 'hsl(var(--chart-1))', '12:00', '13:00', 0);
 

@@ -219,36 +219,29 @@ export async function saveAllData({
 
     // --- LEAVE ---
     db.prepare('DELETE FROM leave').run();
-    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     
     for(const l of leave) {
         if (l.startDate && l.endDate) {
-            const days = eachDayOfInterval({
-                start: new Date(l.startDate),
-                end: new Date(l.endDate)
-            });
-            days.forEach((day, index) => {
-                // For multi-day leave, we create a record for each day.
-                // We generate a unique ID for each day's record.
-                 leaveStmt.run(
-                    `${l.id}-${index}`, 
-                    l.employeeId, 
-                    l.type, 
-                    l.color, 
-                    day.toISOString().split('T')[0],
-                    l.isAllDay ? 1 : 0, 
-                    l.startTime, 
-                    l.endTime, 
-                    l.status, 
-                    l.reason, 
-                    l.requestedAt?.toISOString(), 
-                    l.managedBy, 
-                    l.managedAt?.toISOString(),
-                    l.originalShiftDate?.toISOString().split('T')[0],
-                    l.originalStartTime,
-                    l.originalEndTime
-                );
-            });
+            leaveStmt.run(
+                l.id, 
+                l.employeeId, 
+                l.type, 
+                l.color, 
+                new Date(l.startDate).toISOString(),
+                new Date(l.endDate).toISOString(),
+                l.isAllDay ? 1 : 0, 
+                l.startTime, 
+                l.endTime, 
+                l.status, 
+                l.reason, 
+                l.requestedAt?.toISOString(), 
+                l.managedBy, 
+                l.managedAt?.toISOString(),
+                l.originalShiftDate?.toISOString(),
+                l.originalStartTime,
+                l.originalEndTime
+            );
         }
     }
 
