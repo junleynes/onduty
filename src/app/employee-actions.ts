@@ -150,10 +150,21 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
             return { success: false, error: 'Employee not found.' };
         }
         
-        let finalPassword = data.password;
-        if (!finalPassword || finalPassword.trim() === '') {
-            finalPassword = existingEmployee.password;
+        const updatedEmployee = { ...existingEmployee, ...data };
+
+        // Handle password: if new one is not provided, keep the old one
+        if (!data.password || data.password.trim() === '') {
+            updatedEmployee.password = existingEmployee.password;
         }
+
+        // Handle optional fields that might not be in `data`
+        updatedEmployee.employeeNumber = data.employeeNumber || existingEmployee.employeeNumber;
+        updatedEmployee.phone = data.phone || existingEmployee.phone;
+        updatedEmployee.position = data.position || existingEmployee.position;
+
+        // Handle images: if new one is not provided, keep the old one from the DB
+        updatedEmployee.avatar = data.avatar || existingEmployee.avatar;
+        updatedEmployee.signature = data.signature || existingEmployee.signature;
 
         const stmt = db.prepare(`
             UPDATE employees SET
@@ -177,15 +188,6 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
                 reportsTo = @reportsTo
             WHERE id = @id
         `);
-        
-        const updatedEmployee = { 
-            ...existingEmployee, // Start with existing data
-            ...data, // Overlay with new data from the form
-            password: finalPassword, // Set the correct password
-            // Preserve avatar and signature if they weren't changed
-            avatar: data.avatar || existingEmployee.avatar,
-            signature: data.signature || existingEmployee.signature,
-        };
 
         stmt.run({
             id: updatedEmployee.id,

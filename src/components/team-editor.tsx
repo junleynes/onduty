@@ -127,6 +127,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
             startDate: employee.startDate ? new Date(employee.startDate) : undefined,
             lastPromotionDate: employee.lastPromotionDate ? new Date(employee.lastPromotionDate) : undefined,
+            loadAllocation: employee.loadAllocation ?? 0,
             visibility: {
               schedule: employee.visibility?.schedule ?? true,
               onDuty: employee.visibility?.onDuty ?? true,
