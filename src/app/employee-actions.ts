@@ -31,7 +31,22 @@ const employeeSchema = z.object({
       orgChart: z.boolean().optional(),
       mobileLoad: z.boolean().optional(),
   }).optional(),
+}).refine(data => {
+    // If it's a new user (no ID), password is required and must be at least 6 chars
+    if (!data.id) {
+      return data.password && data.password.length >= 6;
+    }
+    // If it's an existing user, password is optional. But if provided, it must be at least 6 chars.
+    if (data.password && data.password.length > 0) {
+      return data.password.length >= 6;
+    }
+    // If password is not provided for an existing user, it's valid.
+    return true;
+  }, {
+    message: 'Password must be at least 6 characters long.',
+    path: ['password'],
 });
+
 
 // Helper to check for email uniqueness
 async function isEmailUnique(email: string, currentId?: string): Promise<boolean> {
@@ -130,12 +145,14 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
     const db = getDb();
     
     try {
-        const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
+        const existingEmployee = db.prepare('SELECT * FROM employees WHERE id = ?').get(data.id) as Employee | undefined;
+        if (!existingEmployee) {
+            return { success: false, error: 'Employee not found.' };
+        }
         
         let finalPassword = data.password;
         if (!finalPassword || finalPassword.trim() === '') {
-            const existing = getPasswordStmt.get(data.id) as { password?: string } | undefined;
-            finalPassword = existing?.password;
+            finalPassword = existingEmployee.password;
         }
 
         const stmt = db.prepare(`
@@ -160,8 +177,15 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
                 reportsTo = @reportsTo
             WHERE id = @id
         `);
-
-        const updatedEmployee = { ...data, password: finalPassword };
+        
+        const updatedEmployee = { 
+            ...existingEmployee, // Start with existing data
+            ...data, // Overlay with new data from the form
+            password: finalPassword, // Set the correct password
+            // Preserve avatar and signature if they weren't changed
+            avatar: data.avatar || existingEmployee.avatar,
+            signature: data.signature || existingEmployee.signature,
+        };
 
         stmt.run({
             id: updatedEmployee.id,
