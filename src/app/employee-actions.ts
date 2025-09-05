@@ -119,15 +119,17 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
     }
     
     const data = validation.data;
+    
+    // Perform email uniqueness check first
+    if (data.email) {
+        if (!await isEmailUnique(data.email, data.id)) {
+            return { success: false, error: 'Another user is already using this email address.' };
+        }
+    }
+    
     const db = getDb();
     
     try {
-        if (data.email) {
-            if (!await isEmailUnique(data.email, data.id)) {
-                 return { success: false, error: 'Another user is already using this email address.' };
-            }
-        }
-
         const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
         
         let finalPassword = data.password;
