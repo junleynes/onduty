@@ -135,7 +135,6 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
     
     const data = validation.data;
     
-    // Perform email uniqueness check first
     if (data.email) {
         if (!await isEmailUnique(data.email, data.id)) {
             return { success: false, error: 'Another user is already using this email address.' };
@@ -152,19 +151,21 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
         
         const updatedEmployee = { ...existingEmployee, ...data };
 
-        // Handle password: if new one is not provided, keep the old one
         if (!data.password || data.password.trim() === '') {
             updatedEmployee.password = existingEmployee.password;
         }
 
-        // Handle optional fields that might not be in `data`
+        // Correctly handle image preservation
+        if (!data.avatar) {
+            updatedEmployee.avatar = existingEmployee.avatar;
+        }
+        if (!data.signature) {
+            updatedEmployee.signature = existingEmployee.signature;
+        }
+
         updatedEmployee.employeeNumber = data.employeeNumber || existingEmployee.employeeNumber;
         updatedEmployee.phone = data.phone || existingEmployee.phone;
         updatedEmployee.position = data.position || existingEmployee.position;
-
-        // Handle images: if new one is not provided, keep the old one from the DB
-        updatedEmployee.avatar = data.avatar || existingEmployee.avatar;
-        updatedEmployee.signature = data.signature || existingEmployee.signature;
 
         const stmt = db.prepare(`
             UPDATE employees SET
