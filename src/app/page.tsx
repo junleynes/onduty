@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
 import { isSameDay, getMonth, getDate, getYear, format } from 'date-fns';
 import { getData, saveAllData } from '@/lib/db-actions';
+import { addEmployee, updateEmployee } from '@/app/employee-actions';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -91,8 +92,9 @@ function AppContent() {
   useEffect(() => {
     if (!initialDataLoaded || isLoading) return;
     
+    // Employee data is now saved directly via server actions, so we exclude it here.
     const dataToSave = {
-        employees,
+        employees, // We still pass employees to saveAllData to handle deletions.
         shifts,
         leave,
         notes,
@@ -109,8 +111,9 @@ function AppContent() {
 
     const saveData = async () => {
         setIsSaving(true);
-        console.log("Attempting to save data to DB...");
         try {
+            // Note: saveAllData will now primarily handle non-employee data.
+            // Employee deletions are still handled by comparing the full list.
             const result = await saveAllData(dataToSave);
             if (!result.success) {
                  toast({
@@ -350,56 +353,31 @@ function AppContent() {
   };
 
 
- const handleSaveMember = (employeeData: Partial<Employee>) => {
-    setEmployees(prevEmployees => {
-      // Check for email uniqueness before saving
-      const emailExists = prevEmployees.some(
-        emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase() && emp.id !== employeeData.id
-      );
-
-      if (emailExists) {
-        toast({
-          variant: 'destructive',
-          title: 'Email Already Exists',
-          description: 'Another user is already using this email address.',
-        });
-        return prevEmployees; // Return original state without changes
-      }
-
-      if (employeeData.id) {
-        // This is an update
-        return prevEmployees.map(emp => {
-          if (emp.id === employeeData.id) {
-            const updatedEmp = { ...emp, ...employeeData };
-            // Update current user in state and localStorage if they are editing their own profile
-            if (currentUser?.id === updatedEmp.id) {
-              setCurrentUser(updatedEmp as Employee);
-              if (typeof window !== 'undefined') {
-                localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
-              }
-            }
-            return updatedEmp;
-          }
-          return emp;
-        });
+ const handleSaveMember = async (employeeData: Partial<Employee>) => {
+    if (employeeData.id) {
+      // Update existing employee
+      const result = await updateEmployee(employeeData);
+      if (result.success && result.employee) {
+        setEmployees(prev => prev.map(emp => emp.id === result.employee!.id ? {...emp, ...result.employee} as Employee : emp));
+        if (currentUser?.id === result.employee.id) {
+          const updatedUser = { ...currentUser, ...result.employee };
+          setCurrentUser(updatedUser);
+          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        }
+        toast({ title: 'Member Updated', description: 'The team member details have been saved.'});
       } else {
-        // This is a new employee
-        const newEmployee: Employee = {
-          id: uuidv4(),
-          firstName: employeeData.firstName || '',
-          lastName: employeeData.lastName || '',
-          email: employeeData.email || '',
-          phone: employeeData.phone || '',
-          position: employeeData.position || '',
-          role: employeeData.role || 'member',
-          ...employeeData,
-          visibility: employeeData.visibility || { schedule: true, onDuty: true, orgChart: true, mobileLoad: true },
-          reportsTo: employeeData.reportsTo || null,
-          password: employeeData.password || 'password'
-        };
-        return [...prevEmployees, newEmployee];
+        toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
       }
-    });
+    } else {
+      // Add new employee
+      const result = await addEmployee(employeeData);
+      if (result.success && result.employee) {
+        setEmployees(prev => [...prev, result.employee!]);
+        toast({ title: 'Member Added', description: 'The new team member has been created.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Creation Failed', description: result.error });
+      }
+    }
   };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
