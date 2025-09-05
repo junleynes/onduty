@@ -92,9 +92,8 @@ function AppContent() {
   useEffect(() => {
     if (!initialDataLoaded || isLoading) return;
     
-    // Employee data is now saved directly via server actions, so we exclude it here.
     const dataToSave = {
-        employees, // We still pass employees to saveAllData to handle deletions.
+        employees,
         shifts,
         leave,
         notes,
@@ -112,8 +111,6 @@ function AppContent() {
     const saveData = async () => {
         setIsSaving(true);
         try {
-            // Note: saveAllData will now primarily handle non-employee data.
-            // Employee deletions are still handled by comparing the full list.
             const result = await saveAllData(dataToSave);
             if (!result.success) {
                  toast({
@@ -142,6 +139,32 @@ function AppContent() {
   useEffect(() => {
     async function loadDataAndAuth() {
       setIsLoading(true);
+      
+      const storedUserJson = localStorage.getItem('currentUser');
+      if (!storedUserJson) {
+          router.push('/login');
+          setIsLoading(false);
+          return;
+      }
+      
+      const storedUser: Employee = JSON.parse(storedUserJson);
+      let userToSet: Employee | null = null;
+      
+      // Handle special admin user first to avoid unnecessary DB calls if it's them
+      if (storedUser.email === 'admin@onduty.local' && storedUser.id === 'emp-admin-01') {
+          userToSet = {
+              id: "emp-admin-01",
+              employeeNumber: "001",
+              firstName: "Super",
+              lastName: "Admin",
+              email: "admin@onduty.local",
+              phone: "123-456-7890",
+              position: "System Administrator",
+              role: "admin",
+              group: "Administration"
+          };
+      }
+      
       const result = await getData();
 
       if (result.success && result.data) {
@@ -159,44 +182,14 @@ function AppContent() {
         setLeaveTypes(result.data.leaveTypes);
         setTemplates(result.data.templates);
         
-        const storedUserJson = localStorage.getItem('currentUser');
-        if (storedUserJson) {
-          const storedUser: Employee = JSON.parse(storedUserJson);
+        // If it wasn't the special admin, find the user from the DB
+        if (!userToSet) {
           const userFromDb = result.data.employees.find(emp => emp.id === storedUser.id);
-          
-          let userToSet: Employee | null = null;
-          
           if (userFromDb) {
             userToSet = userFromDb;
-          } else if (storedUser.email === 'admin@onduty.local') {
-            userToSet = {
-                id: "emp-admin-01",
-                employeeNumber: "001",
-                firstName: "Super",
-                lastName: "Admin",
-                email: "admin@onduty.local",
-                phone: "123-456-7890",
-                position: "System Administrator",
-                role: "admin",
-                group: "Administration"
-            };
           }
-
-          if (userToSet) {
-            setCurrentUser(userToSet);
-            if (userToSet.role === 'admin') {
-              setActiveView('admin');
-            } else if (userToSet.role === 'manager') {
-              setActiveView('schedule');
-            } else {
-              setActiveView('my-schedule');
-            }
-          } else {
-            handleLogout(); 
-          }
-        } else {
-          router.push('/login');
         }
+        
       } else {
         toast({
           variant: 'destructive',
@@ -204,7 +197,23 @@ function AppContent() {
           description: result.error || 'Could not connect to the database.',
         });
         handleLogout();
+        return; // Stop execution if data load fails
       }
+
+      // Final check to set user or log out
+      if (userToSet) {
+        setCurrentUser(userToSet);
+        if (userToSet.role === 'admin') {
+          setActiveView('admin');
+        } else if (userToSet.role === 'manager') {
+          setActiveView('schedule');
+        } else {
+          setActiveView('my-schedule');
+        }
+      } else {
+        handleLogout(); 
+      }
+      
       setIsLoading(false);
       setInitialDataLoaded(true); // Signal that initial load is complete
     }
