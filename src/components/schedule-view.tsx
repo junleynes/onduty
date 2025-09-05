@@ -17,7 +17,7 @@ import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
@@ -616,9 +616,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         
         const leaveForDay = leave.filter(l => {
             if (l.employeeId !== employee.id) return false;
+            
+            // Ensure dates are valid before proceeding
+            if (!l.startDate || !l.endDate) return false;
             const leaveStart = new Date(l.startDate);
             const leaveEnd = new Date(l.endDate);
-            if (!l.startDate || !l.endDate || isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) return false;
+            if (isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) return false;
+            
             return isWithinInterval(day, { start: leaveStart, end: leaveEnd });
         }).map(l => {
             const leaveType = leaveTypes.find(lt => lt.type === l.type);
