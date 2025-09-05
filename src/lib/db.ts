@@ -10,10 +10,9 @@ const DB_PATH = process.env.NODE_ENV === 'development'
 let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
-    // In development, always start fresh to avoid schema/data mismatch issues
-    if (process.env.NODE_ENV === 'development' && fs.existsSync(DB_PATH)) {
-        console.log("Development mode: Deleting existing database for a fresh start.");
-        fs.unlinkSync(DB_PATH);
+    const dbDir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
     }
     
     const db = new Database(DB_PATH);
