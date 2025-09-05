@@ -360,18 +360,23 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     overwrittenCells: { employeeId: string, date: Date }[]
   }) => {
     const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells } = importedData;
-
+  
     const cellsToOverwrite = new Set(
       overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
     );
   
+    // Filter out shifts that will be overwritten
     const remainingShifts = shifts.filter(s => 
         !s.employeeId || !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
     );
     
-    const remainingLeave = leave.filter(l => 
-        !l.employeeId || !cellsToOverwrite.has(`${l.employeeId}-${format(new Date(l.startDate), 'yyyy-MM-dd')}`)
-    );
+    // Filter out leave entries that will be overwritten
+    const remainingLeave = leave.filter(l => {
+      if (!l.employeeId) return true;
+      const daysOfLeave = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
+      // If any day of the leave is in a cell being overwritten for that employee, the leave entry is removed.
+      return !daysOfLeave.some(leaveDay => cellsToOverwrite.has(`${l.employeeId}-${format(leaveDay, 'yyyy-MM-dd')}`));
+    });
 
     const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
 
@@ -611,11 +616,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         
         const leaveForDay = leave.filter(l => {
             if (l.employeeId !== employee.id) return false;
-            // Ensure dates are valid before comparison
-            const leaveStart = l.startDate ? new Date(l.startDate) : null;
-            const leaveEnd = l.endDate ? new Date(l.endDate) : leaveStart;
-            if (!leaveStart || !leaveEnd) return false;
-
+            const leaveStart = new Date(l.startDate);
+            const leaveEnd = new Date(l.endDate);
+            if (!l.startDate || !l.endDate || isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) return false;
             return isWithinInterval(day, { start: leaveStart, end: leaveEnd });
         }).map(l => {
             const leaveType = leaveTypes.find(lt => lt.type === l.type);
