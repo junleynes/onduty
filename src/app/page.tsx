@@ -380,46 +380,45 @@ function AppContent() {
     }
   };
   
-  const handleImportMembers = (newMembers: Partial<Employee>[]) => {
-    let newCount = 0;
-    let updatedCount = 0;
+  const handleImportMembers = async (newMembers: Partial<Employee>[]) => {
+    let successCount = 0;
+    let errorCount = 0;
 
-    setEmployees(prevEmployees => {
-      const updatedEmployees = [...prevEmployees];
-      const existingEmails = new Map(prevEmployees.map(e => [e.email.toLowerCase(), e]));
+    for (const member of newMembers) {
+      if (!member.email) {
+        console.warn('Skipping member with no email:', member);
+        errorCount++;
+        continue;
+      }
+      
+      const existingEmployee = employees.find(e => e.email.toLowerCase() === member.email!.toLowerCase());
 
-      newMembers.forEach(member => {
-        if (!member.email) return;
-
-        const existingEmployee = existingEmails.get(member.email.toLowerCase());
-
-        if (existingEmployee) {
-          // Update existing employee
-          const index = updatedEmployees.findIndex(e => e.id === existingEmployee.id);
-          if (index !== -1) {
-            updatedEmployees[index] = { ...existingEmployee, ...member };
-            updatedCount++;
-          }
+      if (existingEmployee) {
+        // Update existing employee
+        const result = await updateEmployee({ ...existingEmployee, ...member });
+        if (result.success && result.employee) {
+            setEmployees(prev => prev.map(emp => emp.id === result.employee!.id ? {...emp, ...result.employee} as Employee : emp));
+            successCount++;
         } else {
-          // Add new employee
-          const newEmployee: Employee = {
-            ...member,
-            id: uuidv4(),
-            avatar: member.avatar || '',
-            position: member.position || '',
-            role: member.role || 'member',
-            phone: member.phone || '',
-          } as Employee;
-          updatedEmployees.push(newEmployee);
-          newCount++;
+            console.error(`Failed to update imported member ${member.email}:`, result.error);
+            errorCount++;
         }
-      });
-      return updatedEmployees;
-    });
+      } else {
+        // Add new employee
+        const result = await addEmployee(member);
+        if (result.success && result.employee) {
+            setEmployees(prev => [...prev, result.employee!]);
+            successCount++;
+        } else {
+             console.error(`Failed to add imported member ${member.email}:`, result.error);
+            errorCount++;
+        }
+      }
+    }
 
     toast({
       title: 'Import Complete',
-      description: `${newCount} new member(s) added and ${updatedCount} member(s) updated.`
+      description: `${successCount} member(s) processed successfully. ${errorCount > 0 ? `${errorCount} failed.` : ''}`
     });
   }
 
