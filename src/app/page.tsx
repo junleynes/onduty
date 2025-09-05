@@ -352,51 +352,55 @@ function AppContent() {
 
  const handleSaveMember = (employeeData: Partial<Employee>) => {
     setEmployees(prevEmployees => {
+      // Check for email uniqueness before saving
+      const emailExists = prevEmployees.some(
+        emp => emp.email.toLowerCase() === employeeData.email?.toLowerCase() && emp.id !== employeeData.id
+      );
+
+      if (emailExists) {
+        toast({
+          variant: 'destructive',
+          title: 'Email Already Exists',
+          description: 'Another user is already using this email address.',
+        });
+        return prevEmployees; // Return original state without changes
+      }
+
+      if (employeeData.id) {
         // This is an update
-        if (employeeData.id) {
-          return prevEmployees.map(emp => {
-            if (emp.id === employeeData.id) {
-              const updatedEmp = { ...emp, ...employeeData };
-              // Update current user in state and localStorage if they are editing their own profile
-              if (currentUser?.id === updatedEmp.id) {
-                setCurrentUser(updatedEmp);
-                 if (typeof window !== 'undefined') {
-                    localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
-                 }
+        return prevEmployees.map(emp => {
+          if (emp.id === employeeData.id) {
+            const updatedEmp = { ...emp, ...employeeData };
+            // Update current user in state and localStorage if they are editing their own profile
+            if (currentUser?.id === updatedEmp.id) {
+              setCurrentUser(updatedEmp as Employee);
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
               }
-              return updatedEmp;
             }
-            return emp;
-          });
-        }
-        
+            return updatedEmp;
+          }
+          return emp;
+        });
+      } else {
         // This is a new employee
-        const emailExists = prevEmployees.some(
-            (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
-        );
-        if (emailExists) {
-            toast({
-                title: 'Email Already Exists',
-                description: 'An employee with this email address already exists.',
-                variant: 'destructive',
-            });
-            return prevEmployees; // Return original state
-        }
-        
         const newEmployee: Employee = {
-            id: uuidv4(),
-            firstName: employeeData.firstName || '',
-            lastName: employeeData.lastName || '',
-            email: employeeData.email || '',
-            phone: employeeData.phone || '',
-            position: employeeData.position || '',
-            role: employeeData.role || 'member',
-            ...employeeData,
+          id: uuidv4(),
+          firstName: employeeData.firstName || '',
+          lastName: employeeData.lastName || '',
+          email: employeeData.email || '',
+          phone: employeeData.phone || '',
+          position: employeeData.position || '',
+          role: employeeData.role || 'member',
+          ...employeeData,
+          visibility: employeeData.visibility || { schedule: true, onDuty: true, orgChart: true, mobileLoad: true },
+          reportsTo: employeeData.reportsTo || null,
+          password: employeeData.password || 'password'
         };
-        
         return [...prevEmployees, newEmployee];
+      }
     });
-};
+  };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {
     let newCount = 0;
