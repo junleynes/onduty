@@ -261,7 +261,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   // Action handlers
   const handleClearWeek = () => {
     if (isReadOnly) return;
-    setShifts(shifts.filter(shift => !displayedDays.some(day => isSameDay(shift.date, day))));
+    setShifts(shifts.filter(shift => !displayedDays.some(day => isSameDay(new Date(shift.date), day))));
     setLeave(leave.filter(l => !l.endDate || !displayedDays.some(day => isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) } ))));
     toast({ title: "Week Cleared", description: "All shifts and time off for the current week have been removed." });
   };
@@ -369,9 +369,13 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
     );
 
-    const remainingLeave = leave.filter(l => 
-      !l.employeeId || !isWithinInterval(new Date(l.startDate), {start: overwrittenCells[0].date, end: overwrittenCells[overwrittenCells.length-1].date})
-    );
+    const remainingLeave = leave.filter(l => {
+      if (!l.employeeId || overwrittenCells.length === 0) return true;
+      const leaveDays = eachDayOfInterval({start: new Date(l.startDate), end: new Date(l.endDate)});
+      // Return true (keep leave) if no days of this leave record are being overwritten for this employee
+      return !leaveDays.some(day => cellsToOverwrite.has(`${l.employeeId}-${format(day, 'yyyy-MM-dd')}`));
+    });
+
     
     const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
 

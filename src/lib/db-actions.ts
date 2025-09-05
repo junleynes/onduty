@@ -226,33 +226,27 @@ export async function saveAllData({
 
     // --- LEAVE ---
     db.prepare('DELETE FROM leave').run();
-    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime, startDate, endDate) VALUES (@id, @employeeId, @type, @color, @date, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime, @startDate, @endDate)');
+    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (@id, @employeeId, @type, @color, @startDate, @endDate, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime)');
     for(const l of leave) {
-        if (!l.endDate) l.endDate = l.startDate; 
-        const days = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
-        
-        for (const day of days) {
-           leaveStmt.run({
-                id: `${l.id}-${format(day, 'yyyy-MM-dd')}`,
-                employeeId: l.employeeId,
-                type: l.type,
-                color: l.color,
-                date: day.toISOString().split('T')[0],
-                isAllDay: l.isAllDay ? 1 : 0, 
-                startTime: l.startTime, 
-                endTime: l.endTime, 
-                status: l.status, 
-                reason: l.reason, 
-                requestedAt: l.requestedAt?.toISOString(), 
-                managedBy: l.managedBy, 
-                managedAt: l.managedAt?.toISOString(),
-                originalShiftDate: l.originalShiftDate?.toISOString(),
-                originalStartTime: l.originalStartTime,
-                originalEndTime: l.originalEndTime,
-                startDate: new Date(l.startDate).toISOString(), 
-                endDate: new Date(l.endDate).toISOString(),
-            });
-        }
+       leaveStmt.run({
+            id: l.id,
+            employeeId: l.employeeId,
+            type: l.type,
+            color: l.color,
+            startDate: new Date(l.startDate).toISOString(),
+            endDate: new Date(l.endDate || l.startDate).toISOString(),
+            isAllDay: l.isAllDay ? 1 : 0, 
+            startTime: l.startTime, 
+            endTime: l.endTime, 
+            status: l.status, 
+            reason: l.reason, 
+            requestedAt: l.requestedAt?.toISOString(), 
+            managedBy: l.managedBy, 
+            managedAt: l.managedAt?.toISOString(),
+            originalShiftDate: l.originalShiftDate?.toISOString(),
+            originalStartTime: l.originalStartTime,
+            originalEndTime: l.originalEndTime
+        });
     }
 
 
