@@ -365,22 +365,16 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
     );
   
+    // Only filter shifts to be overwritten. Keep all leave.
     const remainingShifts = shifts.filter(s => 
-        !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
+        !s.employeeId || !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
     );
-
-    const remainingLeave = leave.filter(l => {
-      if (!l.employeeId || overwrittenCells.length === 0) return true;
-      const leaveDays = eachDayOfInterval({start: new Date(l.startDate), end: new Date(l.endDate)});
-      // Return true (keep leave) if no days of this leave record are being overwritten for this employee
-      return !leaveDays.some(day => cellsToOverwrite.has(`${l.employeeId}-${format(day, 'yyyy-MM-dd')}`));
-    });
-
     
     const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
 
     setShifts([...remainingShifts, ...shiftsWithStatus]);
-    setLeave([...remainingLeave, ...importedLeave]);
+    // Add imported leave without removing existing leave.
+    setLeave(prevLeave => [...prevLeave, ...importedLeave]);
     
     const currentEmployeeIds = employees.map(e => e.id);
     const validOrder = employeeOrder.filter(id => currentEmployeeIds.includes(id));
