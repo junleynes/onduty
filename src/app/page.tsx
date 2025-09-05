@@ -351,26 +351,27 @@ function AppContent() {
 
 
  const handleSaveMember = (employeeData: Partial<Employee>) => {
-    // This is an update
-    if (employeeData.id) {
-      setEmployees(prevEmployees => 
-        prevEmployees.map(emp => {
-          if (emp.id === employeeData.id) {
-            const updatedEmp = { ...emp, ...employeeData };
-            // Update current user in state and localStorage if they are editing their own profile
-            if (currentUser?.id === updatedEmp.id) {
-              setCurrentUser(updatedEmp);
-              localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
+    setEmployees(prevEmployees => {
+        // This is an update
+        if (employeeData.id) {
+          return prevEmployees.map(emp => {
+            if (emp.id === employeeData.id) {
+              const updatedEmp = { ...emp, ...employeeData };
+              // Update current user in state and localStorage if they are editing their own profile
+              if (currentUser?.id === updatedEmp.id) {
+                setCurrentUser(updatedEmp);
+                 if (typeof window !== 'undefined') {
+                    localStorage.setItem('currentUser', JSON.stringify(updatedEmp));
+                 }
+              }
+              return updatedEmp;
             }
-            return updatedEmp;
-          }
-          return emp;
-        })
-      );
-      toast({ title: 'User Updated' });
-    } else {
+            return emp;
+          });
+        }
+        
         // This is a new employee
-        const emailExists = employees.some(
+        const emailExists = prevEmployees.some(
             (emp) => emp.email.toLowerCase() === employeeData.email?.toLowerCase()
         );
         if (emailExists) {
@@ -379,7 +380,7 @@ function AppContent() {
                 description: 'An employee with this email address already exists.',
                 variant: 'destructive',
             });
-            return;
+            return prevEmployees; // Return original state
         }
         
         const newEmployee: Employee = {
@@ -388,9 +389,8 @@ function AppContent() {
             ...employeeData,
         } as Employee;
         
-        setEmployees(prev => [...prev, newEmployee]);
-        toast({ title: 'User Added' });
-    }
+        return [...prevEmployees, newEmployee];
+    });
 };
   
   const handleImportMembers = (newMembers: Partial<Employee>[]) => {

@@ -163,14 +163,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
   };
 
   const onSubmit = (values: z.infer<typeof employeeSchema>) => {
-    let dataToSave: Partial<Employee> = { ...values };
-    
-    // Only include password if it's not empty. The DB action will handle preserving the old one.
-    if (!values.password || values.password.trim() === '') {
-      delete dataToSave.password;
-    }
-
-    onSave(dataToSave);
+    onSave(values);
     
     if (values.group && !groups.includes(values.group)) {
       setGroups(prev => [...prev, values.group!]);
