@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth, getDate, parse, isWithinInterval } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth, getDate, parse, isWithinInterval, startOfDay } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Employee, Shift, Leave, Notification, Note, Holiday, Task, SmtpSettings } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -370,12 +370,12 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         !s.employeeId || !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
     );
     
-    // Filter out leave entries that will be overwritten
+    // Filter out leave entries that overlap with overwritten cells
     const remainingLeave = leave.filter(l => {
-      if (!l.employeeId) return true;
-      const daysOfLeave = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate || l.startDate) });
-      // If any day of the leave is in a cell being overwritten for that employee, the leave entry is removed.
-      return !daysOfLeave.some(leaveDay => cellsToOverwrite.has(`${l.employeeId}-${format(leaveDay, 'yyyy-MM-dd')}`));
+        if (!l.employeeId || !l.startDate || !l.endDate) return true;
+        const daysOfLeave = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
+        const isOverwritten = daysOfLeave.some(day => cellsToOverwrite.has(`${l.employeeId}-${format(day, 'yyyy-MM-dd')}`));
+        return !isOverwritten;
     });
 
     const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
@@ -506,7 +506,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                     if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
                         const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
                         const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
-                        if (!isNaN(breakStart.getTime()) && !isNaN(breakEnd.getTime())) {
+                        if (!isNaN(breakStart.getTime()) || !isNaN(breakEnd.getTime())) {
                             let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
                             if (breakDiff < 0) breakDiff += 24;
                             breakHours = breakDiff;
@@ -616,14 +616,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         
         const leaveForDay = leave.filter(l => {
             if (l.employeeId !== employee.id) return false;
-            
-            // Ensure dates are valid before proceeding
             if (!l.startDate || !l.endDate) return false;
-            const leaveStart = new Date(l.startDate);
-            const leaveEnd = new Date(l.endDate);
+            // Normalize all dates to the start of the day for comparison
+            const checkDay = startOfDay(day);
+            const leaveStart = startOfDay(new Date(l.startDate));
+            const leaveEnd = startOfDay(new Date(l.endDate));
             if (isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) return false;
             
-            return isWithinInterval(day, { start: leaveStart, end: leaveEnd });
+            return isWithinInterval(checkDay, { start: leaveStart, end: leaveEnd });
         }).map(l => {
             const leaveType = leaveTypes.find(lt => lt.type === l.type);
             return { ...l, color: leaveType?.color || l.color };
