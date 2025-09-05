@@ -365,12 +365,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
     );
   
-    // Only filter shifts to be overwritten. Keep all leave.
     const remainingShifts = shifts.filter(s => 
         !s.employeeId || !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
     );
     
-    // Keep leave records that are NOT being overwritten by the import
     const remainingLeave = leave.filter(l => 
         !l.employeeId || !cellsToOverwrite.has(`${l.employeeId}-${format(new Date(l.startDate), 'yyyy-MM-dd')}`)
     );
@@ -378,8 +376,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const shiftsWithStatus = importedShifts.map(s => ({ ...s, status: 'draft' as const }));
 
     setShifts([...remainingShifts, ...shiftsWithStatus]);
-    // Add imported leave without removing existing leave.
-    setLeave(prevLeave => [...remainingLeave, ...importedLeave]);
+    setLeave([...remainingLeave, ...importedLeave]);
     
     const currentEmployeeIds = employees.map(e => e.id);
     const validOrder = employeeOrder.filter(id => currentEmployeeIds.includes(id));
@@ -614,9 +611,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         
         const leaveForDay = leave.filter(l => {
             if (l.employeeId !== employee.id) return false;
-            // Handle single and multi-day leave
-            const leaveStart = new Date(l.startDate);
-            const leaveEnd = new Date(l.endDate || l.startDate);
+            // Ensure dates are valid before comparison
+            const leaveStart = l.startDate ? new Date(l.startDate) : null;
+            const leaveEnd = l.endDate ? new Date(l.endDate) : leaveStart;
+            if (!leaveStart || !leaveEnd) return false;
+
             return isWithinInterval(day, { start: leaveStart, end: leaveEnd });
         }).map(l => {
             const leaveType = leaveTypes.find(lt => lt.type === l.type);
