@@ -113,7 +113,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             group: '',
             avatar: '',
             signature: '',
-            loadAllocation: 500,
+            loadAllocation: 0,
             reportsTo: null,
             visibility: {
               schedule: true,
