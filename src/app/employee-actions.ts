@@ -37,9 +37,11 @@ const employeeSchema = z.object({
 async function isEmailUnique(email: string, currentId?: string): Promise<boolean> {
     const db = getDb();
     if (currentId) {
+        // Correctly check for emails on OTHER records
         const row = db.prepare('SELECT id FROM employees WHERE email = ? AND id != ?').get(email, currentId);
         return !row;
     } else {
+        // Check for any record with this email when creating a new user
         const row = db.prepare('SELECT id FROM employees WHERE email = ?').get(email);
         return !row;
     }
@@ -120,13 +122,7 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
     const db = getDb();
     
     try {
-        const existingEmployee = db.prepare('SELECT email FROM employees WHERE id = ?').get(data.id) as { email: string } | undefined;
-        if (!existingEmployee) {
-            return { success: false, error: 'Employee not found.' };
-        }
-        
-        // Only check for email uniqueness if the email has actually changed
-        if (data.email.toLowerCase() !== existingEmployee.email.toLowerCase()) {
+        if (data.email) {
             if (!await isEmailUnique(data.email, data.id)) {
                  return { success: false, error: 'Another user is already using this email address.' };
             }
