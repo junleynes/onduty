@@ -102,7 +102,6 @@ const navConfig: { [key in UserRole]: NavGroup[] } = {
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
                 { view: 'time-off', label: 'Time Off', icon: Plane, iconColor: 'bg-blue-500' },
                 { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
-                 { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
         {
