@@ -253,6 +253,11 @@ export async function saveAllData({
         groupsToAdd.forEach(g => insertStmt.run(g));
     }
     if (groupsToDelete.length > 0) {
+        // Before deleting a group, ensure no employee is assigned to it.
+        // This is a safety measure; the UI should prevent this.
+        const updateEmployeesStmt = db.prepare('UPDATE employees SET "group" = NULL WHERE "group" = ?');
+        groupsToDelete.forEach(g => updateEmployeesStmt.run(g));
+
         const deleteGroupStmt = db.prepare('DELETE FROM groups WHERE name = ?');
         groupsToDelete.forEach(g => deleteGroupStmt.run(g));
     }
@@ -349,7 +354,7 @@ export async function saveAllData({
     db.prepare('DELETE FROM tardy_records').run();
     const tardyStmt = db.prepare('INSERT INTO tardy_records (employeeId, employeeName, date, schedule, timeIn, timeOut, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)');
     for(const record of tardyRecords) {
-        tardyStmt.run(record.employeeId, record.employeeName, new Date(record.date).toISOString().split('T')[0], record.schedule, record.timeIn, record.timeOut, record.remarks);
+        tardyStmt.run(record.employeeId, record.employeeName, new Date(record.date).toISOString().split('T[0]'), record.schedule, record.timeIn, record.timeOut, record.remarks);
     }
     
     // --- SHIFT TEMPLATES ---

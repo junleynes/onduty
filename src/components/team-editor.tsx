@@ -26,13 +26,6 @@ import Image from 'next/image';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 
-const visibilitySchema = z.object({
-  schedule: z.boolean().optional(),
-  onDuty: z.boolean().optional(),
-  orgChart: z.boolean().optional(),
-  mobileLoad: z.boolean().optional(),
-});
-
 const employeeSchema = z.object({
   id: z.string().optional(),
   employeeNumber: z.string().optional(),
@@ -52,9 +45,13 @@ const employeeSchema = z.object({
   signature: z.string().optional(),
   loadAllocation: z.coerce.number().optional(),
   reportsTo: z.string().optional().nullable(),
-  visibility: visibilitySchema.optional(),
-}).refine(
-  (data) => {
+  visibility: z.object({
+      schedule: z.boolean().optional(),
+      onDuty: z.boolean().optional(),
+      orgChart: z.boolean().optional(),
+      mobileLoad: z.boolean().optional(),
+  }).optional(),
+}).refine(data => {
     // If it's a new user (no ID), password is required and must be at least 6 chars
     if (!data.id) {
       return data.password && data.password.length >= 6;
@@ -65,12 +62,10 @@ const employeeSchema = z.object({
     }
     // If password is not provided for an existing user, it's valid.
     return true;
-  },
-  {
+  }, {
     message: 'Password must be at least 6 characters long.',
     path: ['password'],
-  }
-);
+});
 
 
 type TeamEditorProps = {
@@ -143,7 +138,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         setAvatarPreview(employee?.avatar || null);
         setSignaturePreview(employee?.signature || null);
     }
-  }, [employee, form, isOpen, isNewEmployee]);
+  }, [employee, form, isOpen, isNewEmployee, isPasswordResetMode]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'avatar' | 'signature') => {
       const file = e.target.files?.[0];
