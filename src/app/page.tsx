@@ -158,6 +158,7 @@ function AppContent() {
               firstName: "Super",
               lastName: "Admin",
               email: "admin@onduty.local",
+              password: "P@ssw0rd",
               phone: "123-456-7890",
               position: "System Administrator",
               role: "admin",
@@ -287,6 +288,16 @@ function AppContent() {
     }
     return shifts;
   }, [shifts, currentUser]);
+  
+  const leaveForView = useMemo(() => {
+    if (currentUser?.role === 'member') {
+        // Members see all approved leave, same as shifts.
+        return approvedLeave;
+    }
+    // Managers and admins see all leave.
+    return leave;
+  }, [leave, approvedLeave, currentUser]);
+
 
   const handleNavigate = (view: NavItem) => {
     setActiveView(view);
@@ -509,7 +520,7 @@ function AppContent() {
             setEmployees={setEmployees}
             shifts={shiftsForView}
             setShifts={setShifts}
-            leave={approvedLeave}
+            leave={leaveForView}
             setLeave={setLeave}
             notes={notes}
             setNotes={setNotes}
@@ -616,7 +627,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, approvedLeave, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded, leaveTypes]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, leaveForView, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded, leaveTypes]);
 
   if (!initialDataLoaded || !currentUser) {
       return (
