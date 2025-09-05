@@ -187,53 +187,8 @@ export async function saveAllData({
   const saveTransaction = db.transaction(() => {
     
     // --- EMPLOYEES ---
-    const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
-    const empUpsertStmt = db.prepare(`
-      INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate, reportsTo)
-      VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate, @reportsTo)
-      ON CONFLICT(id) DO UPDATE SET
-        employeeNumber=excluded.employeeNumber, firstName=excluded.firstName, lastName=excluded.lastName, middleInitial=excluded.middleInitial, email=excluded.email, phone=excluded.phone,
-        password=excluded.password, position=excluded.position, role=excluded.role, "group"=excluded."group", avatar=excluded.avatar, loadAllocation=excluded.loadAllocation,
-        birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate, reportsTo=excluded.reportsTo
-    `);
-    
-    for (const emp of employees) {
-      if(emp.id === 'emp-admin-01') continue;
-
-      let finalPassword = emp.password;
-      // If it's an existing user and no password was provided in the form, keep the old one from the DB.
-      if (emp.id && (!emp.password || emp.password.trim() === '')) { 
-        const existing = getPasswordStmt.get(emp.id) as { password?: string } | undefined;
-        finalPassword = existing?.password; 
-      }
-      // If it's a new user and no password was provided, use a default.
-      if (!emp.id && !finalPassword) {
-        finalPassword = 'password';
-      }
-      
-      empUpsertStmt.run({
-        id: emp.id,
-        employeeNumber: emp.employeeNumber || null,
-        firstName: emp.firstName,
-        lastName: emp.lastName,
-        middleInitial: emp.middleInitial || null,
-        email: emp.email,
-        phone: emp.phone || null,
-        password: finalPassword,
-        position: emp.position || null,
-        role: emp.role,
-        group: emp.group || null,
-        avatar: emp.avatar || null,
-        loadAllocation: emp.loadAllocation || 0,
-        birthDate: emp.birthDate ? new Date(emp.birthDate).toISOString() : null,
-        startDate: emp.startDate ? new Date(emp.startDate).toISOString() : null,
-        signature: emp.signature || null,
-        visibility: JSON.stringify(emp.visibility || {}),
-        lastPromotionDate: emp.lastPromotionDate ? new Date(emp.lastPromotionDate).toISOString() : null,
-        reportsTo: emp.reportsTo || null,
-      });
-    }
-
+    // Employee updates are now handled by src/app/employee-actions.ts
+    // We only handle deletions here by comparing the state with the DB
     const allDbEmployeeIds = new Set(db.prepare('SELECT id from employees').all().map((row: any) => row.id));
     const employeeIdsInState = new Set(employees.map(e => e.id));
     const employeesToDelete = [...allDbEmployeeIds].filter(id => !employeeIdsInState.has(id) && id !== 'emp-admin-01');
@@ -271,7 +226,7 @@ export async function saveAllData({
 
     // --- LEAVE ---
     db.prepare('DELETE FROM leave').run();
-    const leaveStmt = db.prepare('INSERT INTO leave (id, requestId, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime, startDate, endDate) VALUES (@id, @requestId, @employeeId, @type, @color, @date, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime, @startDate, @endDate)');
+    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, date, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime, startDate, endDate) VALUES (@id, @employeeId, @type, @color, @date, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime, @startDate, @endDate)');
     for(const l of leave) {
         if (!l.endDate) l.endDate = l.startDate; 
         const days = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
@@ -279,7 +234,6 @@ export async function saveAllData({
         for (const day of days) {
            leaveStmt.run({
                 id: `${l.id}-${format(day, 'yyyy-MM-dd')}`,
-                requestId: l.id,
                 employeeId: l.employeeId,
                 type: l.type,
                 color: l.color,
