@@ -187,6 +187,7 @@ export async function saveAllData({
   const saveTransaction = db.transaction(() => {
     
     // --- EMPLOYEES ---
+    const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
     const empUpsertStmt = db.prepare(`
       INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate, reportsTo)
       VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate, @reportsTo)
@@ -195,8 +196,6 @@ export async function saveAllData({
         password=excluded.password, position=excluded.position, role=excluded.role, "group"=excluded."group", avatar=excluded.avatar, loadAllocation=excluded.loadAllocation,
         birthDate=excluded.birthDate, startDate=excluded.startDate, signature=excluded.signature, visibility=excluded.visibility, lastPromotionDate=excluded.lastPromotionDate, reportsTo=excluded.reportsTo
     `);
-    
-    const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
     
     for (const emp of employees) {
       if(emp.id === 'emp-admin-01') continue;

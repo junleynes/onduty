@@ -53,7 +53,24 @@ const employeeSchema = z.object({
   loadAllocation: z.coerce.number().optional(),
   reportsTo: z.string().optional().nullable(),
   visibility: visibilitySchema.optional(),
-});
+}).refine(
+  (data) => {
+    // If it's a new user (no ID), password is required and must be at least 6 chars
+    if (!data.id) {
+      return data.password && data.password.length >= 6;
+    }
+    // If it's an existing user, password is optional. But if provided, it must be at least 6 chars.
+    if (data.password && data.password.length > 0) {
+      return data.password.length >= 6;
+    }
+    // If password is not provided for an existing user, it's valid.
+    return true;
+  },
+  {
+    message: 'Password must be at least 6 characters long.',
+    path: ['password'],
+  }
+);
 
 
 type TeamEditorProps = {
@@ -122,7 +139,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
               mobileLoad: employee.visibility?.mobileLoad ?? true,
             }
         };
-        form.reset(defaultValues);
+        form.reset(defaultValues as any);
         setAvatarPreview(employee?.avatar || null);
         setSignaturePreview(employee?.signature || null);
     }
@@ -147,25 +164,12 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
 
   const onSubmit = (values: z.infer<typeof employeeSchema>) => {
     let dataToSave: Partial<Employee> = { ...values };
-
-    if (isPasswordResetMode) {
-        if (!values.password || values.password.length < 6) {
-            form.setError('password', { type: 'manual', message: 'Password must be at least 6 characters.' });
-            return;
-        }
-    } else {
-        // If creating a new user, a password is required.
-        if (isNewEmployee && (!values.password || values.password.length < 6)) {
-            form.setError('password', { type: 'manual', message: 'Password must be at least 6 characters for new members.' });
-            return;
-        }
-        // For existing users, if a password is provided, it must be valid.
-        if (!isNewEmployee && values.password && values.password.length > 0 && values.password.length < 6) {
-             form.setError('password', { type: 'manual', message: 'Password must be at least 6 characters.' });
-            return;
-        }
-    }
     
+    // Only include password if it's not empty. The DB action will handle preserving the old one.
+    if (!values.password || values.password.trim() === '') {
+      delete dataToSave.password;
+    }
+
     onSave(dataToSave);
     
     if (values.group && !groups.includes(values.group)) {
@@ -185,9 +189,10 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
   const availableManagers = useMemo(() => {
     return employees.filter(e => 
         e.role === 'manager' && 
-        e.id !== employee?.id
+        e.id !== employee?.id &&
+        e.group === selectedGroup
     );
-  }, [employees, employee?.id]);
+  }, [employees, employee?.id, selectedGroup]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -277,7 +282,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                         <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                            <Input type="password" {...field} placeholder={!isNewEmployee ? 'Leave blank to keep current password' : ''} />
+                            <Input type="password" {...field} placeholder={!isNewEmployee ? 'Leave blank to keep current password' : 'Enter new password'} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
