@@ -392,10 +392,15 @@ function AppContent() {
       }
       
       const existingEmployee = employees.find(e => e.email.toLowerCase() === member.email!.toLowerCase());
+      
+      const memberWithId = {
+          ...member,
+          id: existingEmployee?.id || uuidv4(),
+      }
 
       if (existingEmployee) {
         // Update existing employee
-        const result = await updateEmployee({ ...existingEmployee, ...member });
+        const result = await updateEmployee({ ...existingEmployee, ...memberWithId });
         if (result.success && result.employee) {
             setEmployees(prev => prev.map(emp => emp.id === result.employee!.id ? {...emp, ...result.employee} as Employee : emp));
             successCount++;
@@ -405,7 +410,7 @@ function AppContent() {
         }
       } else {
         // Add new employee
-        const result = await addEmployee(member);
+        const result = await addEmployee(memberWithId);
         if (result.success && result.employee) {
             setEmployees(prev => [...prev, result.employee!]);
             successCount++;
