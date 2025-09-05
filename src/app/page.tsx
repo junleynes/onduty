@@ -385,9 +385,14 @@ function AppContent() {
         
         const newEmployee: Employee = {
             id: uuidv4(),
-            role: 'member', // Default role
+            firstName: employeeData.firstName || '',
+            lastName: employeeData.lastName || '',
+            email: employeeData.email || '',
+            phone: employeeData.phone || '',
+            position: employeeData.position || '',
+            role: employeeData.role || 'member',
             ...employeeData,
-        } as Employee;
+        };
         
         return [...prevEmployees, newEmployee];
     });
