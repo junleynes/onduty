@@ -299,7 +299,7 @@ function AppContent() {
   const handleOpenPasswordEditor = () => {
     setEditingEmployee(currentUser);
     setIsPasswordResetMode(true);
-    setEditorContext('manager'); 
+    setEditorContext('manager');
     setIsEditorOpen(true);
   }
 
