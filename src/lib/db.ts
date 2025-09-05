@@ -3,29 +3,21 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-const isDev = process.env.NODE_ENV === 'development';
-
-const DB_PATH = isDev 
-    ? path.join(process.cwd(), 'src', 'lib', 'local.db') 
-    : path.join('/tmp', 'local.db');
+// The only guaranteed writable directory in the App Hosting environment is /tmp.
+const DB_PATH = path.join('/tmp', 'local.db');
 
 let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
     const dbDir = path.dirname(DB_PATH);
+    // This check is safe because /tmp will always exist.
     if (!fs.existsSync(dbDir)) {
         fs.mkdirSync(dbDir, { recursive: true });
     }
     
-    // In development, always start with a fresh database to ensure schema changes are applied
-    if (isDev && fs.existsSync(DB_PATH)) {
-        console.log('Development mode: Deleting old database for a clean start.');
-        fs.unlinkSync(DB_PATH);
-    }
-    
     const db = new Database(DB_PATH);
     
-    // Check if tables exist. If not, it's a fresh DB, so apply the schema.
+    // Check if the database has been initialized by looking for a key table.
     const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'").get();
 
     if (!tableCheck) {
