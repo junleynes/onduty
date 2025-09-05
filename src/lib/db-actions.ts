@@ -201,10 +201,12 @@ export async function saveAllData({
       if(emp.id === 'emp-admin-01') continue;
 
       let finalPassword = emp.password;
+      // If it's an existing user and no password was provided, keep the old one.
       if (emp.id && (!emp.password || emp.password.trim() === '')) { 
         const existing = getPasswordStmt.get(emp.id) as { password?: string } | undefined;
         finalPassword = existing?.password; 
       }
+      // If it's a new user and no password was provided, use a default.
       if (!emp.id && !finalPassword) {
         finalPassword = 'password';
       }
