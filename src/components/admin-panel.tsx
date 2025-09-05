@@ -65,12 +65,12 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
             <CardTitle>Admin Panel</CardTitle>
             <CardDescription>Manage users, roles, and group assignments.</CardDescription>
         </div>
-         <div className="flex gap-2">
+         <div className="flex gap-2 flex-wrap justify-start md:justify-end">
             {numSelected > 0 ? (
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -150,7 +150,7 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{getFullName(user)}</p>
-                        {user.showInApp === false && <EyeOff className="h-4 w-4 text-muted-foreground" title="User is hidden in the app"/>}
+                        {user.visibility?.schedule === false && <EyeOff className="h-4 w-4 text-muted-foreground" title="User is hidden in the app"/>}
                       </div>
                       <p className="text-sm text-muted-foreground">{user.position}</p>
                     </div>

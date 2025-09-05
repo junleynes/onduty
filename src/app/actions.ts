@@ -69,7 +69,8 @@ export async function verifyUser(email: string, password: string): Promise<{ suc
                 phone: "123-456-7890",
                 position: "System Administrator",
                 role: "admin",
-                group: "Administration"
+                group: "Administration",
+                password: "P@ssw0rd", // Ensure password is included in the returned object
             };
             return { success: true, user: adminUser };
         } else {
