@@ -17,7 +17,7 @@ import { ShiftEditor, type ShiftTemplate } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
-import { DropdownMenu, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
@@ -373,7 +373,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     // Filter out leave entries that will be overwritten
     const remainingLeave = leave.filter(l => {
       if (!l.employeeId) return true;
-      const daysOfLeave = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
+      const daysOfLeave = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate || l.startDate) });
       // If any day of the leave is in a cell being overwritten for that employee, the leave entry is removed.
       return !daysOfLeave.some(leaveDay => cellsToOverwrite.has(`${l.employeeId}-${format(leaveDay, 'yyyy-MM-dd')}`));
     });
