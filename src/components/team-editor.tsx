@@ -82,7 +82,7 @@ type TeamEditorProps = {
 
 export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordResetMode = false, context = 'manager', groups, setGroups, employees }: TeamEditorProps) {
     const { toast } = useToast();
-    const [positions] = useState(() => [...new Set(employees.map(e => e.position))]);
+    const [positions] = useState(() => [...new Set(employees.map(e => e.position).filter(Boolean))]);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
     
@@ -164,7 +164,6 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
       setGroups(prev => [...prev, values.group!]);
     }
     
-    toast({ title: 'Success', description: 'Team member information has been saved.' });
     setIsOpen(false);
   };
 
