@@ -43,7 +43,7 @@ const calculateTenure = (startDate: Date | undefined): string => {
 };
 
 export default function TeamView({ employees, currentUser, onEditMember }: TeamViewProps) {
-  const isReadOnly = currentUser?.role === 'member';
+  const isManager = currentUser?.role === 'manager' || currentUser?.role === 'admin';
   const { toast } = useToast();
 
   const handleDownloadExcel = async () => {
@@ -148,7 +148,7 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
                                                     <p className="text-muted-foreground">{employee.position}</p>
                                                     </div>
                                                 </div>
-                                                {!isReadOnly && (
+                                                {isManager && (
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
