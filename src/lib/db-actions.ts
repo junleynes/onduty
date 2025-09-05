@@ -6,7 +6,6 @@ import { getDb } from './db';
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord } from '@/types';
 import type { ShiftTemplate } from '@/components/shift-editor';
 import type { LeaveTypeOption } from './leave-type-editor';
-import { eachDayOfInterval, format } from 'date-fns';
 
 function safeParseJSON(jsonString: string | null | undefined, defaultValue: any) {
   if (!jsonString) return defaultValue;
@@ -302,7 +301,7 @@ export async function saveAllData({
     db.prepare('DELETE FROM tardy_records').run();
     const tardyStmt = db.prepare('INSERT INTO tardy_records (employeeId, employeeName, date, schedule, timeIn, timeOut, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)');
     for(const record of tardyRecords) {
-        tardyStmt.run(record.employeeId, record.employeeName, new Date(record.date).toISOString().split('T[0]'), record.schedule, record.timeIn, record.timeOut, record.remarks);
+        tardyStmt.run(record.employeeId, record.employeeName, new Date(record.date).toISOString().split('T')[0], record.schedule, record.timeIn, record.timeOut, record.remarks);
     }
     
     // --- SHIFT TEMPLATES ---
@@ -346,5 +345,3 @@ export async function saveAllData({
     return { success: false, error: (error as Error).message };
   }
 }
-
-    

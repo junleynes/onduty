@@ -69,5 +69,3 @@ export function getDb() {
 }
 
 export const db = getDb();
-
-    

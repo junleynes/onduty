@@ -1,6 +1,6 @@
 
 -- This file defines the database schema.
--- It's used to initialize the database if it doesn't exist.
+-- It is used to initialize a new SQLite database.
 
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
@@ -15,31 +15,29 @@ CREATE TABLE IF NOT EXISTS employees (
     startDate TEXT,
     lastPromotionDate TEXT,
     position TEXT,
-    role TEXT NOT NULL CHECK(role IN ('admin', 'manager', 'member')),
+    role TEXT CHECK(role IN ('admin', 'manager', 'member')) NOT NULL DEFAULT 'member',
     "group" TEXT,
     avatar TEXT,
     signature TEXT,
     loadAllocation REAL,
     reportsTo TEXT,
-    visibility TEXT,
-    FOREIGN KEY ("group") REFERENCES groups(name) ON DELETE SET NULL,
-    FOREIGN KEY (reportsTo) REFERENCES employees(id) ON DELETE SET NULL
+    visibility TEXT -- JSON object for app visibility toggles
 );
 
 CREATE TABLE IF NOT EXISTS shifts (
     id TEXT PRIMARY KEY,
     employeeId TEXT,
-    label TEXT NOT NULL,
-    startTime TEXT NOT NULL,
-    endTime TEXT NOT NULL,
+    label TEXT,
+    startTime TEXT,
+    endTime TEXT,
     date TEXT NOT NULL,
     color TEXT,
-    isDayOff INTEGER NOT NULL DEFAULT 0,
-    isHolidayOff INTEGER NOT NULL DEFAULT 0,
-    status TEXT CHECK(status IN ('draft', 'published')),
+    isDayOff BOOLEAN DEFAULT 0,
+    isHolidayOff BOOLEAN DEFAULT 0,
+    status TEXT CHECK(status IN ('draft', 'published')) DEFAULT 'draft',
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER,
+    isUnpaidBreak BOOLEAN DEFAULT 0,
     FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
@@ -50,10 +48,10 @@ CREATE TABLE IF NOT EXISTS leave (
     color TEXT,
     startDate TEXT NOT NULL,
     endDate TEXT NOT NULL,
-    isAllDay INTEGER NOT NULL,
+    isAllDay BOOLEAN NOT NULL DEFAULT 1,
     startTime TEXT,
     endTime TEXT,
-    status TEXT CHECK(status IN ('pending', 'approved', 'rejected')),
+    status TEXT CHECK(status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
     reason TEXT,
     requestedAt TEXT,
     managedBy TEXT,
@@ -65,10 +63,9 @@ CREATE TABLE IF NOT EXISTS leave (
     FOREIGN KEY (managedBy) REFERENCES employees(id) ON DELETE SET NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS notes (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
+    date TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
     description TEXT
 );
@@ -80,23 +77,19 @@ CREATE TABLE IF NOT EXISTS holidays (
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-  id TEXT PRIMARY KEY,
-  shiftId TEXT,
-  assigneeId TEXT,
-  scope TEXT CHECK(scope IN ('personal', 'global', 'shift')),
-  title TEXT NOT NULL,
-  description TEXT,
-  status TEXT CHECK(status IN ('pending', 'completed')) NOT NULL,
-  completedAt TEXT,
-  dueDate TEXT,
-  createdBy TEXT,
-  FOREIGN KEY(shiftId) REFERENCES shifts(id) ON DELETE CASCADE,
-  FOREIGN KEY(assigneeId) REFERENCES employees(id) ON DELETE CASCADE,
-  FOREIGN KEY(createdBy) REFERENCES employees(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS groups (
-    name TEXT PRIMARY KEY NOT NULL
+    id TEXT PRIMARY KEY,
+    shiftId TEXT,
+    assigneeId TEXT,
+    scope TEXT CHECK(scope IN ('personal', 'global', 'shift')) NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT CHECK(status IN ('pending', 'completed')) NOT NULL DEFAULT 'pending',
+    completedAt TEXT,
+    dueDate TEXT,
+    createdBy TEXT NOT NULL,
+    FOREIGN KEY (shiftId) REFERENCES shifts(id) ON DELETE CASCADE,
+    FOREIGN KEY (assigneeId) REFERENCES employees(id) ON DELETE CASCADE,
+    FOREIGN KEY (createdBy) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS communication_allowances (
@@ -108,52 +101,66 @@ CREATE TABLE IF NOT EXISTS communication_allowances (
     asOfDate TEXT,
     screenshot TEXT,
     UNIQUE(employeeId, year, month),
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS smtp_settings (
-    id INTEGER PRIMARY KEY DEFAULT 1,
+    id INTEGER PRIMARY KEY CHECK (id = 1),
     host TEXT,
     port INTEGER,
-    secure INTEGER,
+    secure BOOLEAN,
     user TEXT,
     pass TEXT,
     fromEmail TEXT,
     fromName TEXT
 );
 
+CREATE TABLE IF NOT EXISTS groups (
+    name TEXT PRIMARY KEY NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS key_value_store (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
 CREATE TABLE IF NOT EXISTS tardy_records (
-    employeeId TEXT NOT NULL,
-    employeeName TEXT NOT NULL,
-    date TEXT NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employeeId TEXT,
+    employeeName TEXT,
+    date TEXT,
     schedule TEXT,
     timeIn TEXT,
     timeOut TEXT,
     remarks TEXT,
-    PRIMARY KEY (employeeId, date),
-    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS shift_templates (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    label TEXT NOT NULL,
-    startTime TEXT NOT NULL,
-    endTime TEXT NOT NULL,
+    label TEXT,
+    startTime TEXT,
+    endTime TEXT,
     color TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER
+    isUnpaidBreak BOOLEAN
 );
 
 CREATE TABLE IF NOT EXISTS leave_types (
-    type TEXT PRIMARY KEY NOT NULL,
+    type TEXT PRIMARY KEY,
     color TEXT
 );
 
-CREATE TABLE IF NOT EXISTS key_value_store (
-    key TEXT PRIMARY KEY NOT NULL,
-    value TEXT
-);
 
-    
+-- Initial Data (optional, for seeding)
+INSERT OR IGNORE INTO leave_types (type, color) VALUES ('VL', '#3b82f6');
+INSERT OR IGNORE INTO leave_types (type, color) VALUES ('SL', '#f97316');
+INSERT OR IGNORE INTO leave_types (type, color) VALUES ('EL', '#8b5cf6');
+INSERT OR IGNORE INTO leave_types (type, color) VALUES ('Work Extension', '#10b981');
+INSERT OR IGNORE INTO leave_types (type, color) VALUES ('TARDY', '#ef4444');
+
+-- Create an index on dates for faster lookups
+CREATE INDEX IF NOT EXISTS idx_shifts_date ON shifts(date);
+CREATE INDEX IF NOT EXISTS idx_leave_dates ON leave(startDate, endDate);
