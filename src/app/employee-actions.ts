@@ -117,13 +117,21 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
     }
     
     const data = validation.data;
-    
-    if (!await isEmailUnique(data.email, data.id)) {
-        return { success: false, error: 'Another user is already using this email address.' };
-    }
-
     const db = getDb();
+    
     try {
+        const existingEmployee = db.prepare('SELECT email FROM employees WHERE id = ?').get(data.id) as { email: string } | undefined;
+        if (!existingEmployee) {
+            return { success: false, error: 'Employee not found.' };
+        }
+        
+        // Only check for email uniqueness if the email has actually changed
+        if (data.email.toLowerCase() !== existingEmployee.email.toLowerCase()) {
+            if (!await isEmailUnique(data.email, data.id)) {
+                 return { success: false, error: 'Another user is already using this email address.' };
+            }
+        }
+
         const getPasswordStmt = db.prepare('SELECT password FROM employees WHERE id = ?');
         
         let finalPassword = data.password;
@@ -183,6 +191,9 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
 
     } catch (error) {
         console.error('Failed to update employee:', error);
+        if ((error as any).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+            return { success: false, error: 'Another user is already using this email address.' };
+        }
         return { success: false, error: (error as Error).message };
     }
 }
