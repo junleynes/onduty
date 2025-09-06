@@ -142,7 +142,7 @@ export type NavItemKey =
   | 'team' | 'org-chart' | 'celebrations' | 'holidays'
   | 'reports'
   | 'report-work-schedule' | 'report-attendance' | 'report-user-summary' | 'report-tardy' | 'report-wfh' | 'report-work-extension'
-  | 'admin' | 'smtp-settings' | 'permissions';
+  | 'admin' | 'smtp-settings';
 
 export type RolePermissions = {
   [key in UserRole]: NavItemKey[];
