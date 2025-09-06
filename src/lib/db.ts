@@ -3,18 +3,13 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-// The only guaranteed writable directory in the App Hosting environment is /tmp.
-const DB_PATH = path.join('/tmp', 'local.db');
+// This will create the database file in the root of your project.
+// The .gitignore file will prevent it from being committed.
+const DB_PATH = path.join(process.cwd(), 'local.db');
 
 let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
-    const dbDir = path.dirname(DB_PATH);
-    // This check is safe because /tmp will always exist.
-    if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-    }
-    
     const db = new Database(DB_PATH);
     
     // Check if the database has been initialized by looking for a key table.
