@@ -58,7 +58,6 @@ export async function sendEmail(
 
 
 export async function verifyUser(email: string, password: string): Promise<{ success: boolean; user?: Employee; error?: string; }> {
-    const db = getDb();
     // Hardcode check for the default admin user to bypass any potential DB issues.
     if (email.toLowerCase() === 'admin@onduty.local') {
         if (password === 'P@ssw0rd') {
@@ -81,6 +80,7 @@ export async function verifyUser(email: string, password: string): Promise<{ suc
     }
 
     // Continue with database check for all other users.
+    const db = getDb();
     try {
         const stmt = db.prepare('SELECT * FROM employees WHERE email = ?');
         const userRow = stmt.get(email);
@@ -156,15 +156,12 @@ export async function resetToFactorySettings(): Promise<{ success: boolean; erro
     const dbPath = path.join(process.cwd(), 'local.db');
     
     // Close the database connection if it's open.
-    // This is a simplified approach; in a real-world scenario, you might need a more robust
-    // connection management system to safely close before deleting.
-    const db = getDb();
-    if (db.open) {
-        db.close();
+    const dbModule = require('@/lib/db');
+    if (dbModule.dbInstance && dbModule.dbInstance.open) {
+        dbModule.dbInstance.close();
     }
     
     // Invalidate the singleton instance in db.ts
-    const dbModule = require('@/lib/db');
     dbModule.dbInstance = null;
 
     try {

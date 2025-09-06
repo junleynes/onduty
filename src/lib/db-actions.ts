@@ -110,27 +110,21 @@ export async function getData() {
         date: new Date(t.date),
     }));
 
-    const adminUser: Employee = {
-        id: "emp-admin-01",
-        employeeNumber: "001",
-        firstName: "Super",
-        lastName: "Admin",
-        email: "admin@onduty.local",
-        phone: "123-456-7890",
-        position: "System Administrator",
-        role: "admin",
-        group: "Administration"
-    };
-
-    const adminInDb = employees.find(e => e.id === adminUser.id);
-    if (!adminInDb) {
+    // Ensure the default admin user is always present if the employees table is empty.
+    // This is crucial for the first login after a factory reset.
+    if (processedEmployees.length === 0) {
+        const adminUser: Employee = {
+            id: "emp-admin-01",
+            employeeNumber: "001",
+            firstName: "Super",
+            lastName: "Admin",
+            email: "admin@onduty.local",
+            phone: "123-456-7890",
+            position: "System Administrator",
+            role: "admin",
+            group: "Administration"
+        };
         processedEmployees.push(adminUser);
-    } else {
-        // Ensure admin password is correct in the loaded data
-        const adminIndex = processedEmployees.findIndex(e => e.id === adminUser.id);
-        if (adminIndex > -1 && processedEmployees[adminIndex]) {
-            (processedEmployees[adminIndex] as any).password = "P@ssw0rd";
-        }
     }
 
 

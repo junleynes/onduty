@@ -364,10 +364,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
                 
                 let scheduleCode = '';
-                if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) scheduleCode = 'HOL OFF';
-                else if (leaveEntry) scheduleCode = leaveEntry.type.toUpperCase();
-                else if (shift?.isDayOff) scheduleCode = 'OFF';
-                else if (shift) {
+                if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+                    scheduleCode = 'HOL OFF';
+                } else if (shift?.isDayOff) {
+                    scheduleCode = 'OFF';
+                } else if (leaveEntry) {
+                    scheduleCode = leaveEntry.type.toUpperCase();
+                } else if (shift) {
                    const shiftLabel = shift.label?.trim().toUpperCase();
                    scheduleCode = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
                 }

@@ -64,13 +64,9 @@ function initializeDatabase() {
 }
 
 export function getDb() {
-  if (!dbInstance) {
-    
-    // In development, force re-creation of the database on server restart
-    // to ensure schema changes are always applied.
-    if (process.env.NODE_ENV === 'development' && fs.existsSync(DB_PATH)) {
-        console.log('Development mode: Deleting old database file to ensure schema is up-to-date.');
-        //fs.unlinkSync(DB_PATH);
+  if (!dbInstance || !dbInstance.open) {
+    if (dbInstance && !dbInstance.open) {
+        console.log('Database connection was closed. Re-initializing.');
     }
       
     console.log(`Connecting to database at ${DB_PATH}`);
