@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, TardyRecord } from '@/types';
+import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, TardyRecord, RolePermissions } from '@/types';
 import type { ShiftTemplate } from '@/components/shift-editor';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
@@ -41,9 +41,11 @@ import { HolidayImporter } from '@/components/holiday-importer';
 import ReportsView from '@/components/reports-view';
 import TimeOffView from '@/components/time-off-view';
 import type { LeaveTypeOption } from '@/components/leave-type-editor';
+import type { NavItemKey } from '@/types';
+import { PermissionsEditor } from '@/components/permissions-editor';
 
 
-export type NavItem = 'schedule' | 'team' | 'my-schedule' | 'admin' | 'org-chart' | 'celebrations' | 'holidays' | 'onduty' | 'my-tasks' | 'allowance' | 'task-manager' | 'smtp-settings' | 'reports' | 'time-off';
+export type NavItem = NavItemKey;
 
 
 function AppContent() {
@@ -63,6 +65,7 @@ function AppContent() {
   const [templates, setTemplates] = useState<Record<string, string | null>>({});
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>([]);
+  const [permissions, setPermissions] = useState<RolePermissions>({ admin: [], manager: [], member: []});
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -76,6 +79,7 @@ function AppContent() {
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const [isHolidayEditorOpen, setIsHolidayEditorOpen] = useState(false);
   const [isHolidayImporterOpen, setIsHolidayImporterOpen] = useState(false);
+  const [isPermissionsEditorOpen, setIsPermissionsEditorOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
@@ -106,6 +110,7 @@ function AppContent() {
         templates,
         shiftTemplates,
         leaveTypes,
+        permissions,
     };
 
     const saveData = async () => {
@@ -133,7 +138,7 @@ function AppContent() {
     const timeoutId = setTimeout(saveData, 1500); // Debounce saves
     return () => clearTimeout(timeoutId);
 
-  }, [initialDataLoaded, isLoading, toast, employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, leaveTypes]);
+  }, [initialDataLoaded, isLoading, toast, employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, leaveTypes, permissions]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -182,6 +187,7 @@ function AppContent() {
         setShiftTemplates(result.data.shiftTemplates);
         setLeaveTypes(result.data.leaveTypes);
         setTemplates(result.data.templates);
+        setPermissions(result.data.permissions);
         
         // If it wasn't the special admin, find the user from the DB
         if (!userToSet) {
@@ -204,12 +210,15 @@ function AppContent() {
       // Final check to set user or log out
       if (userToSet) {
         setCurrentUser(userToSet);
-        if (userToSet.role === 'admin') {
+        const userPermissions = result.data?.permissions[userToSet.role] || [];
+        if (userPermissions.includes('admin')) {
           setActiveView('admin');
-        } else if (userToSet.role === 'manager') {
+        } else if (userPermissions.includes('schedule')) {
           setActiveView('schedule');
-        } else {
-          setActiveView('my-schedule');
+        } else if (userPermissions.includes('my-schedule')) {
+           setActiveView('my-schedule');
+        } else if (userPermissions.length > 0) {
+            setActiveView(userPermissions[0]);
         }
       } else {
         handleLogout(); 
@@ -509,6 +518,20 @@ function AppContent() {
     }
 
     const membersOfMyGroup = employees.filter(e => e.group === currentUser.group);
+    const userPermissions = permissions[currentUser.role] || [];
+    
+    if (!userPermissions.includes(activeView)) {
+         return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Access Denied</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>You do not have permission to view this page. Please contact an administrator.</p>
+                </CardContent>
+            </Card>
+        )
+    }
 
     switch (activeView) {
       case 'schedule': {
@@ -610,6 +633,7 @@ function AppContent() {
                 onBatchDelete={handleBatchDeleteMembers}
                 onImportMembers={() => setIsImporterOpen(true)}
                 onManageGroups={() => setIsGroupEditorOpen(true)}
+                onManagePermissions={() => setIsPermissionsEditorOpen(true)}
             />
         );
       case 'smtp-settings':
@@ -627,7 +651,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, leaveForView, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded, leaveTypes]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, leaveForView, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded, leaveTypes, permissions]);
 
   if (!initialDataLoaded || !currentUser) {
       return (
@@ -644,7 +668,7 @@ function AppContent() {
     <>
     <div className='flex h-screen w-full'>
       <Sidebar collapsible="icon">
-        <SidebarNav role={role} activeView={activeView} onNavigate={handleNavigate} />
+        <SidebarNav role={role} permissions={permissions} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header 
@@ -695,6 +719,12 @@ function AppContent() {
         isOpen={isHolidayImporterOpen}
         setIsOpen={setIsHolidayImporterOpen}
         onImport={handleImportHolidays}
+    />
+    <PermissionsEditor
+        isOpen={isPermissionsEditorOpen}
+        setIsOpen={setIsPermissionsEditorOpen}
+        permissions={permissions}
+        setPermissions={setPermissions}
     />
     <NoteEditor
         isOpen={isNoteEditorOpen}

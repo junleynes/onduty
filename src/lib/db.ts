@@ -15,7 +15,8 @@ function initializeDatabase() {
     const requiredTables = [
         'employees', 'shifts', 'leave', 'notes', 'holidays', 'tasks',
         'communication_allowances', 'groups', 'smtp_settings',
-        'tardy_records', 'key_value_store', 'shift_templates', 'leave_types'
+        'tardy_records', 'key_value_store', 'shift_templates', 'leave_types',
+        'permissions'
     ];
 
     let allTablesExist = true;

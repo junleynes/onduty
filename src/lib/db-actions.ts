@@ -3,7 +3,7 @@
 'use server';
 
 import { getDb } from './db';
-import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord } from '@/types';
+import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord, RolePermissions, NavItemKey } from '@/types';
 import type { ShiftTemplate } from '@/components/shift-editor';
 import type { LeaveTypeOption } from './leave-type-editor';
 
@@ -38,6 +38,12 @@ export async function getData() {
         acc[key] = value;
         return acc;
     }, {} as Record<string, string | null>);
+    
+    const permissionsData = db.prepare('SELECT * FROM permissions').all() as { role: 'admin' | 'manager' | 'member', allowed_views: string }[];
+    const permissions: RolePermissions = permissionsData.reduce((acc, { role, allowed_views }) => {
+        acc[role] = JSON.parse(allowed_views);
+        return acc;
+    }, { admin: [], manager: [], member: [] } as RolePermissions);
 
 
     // Process data to match client-side types (e.g., parsing JSON, converting dates)
@@ -144,6 +150,7 @@ export async function getData() {
         templates,
         shiftTemplates: processedShiftTemplates,
         leaveTypes,
+        permissions,
       }
     };
   } catch (error) {
@@ -167,6 +174,7 @@ export async function saveAllData({
   templates,
   shiftTemplates,
   leaveTypes,
+  permissions,
 }: {
   employees: Employee[];
   shifts: Shift[];
@@ -181,6 +189,7 @@ export async function saveAllData({
   templates: Record<string, string | null>;
   shiftTemplates: ShiftTemplate[];
   leaveTypes: LeaveTypeOption[];
+  permissions: RolePermissions;
 }) {
   const db = getDb();
   const saveTransaction = db.transaction(() => {
@@ -225,7 +234,7 @@ export async function saveAllData({
 
     // --- LEAVE ---
     db.prepare('DELETE FROM leave').run();
-    const leaveStmt = db.prepare('INSERT INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (@id, @employeeId, @type, @color, @startDate, @endDate, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime)');
+    const leaveStmt = db.prepare('INSERT OR REPLACE INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (@id, @employeeId, @type, @color, @startDate, @endDate, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime)');
     for(const l of leave) {
        leaveStmt.run({
             id: l.id,
@@ -334,6 +343,12 @@ export async function saveAllData({
       if (value) {
         templateStmt.run({ key, value });
       }
+    }
+    
+    // --- PERMISSIONS ---
+    const permissionsStmt = db.prepare('INSERT INTO permissions (role, allowed_views) VALUES (@role, @allowed_views) ON CONFLICT(role) DO UPDATE SET allowed_views=excluded.allowed_views');
+    for (const [role, allowed_views] of Object.entries(permissions)) {
+        permissionsStmt.run({ role, allowed_views: JSON.stringify(allowed_views) });
     }
   });
 

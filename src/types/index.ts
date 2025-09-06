@@ -136,4 +136,15 @@ export type TardyRecord = {
   remarks: string;
 }
 
+export type NavItemKey = 
+  | 'my-schedule' | 'my-tasks'
+  | 'schedule' | 'onduty' | 'time-off' | 'allowance' | 'task-manager'
+  | 'team' | 'org-chart' | 'celebrations' | 'holidays'
+  | 'reports'
+  | 'admin' | 'smtp-settings' | 'permissions';
+
+export type RolePermissions = {
+  [key in UserRole]: NavItemKey[];
+};
     
+
