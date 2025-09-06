@@ -11,7 +11,7 @@ import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn, getFullName } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth } from 'date-fns';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth, startOfDay } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import { WfhCertificationTemplateUploader } from './wfh-certification-template-uploader';
@@ -151,9 +151,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
 
     const findDataForDay = (day: Date, employee: Employee) => {
-        const shiftOnDay = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-        const leaveOnDay = leave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
-        const holidayOnDay = holidays.find(h => isSameDay(new Date(h.date), day));
+        const normalizedDay = startOfDay(day);
+        const shiftOnDay = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), normalizedDay));
+        const leaveOnDay = leave.find(l => {
+            if (l.employeeId !== employee.id) return false;
+            const leaveStart = l.startDate ? startOfDay(new Date(l.startDate)) : null;
+            const leaveEnd = l.endDate ? startOfDay(new Date(l.endDate)) : null;
+            if (!leaveStart || !leaveEnd) return false;
+            return isWithinInterval(normalizedDay, { start: leaveStart, end: leaveEnd });
+        });
+        const holidayOnDay = holidays.find(h => isSameDay(new Date(h.date), normalizedDay));
 
         // Determine status with priority
         if (shiftOnDay?.isHolidayOff || holidayOnDay) {
@@ -200,7 +207,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     ...getScheduleFromTemplate(undefined)
                 };
 
-                const isWorkingDay = dayData.status === 'SKE' || dayData.status === 'WFH' || (dayData.status === null && dayData.shift === null);
+                const isWorkingDay = dayData.status === 'SKE' || dayData.status === 'WFH' || (dayData.status === null && dayData.shift === null && !dayData.leave);
 
                 if (isWorkingDay) {
                     if (dayData.shift) { // A specific shift is plotted
@@ -383,18 +390,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             
             displayedDays.forEach(day => {
                 const dayData = findDataForDay(day, employee);
-                let scheduleCode = '';
-                
-                if (dayData.status) {
-                    if (dayData.status === 'HOL OFF') {
-                        scheduleCode = 'HOL OFF';
-                    } else if (dayData.status === 'SKE' || dayData.status === 'WFH') {
-                        scheduleCode = dayData.status;
-                    } else {
-                        scheduleCode = dayData.status; // This will catch 'OFF' and all leave types like 'VL', 'SL', 'OFFSET'
-                    }
+                let scheduleCode = dayData.status || '';
+                 if (scheduleCode === 'HOL OFF') {
+                    scheduleCode = 'HOL OFF';
                 }
-                
                 row.push(scheduleCode);
             });
             rows.push(row);
@@ -1447,6 +1446,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    
 
     
 
