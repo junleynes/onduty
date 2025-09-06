@@ -155,13 +155,14 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
             updatedEmployee.password = existingEmployee.password;
         }
 
-        // Correctly handle image preservation
-        if (!data.avatar) {
+        // Correctly handle image preservation by checking for null/undefined/empty strings
+        if (data.avatar === null || data.avatar === undefined || data.avatar === '') {
             updatedEmployee.avatar = existingEmployee.avatar;
         }
-        if (!data.signature) {
+        if (data.signature === null || data.signature === undefined || data.signature === '') {
             updatedEmployee.signature = existingEmployee.signature;
         }
+
 
         updatedEmployee.employeeNumber = data.employeeNumber || existingEmployee.employeeNumber;
         updatedEmployee.phone = data.phone || existingEmployee.phone;
