@@ -11,12 +11,25 @@ let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
     const db = new Database(DB_PATH);
-    
-    // Check if the database has been initialized by looking for a key table.
-    const tableCheck = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'").get();
 
-    if (!tableCheck) {
-        console.log('Database appears to be empty. Applying schema...');
+    const requiredTables = [
+        'employees', 'shifts', 'leave', 'notes', 'holidays', 'tasks',
+        'communication_allowances', 'groups', 'smtp_settings',
+        'tardy_records', 'key_value_store', 'shift_templates', 'leave_types'
+    ];
+
+    let allTablesExist = true;
+    const checkStmt = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?");
+
+    for (const table of requiredTables) {
+        if (!checkStmt.get(table)) {
+            allTablesExist = false;
+            break;
+        }
+    }
+    
+    if (!allTablesExist) {
+        console.log('One or more database tables are missing. Applying schema...');
         const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
         if (fs.existsSync(schemaPath)) {
             try {
