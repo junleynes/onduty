@@ -21,8 +21,8 @@ const employeeSchema = z.object({
   position: z.string().optional(),
   role: z.enum(['admin', 'manager', 'member']).optional(),
   group: z.string().optional(),
-  avatar: z.string().optional(),
-  signature: z.string().optional(),
+  avatar: z.string().optional().nullable(),
+  signature: z.string().optional().nullable(),
   loadAllocation: z.coerce.number().optional(),
   reportsTo: z.string().optional().nullable(),
   visibility: z.object({
@@ -159,7 +159,7 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
             updatedEmployee.password = existingEmployee.password;
         }
 
-        // If avatar or signature is not provided in update, keep the old one
+        // Preserve existing images if the form sends an empty value (no new file uploaded)
         if (!data.avatar) {
             updatedEmployee.avatar = existingEmployee.avatar;
         }

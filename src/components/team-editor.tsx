@@ -41,8 +41,8 @@ const employeeSchema = z.object({
   position: z.string().optional(),
   role: z.custom<UserRole>().optional(),
   group: z.string().optional(),
-  avatar: z.string().optional(),
-  signature: z.string().optional(),
+  avatar: z.string().optional().nullable(),
+  signature: z.string().optional().nullable(),
   loadAllocation: z.coerce.number().optional(),
   reportsTo: z.string().optional().nullable(),
   visibility: z.object({
@@ -155,6 +155,14 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
               }
           };
           reader.readAsDataURL(file);
+      } else {
+        // Handle file removal
+        form.setValue(fieldName, null);
+        if (fieldName === 'avatar') {
+            setAvatarPreview(null);
+        } else {
+            setSignaturePreview(null);
+        }
       }
   };
 
