@@ -154,18 +154,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const shift = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
         const leaveEntry = allLeave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
         const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
-        const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
         
         const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
 
-        if (leaveEntry || shift?.isHolidayOff) {
-            return { ...defaultSchedule, day_status: '' };
+        if (leaveEntry || shift?.isHolidayOff || shift?.isDayOff || holiday) {
+             return { ...defaultSchedule, day_status: '' };
         }
         
         if (shift) {
-            if (shift.isDayOff) {
-                return { ...emptySchedule, day_status: 'OFF' };
-            }
             return {
                 day_status: '',
                 schedule_start: shift.startTime,
@@ -177,11 +173,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             };
         }
         
-        if (holiday) {
-             return { ...emptySchedule, day_status: 'HOLIDAY' };
-        }
-
-        return emptySchedule;
+        // This case would be for a regular working day with no shift defined, which might be an error or just unscheduled.
+        // It will return an empty schedule but can be customized if needed.
+        return { schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '', day_status: '' };
     }
 
 
