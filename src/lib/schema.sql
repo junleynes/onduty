@@ -1,24 +1,27 @@
--- Main tables
+
+-- schema.sql
+
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
-    employeeNumber TEXT,
+    employeeNumber TEXT UNIQUE,
     firstName TEXT NOT NULL,
     lastName TEXT NOT NULL,
     middleInitial TEXT,
     email TEXT NOT NULL UNIQUE,
     phone TEXT,
-    password TEXT,
+    password TEXT NOT NULL,
     birthDate TEXT,
     startDate TEXT,
     lastPromotionDate TEXT,
     position TEXT,
-    role TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('admin', 'manager', 'member')),
     "group" TEXT,
     avatar TEXT,
     signature TEXT,
     loadAllocation REAL,
     reportsTo TEXT,
-    visibility TEXT
+    visibility TEXT,
+    FOREIGN KEY(reportsTo) REFERENCES employees(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS shifts (
@@ -29,13 +32,13 @@ CREATE TABLE IF NOT EXISTS shifts (
     endTime TEXT,
     date TEXT NOT NULL,
     color TEXT,
-    isDayOff INTEGER,
-    isHolidayOff INTEGER,
-    status TEXT,
+    isDayOff BOOLEAN DEFAULT 0,
+    isHolidayOff BOOLEAN DEFAULT 0,
+    status TEXT CHECK(status IN ('draft', 'published')),
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER,
-    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    isUnpaidBreak BOOLEAN,
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS leave (
@@ -43,12 +46,12 @@ CREATE TABLE IF NOT EXISTS leave (
     employeeId TEXT NOT NULL,
     type TEXT NOT NULL,
     color TEXT,
-    startDate TEXT,
-    endDate TEXT,
-    isAllDay INTEGER,
+    startDate TEXT NOT NULL,
+    endDate TEXT NOT NULL,
+    isAllDay BOOLEAN NOT NULL,
     startTime TEXT,
     endTime TEXT,
-    status TEXT,
+    status TEXT CHECK(status IN ('pending', 'approved', 'rejected')),
     reason TEXT,
     requestedAt TEXT,
     managedBy TEXT,
@@ -56,7 +59,8 @@ CREATE TABLE IF NOT EXISTS leave (
     originalShiftDate TEXT,
     originalStartTime TEXT,
     originalEndTime TEXT,
-    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE,
+    FOREIGN KEY(managedBy) REFERENCES employees(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS notes (
@@ -68,7 +72,7 @@ CREATE TABLE IF NOT EXISTS notes (
 
 CREATE TABLE IF NOT EXISTS holidays (
     id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
+    date TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL
 );
 
@@ -76,13 +80,16 @@ CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     shiftId TEXT,
     assigneeId TEXT,
-    scope TEXT NOT NULL,
+    scope TEXT NOT NULL CHECK(scope IN ('personal', 'global', 'shift')),
     title TEXT NOT NULL,
     description TEXT,
-    status TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('pending', 'completed')),
     completedAt TEXT,
     dueDate TEXT,
-    createdBy TEXT NOT NULL
+    createdBy TEXT NOT NULL,
+    FOREIGN KEY(shiftId) REFERENCES shifts(id) ON DELETE CASCADE,
+    FOREIGN KEY(assigneeId) REFERENCES employees(id) ON DELETE CASCADE,
+    FOREIGN KEY(createdBy) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS communication_allowances (
@@ -94,7 +101,7 @@ CREATE TABLE IF NOT EXISTS communication_allowances (
     asOfDate TEXT,
     screenshot TEXT,
     UNIQUE(employeeId, year, month),
-    FOREIGN KEY (employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS groups (
@@ -102,10 +109,10 @@ CREATE TABLE IF NOT EXISTS groups (
 );
 
 CREATE TABLE IF NOT EXISTS smtp_settings (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY CHECK (id = 1),
     host TEXT,
     port INTEGER,
-    secure INTEGER,
+    secure BOOLEAN,
     user TEXT,
     pass TEXT,
     fromEmail TEXT,
@@ -113,17 +120,17 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
 );
 
 CREATE TABLE IF NOT EXISTS tardy_records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    employeeId TEXT NOT NULL,
-    employeeName TEXT NOT NULL,
-    date TEXT NOT NULL,
-    schedule TEXT,
-    timeIn TEXT,
-    timeOut TEXT,
-    remarks TEXT
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  employeeId TEXT NOT NULL,
+  employeeName TEXT NOT NULL,
+  date TEXT NOT NULL,
+  schedule TEXT,
+  timeIn TEXT,
+  timeOut TEXT,
+  remarks TEXT,
+  FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
--- Configuration and Template Tables
 CREATE TABLE IF NOT EXISTS key_value_store (
     key TEXT PRIMARY KEY,
     value TEXT
@@ -138,7 +145,7 @@ CREATE TABLE IF NOT EXISTS shift_templates (
     color TEXT NOT NULL,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak INTEGER
+    isUnpaidBreak BOOLEAN
 );
 
 CREATE TABLE IF NOT EXISTS leave_types (
@@ -146,18 +153,5 @@ CREATE TABLE IF NOT EXISTS leave_types (
     color TEXT NOT NULL
 );
 
-
--- Initial Data
-INSERT OR IGNORE INTO shift_templates (id, name, label, startTime, endTime, color, breakStartTime, breakEndTime, isUnpaidBreak) VALUES
-('tpl_manager', 'Manager Shift', 'Manager', '08:00', '17:00', '#22c55e', '12:00', '13:00', 1),
-('tpl_mid', 'Mid Shift', 'Mid', '10:00', '19:00', '#3b82f6', '14:00', '15:00', 1),
-('tpl_wfh', 'Work From Home', 'WFH', '09:00', '18:00', '#f97316', '12:00', '13:00', 1);
-
-INSERT OR IGNORE INTO leave_types (type, color) VALUES
-('VL', '#f97316'),
-('SL', '#ef4444'),
-('EL', '#8b5cf6'),
-('BL', '#d946ef'),
-('WFH', '#0ea5e9'),
-('TARDY', '#eab308'),
-('Work Extension', '#14b8a6');
+-- Seed initial data
+INSERT OR IGNORE INTO leave_types (type, color) VALUES ('VL', '#3b82f6'), ('SL', '#f97316'), ('EL', '#ef4444'), ('BL', '#8b5cf6'), ('TARDY', '#eab308'), ('Work Extension', '#14b8a6');
