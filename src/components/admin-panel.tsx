@@ -111,10 +111,6 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
                 </AlertDialog>
             ) : (
                 <>
-                    <Button variant="outline" onClick={onManagePermissions}>
-                        <ShieldCheck className="h-4 w-4 mr-2" />
-                        Manage Permissions
-                    </Button>
                     <Button variant="outline" onClick={onManageGroups}>
                         <Users className="h-4 w-4 mr-2" />
                         Manage Groups
