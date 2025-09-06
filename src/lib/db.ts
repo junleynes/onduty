@@ -28,8 +28,21 @@ function initializeDatabase() {
         }
     }
     
-    if (!allTablesExist) {
-        console.log('One or more database tables are missing. Applying schema...');
+    // Also check for a key column in the 'leave' table to ensure schema is updated.
+    let leaveTableIsCorrect = false;
+    if (allTablesExist) {
+        try {
+            const columns = db.prepare("PRAGMA table_info(leave)").all();
+            if (columns.some((col: any) => col.name === 'startDate')) {
+                leaveTableIsCorrect = true;
+            }
+        } catch (e) {
+            // Table might not exist, which is handled by allTablesExist
+        }
+    }
+
+    if (!allTablesExist || !leaveTableIsCorrect) {
+        console.log('One or more database tables are missing or outdated. Applying schema...');
         const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
         if (fs.existsSync(schemaPath)) {
             try {
@@ -51,6 +64,14 @@ function initializeDatabase() {
 
 export function getDb() {
   if (!dbInstance) {
+    
+    // In development, force re-creation of the database on server restart
+    // to ensure schema changes are always applied.
+    if (process.env.NODE_ENV === 'development' && fs.existsSync(DB_PATH)) {
+        console.log('Development mode: Deleting old database file to ensure schema is up-to-date.');
+        fs.unlinkSync(DB_PATH);
+    }
+      
     console.log(`Connecting to database at ${DB_PATH}`);
     dbInstance = initializeDatabase();
 
