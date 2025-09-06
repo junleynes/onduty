@@ -170,14 +170,14 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
         <CardDescription>A list of tasks assigned to you or your shifts. Check them off as you complete them.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={['overdue-tasks', 'todays-tasks', 'upcoming-tasks', 'completed-tasks']} className="w-full space-y-4">
+        <Accordion type="multiple" defaultValue={['upcoming-tasks', 'todays-tasks', 'overdue-tasks', 'completed-tasks']} className="w-full space-y-4">
           <TaskSection
-            title="Overdue Tasks"
-            icon={CalendarX}
-            tasks={overdueTasks}
+            title="Upcoming Tasks"
+            icon={CalendarClock}
+            tasks={upcomingTasks}
             shifts={shifts}
             onToggle={handleTaskToggle}
-            emptyMessage="No overdue tasks. Well done!"
+            emptyMessage="No upcoming tasks on the horizon."
             emptyIcon={ClipboardCheck}
           />
            <TaskSection
@@ -190,12 +190,12 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
             emptyIcon={ClipboardCheck}
           />
            <TaskSection
-            title="Upcoming Tasks"
-            icon={CalendarClock}
-            tasks={upcomingTasks}
+            title="Overdue Tasks"
+            icon={CalendarX}
+            tasks={overdueTasks}
             shifts={shifts}
             onToggle={handleTaskToggle}
-            emptyMessage="No upcoming tasks on the horizon."
+            emptyMessage="No overdue tasks. Well done!"
             emptyIcon={ClipboardCheck}
           />
            <TaskSection
