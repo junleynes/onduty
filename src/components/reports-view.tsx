@@ -150,39 +150,28 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         return shiftTemplates.find(t => t.name.toLowerCase().includes(defaultShiftName));
     };
 
-    const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
-        const shiftOnDay = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-        const leaveOnDay = allLeave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
-        const holidayOnDay = allHolidays.find(h => isSameDay(new Date(h.date), day));
+    const findDataForDay = (day: Date, employee: Employee) => {
+        const shiftOnDay = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
+        const leaveOnDay = leave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
+        const holidayOnDay = holidays.find(h => isSameDay(new Date(h.date), day));
 
-        const isNonWorkingDay = shiftOnDay?.isDayOff || shiftOnDay?.isHolidayOff || holidayOnDay || leaveOnDay;
-
-        if (isNonWorkingDay) {
-            const defaultTemplate = getDefaultShiftTemplate(employee);
-            return {
-                day_status: '',
-                ...getScheduleFromTemplate(defaultTemplate),
-            };
+        // Determine status with priority
+        if (shiftOnDay?.isHolidayOff || holidayOnDay) {
+            return { status: 'HOL OFF', shift: shiftOnDay, leave: null };
         }
-    
+        if (shiftOnDay?.isDayOff) {
+            return { status: 'OFF', shift: shiftOnDay, leave: null };
+        }
+        if (leaveOnDay) {
+            return { status: leaveOnDay.type.toUpperCase(), shift: shiftOnDay, leave: leaveOnDay };
+        }
         if (shiftOnDay) {
-            return {
-                day_status: '', // It's a working day
-                schedule_start: shiftOnDay.startTime,
-                schedule_end: shiftOnDay.endTime,
-                unpaidbreak_start: shiftOnDay.isUnpaidBreak ? shiftOnDay.breakStartTime || '' : '',
-                unpaidbreak_end: shiftOnDay.isUnpaidBreak ? shiftOnDay.breakEndTime || '' : '',
-                paidbreak_start: !shiftOnDay.isUnpaidBreak ? shiftOnDay.breakStartTime || '' : '',
-                paidbreak_end: !shiftOnDay.isUnpaidBreak ? shiftOnDay.breakEndTime || '' : '',
-            };
+            const shiftLabel = shiftOnDay.label?.trim().toUpperCase();
+            const status = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
+            return { status: status, shift: shiftOnDay, leave: null };
         }
-        
-        // Default working day with no specific shift plotted
-        const defaultTemplate = getDefaultShiftTemplate(employee);
-        return {
-            ...getScheduleFromTemplate(defaultTemplate),
-            day_status: '', // Empty status for a working day
-        };
+        // No shift, no leave, no holiday
+        return { status: null, shift: null, leave: null };
     };
 
 
@@ -205,11 +194,44 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         groupEmployees.forEach((employee) => {
             daysInInterval.forEach(day => {
-                const dayData = findDataForDay(day, employee, shifts, leave, holidays);
+                const dayData = findDataForDay(day, employee);
+                let scheduleInfo = {
+                    day_status: '',
+                    ...getScheduleFromTemplate(undefined)
+                };
+
+                const isWorkingDay = dayData.status === 'SKE' || dayData.status === 'WFH' || (dayData.status === null && dayData.shift === null);
+
+                if (isWorkingDay) {
+                    if (dayData.shift) { // A specific shift is plotted
+                        scheduleInfo = {
+                            day_status: '',
+                            schedule_start: dayData.shift.startTime,
+                            schedule_end: dayData.shift.endTime,
+                            unpaidbreak_start: dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
+                            unpaidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
+                            paidbreak_start: !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
+                            paidbreak_end: !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
+                        };
+                    } else { // A working day but no shift plotted, use default
+                        const defaultTemplate = getDefaultShiftTemplate(employee);
+                        scheduleInfo = {
+                             day_status: '',
+                            ...getScheduleFromTemplate(defaultTemplate),
+                        };
+                    }
+                } else { // A non-working day (Holiday, Leave, Day Off)
+                     const defaultTemplate = getDefaultShiftTemplate(employee);
+                     scheduleInfo = {
+                         day_status: '', // Keep status empty as requested
+                         ...getScheduleFromTemplate(defaultTemplate),
+                     };
+                }
+
                 rows.push({
                     employee_name: `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
                     date: format(day, 'M/d/yyyy'),
-                    ...dayData
+                    ...scheduleInfo
                 });
             });
         });
@@ -262,7 +284,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     if (cell.value && typeof cell.value === 'string') {
                         let cellText = cell.value;
                         cellText = cellText.replace(/{{start_date}}/g, format(workScheduleDateRange.from!, 'MM/dd/yyyy'));
-                        cellText = cellText.replace(/{{end_date}}/g, format(workScheduleDateRange.to!, 'MM/dd/yyyy'));
+                        cellText = cellText.replace(/{{end_date}}/g, format(workScheduleDateRange.to!, 'yyyy-MM/dd'));
                         cell.value = cellText;
                     }
                 });
@@ -360,22 +382,19 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             ];
             
             displayedDays.forEach(day => {
-                const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-                const leaveEntry = leave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
-                const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
-                
+                const dayData = findDataForDay(day, employee);
                 let scheduleCode = '';
-
-                if (shift?.isHolidayOff || holiday) {
-                    scheduleCode = 'HOL OFF';
-                } else if (shift?.isDayOff) {
-                    scheduleCode = 'OFF';
-                } else if (leaveEntry) {
-                    scheduleCode = leaveEntry.type.toUpperCase();
-                } else if (shift) {
-                   const shiftLabel = shift.label?.trim().toUpperCase();
-                   scheduleCode = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
+                
+                if (dayData.status) {
+                    if (dayData.status === 'HOL OFF') {
+                        scheduleCode = 'HOL OFF';
+                    } else if (dayData.status === 'SKE' || dayData.status === 'WFH') {
+                        scheduleCode = dayData.status;
+                    } else {
+                        scheduleCode = dayData.status; // This will catch 'OFF' and all leave types like 'VL', 'SL', 'OFFSET'
+                    }
                 }
+                
                 row.push(scheduleCode);
             });
             rows.push(row);
@@ -1428,5 +1447,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    
 
     
