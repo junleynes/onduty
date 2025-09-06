@@ -620,6 +620,7 @@ function AppContent() {
                     setTemplates={setTemplates}
                     shiftTemplates={shiftTemplates}
                     leaveTypes={leaveTypes}
+                    permissions={permissions}
                   />;
       case 'admin':
         return (

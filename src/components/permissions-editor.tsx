@@ -16,26 +16,44 @@ import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { RolePermissions, UserRole, NavItemKey } from '@/types';
 import { ScrollArea } from './ui/scroll-area';
+import { Separator } from './ui/separator';
 
-const ALL_FEATURES: { key: NavItemKey; label: string }[] = [
-  { key: 'my-schedule', label: 'My Schedule' },
-  { key: 'my-tasks', label: 'My Tasks' },
-  { key: 'schedule', label: 'Schedule' },
-  { key: 'onduty', label: 'On Duty' },
-  { key: 'time-off', label: 'Time Off' },
-  { key: 'allowance', label: 'Mobile Load' },
-  { key: 'task-manager', label: 'Task Manager' },
-  { key: 'team', label: 'Team' },
-  { key: 'org-chart', label: 'Org Chart' },
-  { key: 'celebrations', label: 'Celebrations' },
-  { key: 'holidays', label: 'Holidays' },
-  { key: 'reports', label: 'Reports' },
-  { key: 'admin', label: 'Admin Panel' },
-  { key: 'smtp-settings', label: 'SMTP Settings' },
-  { key: 'permissions', label: 'Permissions' },
+const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
+  // Main Views
+  { key: 'my-schedule', label: 'My Schedule', group: 'Main Views' },
+  { key: 'my-tasks', label: 'My Tasks', group: 'Main Views' },
+  { key: 'schedule', label: 'Schedule', group: 'Main Views' },
+  { key: 'onduty', label: 'On Duty', group: 'Main Views' },
+  { key: 'time-off', label: 'Time Off', group: 'Main Views' },
+  { key: 'allowance', label: 'Mobile Load', group: 'Main Views' },
+  { key: 'task-manager', label: 'Task Manager', group: 'Main Views' },
+  { key: 'team', label: 'Team', group: 'Main Views' },
+  { key: 'org-chart', label: 'Org Chart', group: 'Main Views' },
+  { key: 'celebrations', label: 'Celebrations', group: 'Main Views' },
+  { key: 'holidays', label: 'Holidays', group: 'Main Views' },
+  // Reports Access
+  { key: 'reports', label: 'Reports Page Access', group: 'Reports' },
+  { key: 'report-work-schedule', label: 'Work Schedule Report', group: 'Reports' },
+  { key: 'report-attendance', label: 'Attendance Sheet Report', group: 'Reports' },
+  { key: 'report-work-extension', label: 'Work Extension Report', group: 'Reports' },
+  { key: 'report-user-summary', label: 'User Summary Report', group: 'Reports' },
+  { key: 'report-tardy', label: 'Tardy Report', group: 'Reports' },
+  { key: 'report-wfh', label: 'WFH Certification', group: 'Reports' },
+  // Admin
+  { key: 'admin', label: 'Admin Panel', group: 'Admin' },
+  { key: 'smtp-settings', label: 'SMTP Settings', group: 'Admin' },
+  { key: 'permissions', label: 'Permissions', group: 'Admin' },
 ];
 
 const ROLES: UserRole[] = ['admin', 'manager', 'member'];
+
+const groupedFeatures = ALL_FEATURES.reduce((acc, feature) => {
+    if (!acc[feature.group]) {
+        acc[feature.group] = [];
+    }
+    acc[feature.group].push(feature);
+    return acc;
+}, {} as Record<string, typeof ALL_FEATURES>);
 
 type PermissionsEditorProps = {
   isOpen: boolean;
@@ -74,33 +92,42 @@ export function PermissionsEditor({ isOpen, setIsOpen, permissions, setPermissio
         <DialogHeader>
           <DialogTitle>Manage Permissions</DialogTitle>
           <DialogDescription>
-            Control which sections each user role can access. Admins always have full access.
+            Control which sections and features each user role can access. Admins always have full access.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="h-[60vh] border rounded-md">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
-                <TableHead className="w-[200px]">Feature</TableHead>
+                <TableHead className="w-[250px]">Feature</TableHead>
                 {ROLES.map(role => (
                   <TableHead key={role} className="text-center capitalize">{role}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ALL_FEATURES.map(({ key, label }) => (
-                <TableRow key={key}>
-                  <TableCell className="font-medium">{label}</TableCell>
-                  {ROLES.map(role => (
-                    <TableCell key={role} className="text-center">
-                      <Checkbox
-                        checked={permissions[role]?.includes(key)}
-                        onCheckedChange={(checked) => handlePermissionChange(role, key, !!checked)}
-                        disabled={role === 'admin'}
-                      />
-                    </TableCell>
-                  ))}
-                </TableRow>
+              {Object.entries(groupedFeatures).map(([groupName, features], index) => (
+                <React.Fragment key={groupName}>
+                    <TableRow>
+                        <TableCell colSpan={ROLES.length + 1} className="font-semibold bg-muted/50 py-2">
+                            {groupName}
+                        </TableCell>
+                    </TableRow>
+                    {features.map(({ key, label }) => (
+                        <TableRow key={key}>
+                        <TableCell className="font-medium">{label}</TableCell>
+                        {ROLES.map(role => (
+                            <TableCell key={role} className="text-center">
+                            <Checkbox
+                                checked={permissions[role]?.includes(key)}
+                                onCheckedChange={(checked) => handlePermissionChange(role, key, !!checked)}
+                                disabled={role === 'admin'}
+                            />
+                            </TableCell>
+                        ))}
+                        </TableRow>
+                    ))}
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>

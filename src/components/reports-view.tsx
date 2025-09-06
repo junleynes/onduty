@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import type { Employee, Shift, Leave, Holiday, TardyRecord } from '@/types';
+import type { Employee, Shift, Leave, Holiday, TardyRecord, RolePermissions } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
 import { Download, Upload, Calendar as CalendarIcon, Eye } from 'lucide-react';
@@ -38,6 +38,7 @@ type ReportsViewProps = {
     setTemplates: React.Dispatch<React.SetStateAction<Record<string, string | null>>>;
     shiftTemplates: ShiftTemplate[];
     leaveTypes: LeaveTypeOption[];
+    permissions: RolePermissions;
 }
 
 type ReportType = 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension';
@@ -79,7 +80,7 @@ type WorkExtensionRowData = {
 };
 
 
-export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes }: ReportsViewProps) {
+export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes, permissions }: ReportsViewProps) {
     const { toast } = useToast();
     const [selectedReportType, setSelectedReportType] = useState<ReportType>('workSchedule');
     
@@ -104,7 +105,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [reportGenerator, setReportGenerator] = useState<(() => Promise<void>) | null>(null);
     const [reportTitle, setReportTitle] = useState('');
 
-    const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
+    const userPermissions = permissions[currentUser.role] || [];
 
 
     const attendanceDateRange = useMemo(() => {
@@ -151,7 +152,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
     const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
         const shift = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-        const leaveEntry = allLeave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
+        const leaveEntry = allLeave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
         const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
         const emptySchedule = { day_status: '', schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '' };
         
@@ -359,7 +360,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             
             displayedDays.forEach(day => {
                 const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-                const leaveEntry = leave.find(l => l.employeeId === employee.id && isSameDay(new Date(l.date), day));
+                const leaveEntry = leave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
                 const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
                 
                 let scheduleCode = '';
@@ -1052,13 +1053,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         dateComponent: React.ReactNode;
         templateKey?: keyof typeof templates;
         openUploader?: () => void;
-        isManagerOnly: boolean;
+        permissionKey: `report-${ReportType}`;
         isDateRequired: boolean;
     }> = {
         workSchedule: {
             label: "Regular Work Schedule",
             description: "Generate a report of employee work schedules for a specific period.",
-            isManagerOnly: true,
+            permissionKey: 'report-work-schedule',
             isDateRequired: true,
             dateComponent: (
                  <Popover>
@@ -1111,7 +1112,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         attendance: {
             label: 'Attendance Sheet',
             description: 'Generate a weekly attendance sheet (Mon-Sun) based on a template.',
-            isManagerOnly: true,
+            permissionKey: 'report-attendance',
             isDateRequired: true,
             dateComponent: (
                 <Popover>
@@ -1151,7 +1152,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         workExtension: {
             label: "Work Extension Summary",
             description: "Generate a summary of work extensions for the selected week.",
-            isManagerOnly: true,
+            permissionKey: 'report-work-extension',
             isDateRequired: true,
             dateComponent: (
                 <Popover>
@@ -1191,7 +1192,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         userSummary: {
             label: 'Summary Per User',
             description: 'Generate an individual summary of shifts, hours, and leave for each employee.',
-            isManagerOnly: true,
+            permissionKey: 'report-user-summary',
             isDateRequired: true,
             dateComponent: (
                 <Popover>
@@ -1235,7 +1236,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         tardy: {
             label: "Cumulative Tardy Report",
             description: "Combines tardiness data from leave requests and manual CSV uploads.",
-            isManagerOnly: true,
+            permissionKey: 'report-tardy',
             isDateRequired: true,
             dateComponent: (
                 <Popover>
@@ -1280,7 +1281,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         wfh: {
             label: "Work From Home Certification",
             description: "Generate a WFH certification for the current user for a specific month.",
-            isManagerOnly: false,
+            permissionKey: 'report-wfh',
             isDateRequired: true,
             dateComponent: (
                 <Popover>
@@ -1316,7 +1317,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
     
     const availableReports = Object.entries(reportConfig)
-        .filter(([, config]) => !config.isManagerOnly || isManager)
+        .filter(([, config]) => userPermissions.includes(config.permissionKey))
         .map(([key]) => key as ReportType);
 
     const currentReport = reportConfig[selectedReportType];
