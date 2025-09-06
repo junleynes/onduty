@@ -154,13 +154,18 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const shift = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
         const leaveEntry = allLeave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
         const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
-        
         const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
 
-        if (leaveEntry || shift?.isHolidayOff || shift?.isDayOff || holiday) {
-             return { ...defaultSchedule, day_status: '' };
+        if (shift?.isHolidayOff || (holiday && (!shift || shift?.isDayOff))) {
+            return { ...defaultSchedule, day_status: '' };
         }
-        
+        if (shift?.isDayOff) {
+            return { ...defaultSchedule, day_status: '' };
+        }
+        if (leaveEntry) {
+            return { ...defaultSchedule, day_status: '' };
+        }
+
         if (shift) {
             return {
                 day_status: '',
@@ -173,9 +178,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             };
         }
         
-        // This case would be for a regular working day with no shift defined, which might be an error or just unscheduled.
-        // It will return an empty schedule but can be customized if needed.
-        return { schedule_start: '', schedule_end: '', unpaidbreak_start: '', unpaidbreak_end: '', paidbreak_start: '', paidbreak_end: '', day_status: '' };
+        return { ...defaultSchedule, day_status: '' };
     }
 
 
@@ -358,7 +361,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
                 
                 let scheduleCode = '';
-                if (shift?.isHolidayOff || (holiday && (!shift || shift.isDayOff))) {
+                if (shift?.isHolidayOff || (holiday && (!shift || shift?.isDayOff))) {
                     scheduleCode = 'HOL OFF';
                 } else if (shift?.isDayOff) {
                     scheduleCode = 'OFF';
