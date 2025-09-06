@@ -154,14 +154,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const shiftOnDay = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
         const leaveOnDay = allLeave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
         const holidayOnDay = allHolidays.find(h => isSameDay(new Date(h.date), day));
-    
+
         const isNonWorkingDay = shiftOnDay?.isDayOff || shiftOnDay?.isHolidayOff || holidayOnDay || leaveOnDay;
-    
+
         if (isNonWorkingDay) {
             const defaultTemplate = getDefaultShiftTemplate(employee);
             return {
                 day_status: '',
-                ...getScheduleFromTemplate(defaultTemplate)
+                ...getScheduleFromTemplate(defaultTemplate),
             };
         }
     
@@ -689,7 +689,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
             if (includeRow) {
                 rows.push({
-                    DATE: format(day, 'November d, yyyy'),
+                    DATE: format(day, 'MMMM d, yyyy'),
                     ATTENDANCE_RENDERED: attendanceRendered === 'ONLEAVE' ? 'ON LEAVE' : attendanceRendered,
                     TOTAL_HRS_SPENT: totalHrs,
                     REMARKS: remarks
