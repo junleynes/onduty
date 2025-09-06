@@ -151,35 +151,39 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
 
     const findDataForDay = (day: Date, employee: Employee, allShifts: Shift[], allLeave: Leave[], allHolidays: Holiday[]) => {
-        const shift = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
-        const leaveEntry = allLeave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
-        const holiday = allHolidays.find(h => isSameDay(new Date(h.date), day));
-        const defaultSchedule = getScheduleFromTemplate(getDefaultShiftTemplate(employee));
-
-        if (shift?.isHolidayOff || (holiday && (!shift || shift?.isDayOff))) {
-            return { ...defaultSchedule, day_status: '' };
-        }
-        if (shift?.isDayOff) {
-            return { ...defaultSchedule, day_status: '' };
-        }
-        if (leaveEntry) {
-            return { ...defaultSchedule, day_status: '' };
-        }
-
-        if (shift) {
+        const shiftOnDay = allShifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day));
+        const leaveOnDay = allLeave.find(l => l.employeeId === employee.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) }));
+        const holidayOnDay = allHolidays.find(h => isSameDay(new Date(h.date), day));
+    
+        const isNonWorkingDay = shiftOnDay?.isDayOff || shiftOnDay?.isHolidayOff || holidayOnDay || leaveOnDay;
+    
+        if (isNonWorkingDay) {
+            const defaultTemplate = getDefaultShiftTemplate(employee);
             return {
                 day_status: '',
-                schedule_start: shift.startTime,
-                schedule_end: shift.endTime,
-                unpaidbreak_start: shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                unpaidbreak_end: shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
-                paidbreak_start: !shift.isUnpaidBreak ? shift.breakStartTime || '' : '',
-                paidbreak_end: !shift.isUnpaidBreak ? shift.breakEndTime || '' : '',
+                ...getScheduleFromTemplate(defaultTemplate)
+            };
+        }
+    
+        if (shiftOnDay) {
+            return {
+                day_status: '', // It's a working day
+                schedule_start: shiftOnDay.startTime,
+                schedule_end: shiftOnDay.endTime,
+                unpaidbreak_start: shiftOnDay.isUnpaidBreak ? shiftOnDay.breakStartTime || '' : '',
+                unpaidbreak_end: shiftOnDay.isUnpaidBreak ? shiftOnDay.breakEndTime || '' : '',
+                paidbreak_start: !shiftOnDay.isUnpaidBreak ? shiftOnDay.breakStartTime || '' : '',
+                paidbreak_end: !shiftOnDay.isUnpaidBreak ? shiftOnDay.breakEndTime || '' : '',
             };
         }
         
-        return { ...defaultSchedule, day_status: '' };
-    }
+        // Default working day with no specific shift plotted
+        const defaultTemplate = getDefaultShiftTemplate(employee);
+        return {
+            ...getScheduleFromTemplate(defaultTemplate),
+            day_status: '', // Empty status for a working day
+        };
+    };
 
 
     const generateWorkScheduleData = (): WorkScheduleRowData[] | null => {
@@ -361,13 +365,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 const holiday = holidays.find(h => isSameDay(new Date(h.date), day));
                 
                 let scheduleCode = '';
-                if (shift?.isHolidayOff || (holiday && (!shift || shift?.isDayOff))) {
+
+                // Highest priority: Holiday Off
+                if (shift?.isHolidayOff || holiday) {
                     scheduleCode = 'HOL OFF';
-                } else if (shift?.isDayOff) {
+                }
+                // Next priority: Regular Day Off
+                else if (shift?.isDayOff) {
                     scheduleCode = 'OFF';
-                } else if (leaveEntry) {
+                }
+                // Next priority: Any other leave
+                else if (leaveEntry) {
                     scheduleCode = leaveEntry.type.toUpperCase();
-                } else if (shift) {
+                }
+                // Finally, check for a working shift
+                else if (shift) {
                    const shiftLabel = shift.label?.trim().toUpperCase();
                    scheduleCode = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
                 }
