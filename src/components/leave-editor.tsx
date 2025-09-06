@@ -41,7 +41,7 @@ const leaveSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   id: z.string().optional(),
-  status: z.enum(['pending', 'approved', 'rejected']).optional(),
+  status: z.enum(['pending', 'approved', 'rejected']),
 }).refine(data => data.isAllDay || (data.startTime && data.endTime), {
     message: "Start and end times are required for partial day leave.",
     path: ["startTime"],

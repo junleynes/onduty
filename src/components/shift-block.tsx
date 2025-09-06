@@ -61,7 +61,7 @@ const formatLeaveTime = (time: string) => {
 export function ShiftBlock({ item, onClick, interactive, context, employee: employeeProp }: ShiftBlockProps) {
   if (isLeave(item)) {
     const backgroundColor = item.color || '#f97316';
-    const isApprovedRequest = item.status === 'approved';
+    const isApprovedRequest = item.status === 'approved' && item.requestedAt;
 
     // For month view, just show the leave type for compactness
     if (context === 'month') {

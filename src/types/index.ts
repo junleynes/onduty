@@ -61,7 +61,7 @@ export type Leave = {
   isAllDay: boolean;
   startTime?: string;
   endTime?: string;
-  status?: LeaveRequestStatus;
+  status: LeaveRequestStatus;
   reason?: string;
   requestedAt?: Date;
   managedBy?: string; // ID of manager who approved/rejected

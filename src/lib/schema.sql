@@ -1,20 +1,19 @@
-
--- schema.sql
+-- Base schema for the OnDuty application
 
 CREATE TABLE IF NOT EXISTS employees (
     id TEXT PRIMARY KEY,
-    employeeNumber TEXT UNIQUE,
+    employeeNumber TEXT,
     firstName TEXT NOT NULL,
     lastName TEXT NOT NULL,
     middleInitial TEXT,
     email TEXT NOT NULL UNIQUE,
     phone TEXT,
-    password TEXT NOT NULL,
+    password TEXT,
     birthDate TEXT,
     startDate TEXT,
     lastPromotionDate TEXT,
     position TEXT,
-    role TEXT NOT NULL CHECK(role IN ('admin', 'manager', 'member')),
+    role TEXT CHECK(role IN ('admin', 'manager', 'member')) NOT NULL DEFAULT 'member',
     "group" TEXT,
     avatar TEXT,
     signature TEXT,
@@ -32,12 +31,12 @@ CREATE TABLE IF NOT EXISTS shifts (
     endTime TEXT,
     date TEXT NOT NULL,
     color TEXT,
-    isDayOff BOOLEAN DEFAULT 0,
-    isHolidayOff BOOLEAN DEFAULT 0,
-    status TEXT CHECK(status IN ('draft', 'published')),
+    isDayOff INTEGER,
+    isHolidayOff INTEGER,
+    status TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak BOOLEAN,
+    isUnpaidBreak INTEGER,
     FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
@@ -48,7 +47,7 @@ CREATE TABLE IF NOT EXISTS leave (
     color TEXT,
     startDate TEXT NOT NULL,
     endDate TEXT NOT NULL,
-    isAllDay BOOLEAN NOT NULL,
+    isAllDay INTEGER,
     startTime TEXT,
     endTime TEXT,
     status TEXT CHECK(status IN ('pending', 'approved', 'rejected')),
@@ -69,6 +68,7 @@ CREATE TABLE IF NOT EXISTS notes (
     title TEXT NOT NULL,
     description TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notes_date ON notes(date);
 
 CREATE TABLE IF NOT EXISTS holidays (
     id TEXT PRIMARY KEY,
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     host TEXT,
     port INTEGER,
-    secure BOOLEAN,
+    secure INTEGER,
     user TEXT,
     pass TEXT,
     fromEmail TEXT,
@@ -120,15 +120,15 @@ CREATE TABLE IF NOT EXISTS smtp_settings (
 );
 
 CREATE TABLE IF NOT EXISTS tardy_records (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  employeeId TEXT NOT NULL,
-  employeeName TEXT NOT NULL,
-  date TEXT NOT NULL,
-  schedule TEXT,
-  timeIn TEXT,
-  timeOut TEXT,
-  remarks TEXT,
-  FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    employeeId TEXT NOT NULL,
+    employeeName TEXT NOT NULL,
+    date TEXT NOT NULL,
+    schedule TEXT,
+    timeIn TEXT,
+    timeOut TEXT,
+    remarks TEXT,
+    FOREIGN KEY(employeeId) REFERENCES employees(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS key_value_store (
@@ -138,14 +138,14 @@ CREATE TABLE IF NOT EXISTS key_value_store (
 
 CREATE TABLE IF NOT EXISTS shift_templates (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
     label TEXT NOT NULL,
     startTime TEXT NOT NULL,
     endTime TEXT NOT NULL,
-    color TEXT NOT NULL,
+    color TEXT,
     breakStartTime TEXT,
     breakEndTime TEXT,
-    isUnpaidBreak BOOLEAN
+    isUnpaidBreak INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS leave_types (
@@ -153,5 +153,6 @@ CREATE TABLE IF NOT EXISTS leave_types (
     color TEXT NOT NULL
 );
 
--- Seed initial data
+-- Default Data
+INSERT OR IGNORE INTO groups (name) VALUES ('Administration'), ('Operations'), ('Support');
 INSERT OR IGNORE INTO leave_types (type, color) VALUES ('VL', '#3b82f6'), ('SL', '#f97316'), ('EL', '#ef4444'), ('BL', '#8b5cf6'), ('TARDY', '#eab308'), ('Work Extension', '#14b8a6');
