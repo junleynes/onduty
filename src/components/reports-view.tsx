@@ -82,7 +82,7 @@ type WorkExtensionRowData = {
 
 export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes, permissions }: ReportsViewProps) {
     const { toast } = useToast();
-    const [selectedReportType, setSelectedReportType] = useState<ReportType>('workSchedule');
+    const [selectedReportType, setSelectedReportType] = useState<ReportType>('wfh');
     
     // Date states
     const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
@@ -666,36 +666,33 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const rows: WfhCertRowData[] = [];
     
         daysInInterval.forEach(day => {
-            const shift = shifts.find(s => s.employeeId === currentUser.id && isSameDay(new Date(s.date), day));
-            const leaveEntry = leave.find(l => l.employeeId === currentUser.id && l.startDate && isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate)}));
+            const dayData = findDataForDay(day, currentUser);
     
             let attendanceRendered = '';
             let totalHrs: string | number = '';
             let remarks = '';
             let includeRow = false;
     
-            if (leaveEntry) {
-                attendanceRendered = 'ON LEAVE';
-                remarks = leaveEntry.type;
-                includeRow = true;
-            } else if (shift) {
-                if (shift.isDayOff || shift.isHolidayOff) {
-                    // Do not include row for day off/holiday off
-                } else {
-                    const shiftLabel = shift.label?.trim().toUpperCase();
+            if (dayData.status && dayData.status !== 'HOL OFF' && dayData.status !== 'OFF') {
+                if (dayData.leave) {
+                    attendanceRendered = 'ON LEAVE';
+                    remarks = dayData.leave.type.toUpperCase();
+                    includeRow = true;
+                } else if (dayData.shift) {
+                    const shiftLabel = dayData.shift.label?.trim().toUpperCase();
                     attendanceRendered = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'OFFICE-BASED';
                     includeRow = true;
                     
-                    if (shift.startTime && shift.endTime) {
-                         const start = parse(shift.startTime, 'HH:mm', new Date());
-                        const end = parse(shift.endTime, 'HH:mm', new Date());
+                    if (dayData.shift.startTime && dayData.shift.endTime) {
+                         const start = parse(dayData.shift.startTime, 'HH:mm', new Date());
+                        const end = parse(dayData.shift.endTime, 'HH:mm', new Date());
                         let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                         if (diff < 0) diff += 24;
     
                         let breakHours = 0;
-                        if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
-                            const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
-                            const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
+                        if (dayData.shift.isUnpaidBreak && dayData.shift.breakStartTime && dayData.shift.breakEndTime) {
+                            const breakStart = parse(dayData.shift.breakStartTime, 'HH:mm', new Date());
+                            const breakEnd = parse(dayData.shift.breakEndTime, 'HH:mm', new Date());
                             let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
                             if (breakDiff < 0) breakDiff += 24;
                             breakHours = breakDiff;
@@ -708,7 +705,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             if (includeRow) {
                 rows.push({
                     DATE: format(day, 'MMMM d, yyyy'),
-                    ATTENDANCE_RENDERED: attendanceRendered === 'ONLEAVE' ? 'ON LEAVE' : attendanceRendered,
+                    ATTENDANCE_RENDERED: attendanceRendered,
                     TOTAL_HRS_SPENT: totalHrs,
                     REMARKS: remarks
                 });
