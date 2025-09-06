@@ -366,20 +366,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 
                 let scheduleCode = '';
 
-                // Highest priority: Holiday Off
                 if (shift?.isHolidayOff || holiday) {
                     scheduleCode = 'HOL OFF';
-                }
-                // Next priority: Regular Day Off
-                else if (shift?.isDayOff) {
+                } else if (shift?.isDayOff) {
                     scheduleCode = 'OFF';
-                }
-                // Next priority: Any other leave
-                else if (leaveEntry) {
+                } else if (leaveEntry) {
                     scheduleCode = leaveEntry.type.toUpperCase();
-                }
-                // Finally, check for a working shift
-                else if (shift) {
+                } else if (shift) {
                    const shiftLabel = shift.label?.trim().toUpperCase();
                    scheduleCode = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
                 }
