@@ -4,6 +4,8 @@
 import type { SmtpSettings, Employee, Shift, AppVisibility } from '@/types';
 import nodemailer from 'nodemailer';
 import { getDb } from '@/lib/db';
+import fs from 'fs';
+import path from 'path';
 
 
 type Attachment = {
@@ -146,6 +148,32 @@ export async function getPublicData(): Promise<{
 
     } catch (error) {
         console.error('Failed to fetch public data:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function resetToFactorySettings(): Promise<{ success: boolean; error?: string }> {
+    const dbPath = path.join(process.cwd(), 'local.db');
+    
+    // Close the database connection if it's open.
+    // This is a simplified approach; in a real-world scenario, you might need a more robust
+    // connection management system to safely close before deleting.
+    const db = getDb();
+    if (db.open) {
+        db.close();
+    }
+    
+    // Invalidate the singleton instance in db.ts
+    const dbModule = require('@/lib/db');
+    dbModule.dbInstance = null;
+
+    try {
+        if (fs.existsSync(dbPath)) {
+            fs.unlinkSync(dbPath);
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to reset database:', error);
         return { success: false, error: (error as Error).message };
     }
 }

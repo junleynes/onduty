@@ -7,7 +7,7 @@ import path from 'path';
 // The .gitignore file will prevent it from being committed.
 const DB_PATH = path.join(process.cwd(), 'local.db');
 
-let dbInstance: Database.Database | null = null;
+export let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
     const db = new Database(DB_PATH);
@@ -69,7 +69,7 @@ export function getDb() {
     // to ensure schema changes are always applied.
     if (process.env.NODE_ENV === 'development' && fs.existsSync(DB_PATH)) {
         console.log('Development mode: Deleting old database file to ensure schema is up-to-date.');
-        fs.unlinkSync(DB_PATH);
+        //fs.unlinkSync(DB_PATH);
     }
       
     console.log(`Connecting to database at ${DB_PATH}`);

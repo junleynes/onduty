@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Employee, UserRole } from '@/types';
@@ -10,10 +10,11 @@ import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users, EyeOff } from 'lucide-react';
+import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users, EyeOff, History, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { resetToFactorySettings } from '@/app/actions';
 
 
 type AdminPanelProps = {
@@ -31,6 +32,7 @@ type AdminPanelProps = {
 export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups }: AdminPanelProps) {
   const { toast } = useToast();
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [isResetting, startResetTransition] = useTransition();
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     setUsers(users.map(user => 
@@ -53,6 +55,19 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
     } else {
         setSelectedRowIds(prev => prev.filter(rowId => rowId !== id));
     }
+  };
+  
+  const handleFactoryReset = () => {
+    startResetTransition(async () => {
+      const result = await resetToFactorySettings();
+      if (result.success) {
+        toast({ title: "System Reset Successful", description: "The application has been restored to factory settings. Please log in again." });
+        // Force a reload to clear all state and re-initialize the app
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast({ variant: 'destructive', title: 'Reset Failed', description: result.error || "An unknown error occurred." });
+      }
+    });
   };
 
   const numSelected = selectedRowIds.length;
@@ -201,6 +216,41 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
             ))}
           </TableBody>
         </Table>
+
+        <Card className="mt-8 border-destructive">
+            <CardHeader>
+                <CardTitle className="text-destructive">Danger Zone</CardTitle>
+                <CardDescription>These actions are irreversible. Please proceed with caution.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                    <div>
+                        <h4 className="font-semibold">Restore Factory Settings</h4>
+                        <p className="text-sm text-muted-foreground">This will delete all data, including users, shifts, and settings, and restore the application to its initial state.</p>
+                    </div>
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" disabled={isResetting}>
+                                {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
+                                Restore
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action is permanent and cannot be undone. All application data will be deleted, and you will be logged out.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleFactoryReset}>Yes, restore factory settings</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
+            </CardContent>
+        </Card>
       </CardContent>
     </Card>
   );
