@@ -86,6 +86,8 @@ export async function addEmployee(employeeData: Partial<Employee>): Promise<{ su
             position: data.position || '',
             ...data,
             password: data.password || 'password', // Default password
+            avatar: data.avatar || null,
+            signature: data.signature || null,
         };
 
         const stmt = db.prepare(`
@@ -105,11 +107,11 @@ export async function addEmployee(employeeData: Partial<Employee>): Promise<{ su
             position: newEmployee.position || null,
             role: newEmployee.role,
             group: newEmployee.group || null,
-            avatar: newEmployee.avatar || null,
+            avatar: newEmployee.avatar,
             loadAllocation: newEmployee.loadAllocation || 0,
             birthDate: newEmployee.birthDate ? new Date(newEmployee.birthDate).toISOString() : null,
             startDate: newEmployee.startDate ? new Date(newEmployee.startDate).toISOString() : null,
-            signature: newEmployee.signature || null,
+            signature: newEmployee.signature,
             visibility: JSON.stringify(newEmployee.visibility || {}),
             lastPromotionDate: newEmployee.lastPromotionDate ? new Date(newEmployee.lastPromotionDate).toISOString() : null,
             reportsTo: newEmployee.reportsTo || null,
@@ -149,10 +151,20 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
             return { success: false, error: 'Employee not found.' };
         }
         
+        // Merge incoming data with existing data
         const updatedEmployee = { ...existingEmployee, ...data };
 
+        // If password is not being updated, keep the old one
         if (!data.password || data.password.trim() === '') {
             updatedEmployee.password = existingEmployee.password;
+        }
+
+        // If avatar or signature is not provided in update, keep the old one
+        if (!data.avatar) {
+            updatedEmployee.avatar = existingEmployee.avatar;
+        }
+        if (!data.signature) {
+            updatedEmployee.signature = existingEmployee.signature;
         }
 
         const stmt = db.prepare(`
