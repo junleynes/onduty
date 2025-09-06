@@ -79,7 +79,6 @@ function AppContent() {
   const [isGroupEditorOpen, setIsGroupEditorOpen] = useState(false);
   const [isHolidayEditorOpen, setIsHolidayEditorOpen] = useState(false);
   const [isHolidayImporterOpen, setIsHolidayImporterOpen] = useState(false);
-  const [isPermissionsEditorOpen, setIsPermissionsEditorOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Partial<Employee> | null>(null);
   const [isPasswordResetMode, setIsPasswordResetMode] = useState(false);
   const [editorContext, setEditorContext] = useState<'admin' | 'manager'>('manager');
@@ -634,9 +633,10 @@ function AppContent() {
                 onBatchDelete={handleBatchDeleteMembers}
                 onImportMembers={() => setIsImporterOpen(true)}
                 onManageGroups={() => setIsGroupEditorOpen(true)}
-                onManagePermissions={() => setIsPermissionsEditorOpen(true)}
             />
         );
+       case 'permissions':
+        return <PermissionsEditor permissions={permissions} setPermissions={setPermissions} />;
       case 'smtp-settings':
         return <SmtpSettingsView settings={smtpSettings} onSave={setSmtpSettings} />
       default:
@@ -720,12 +720,6 @@ function AppContent() {
         isOpen={isHolidayImporterOpen}
         setIsOpen={setIsHolidayImporterOpen}
         onImport={handleImportHolidays}
-    />
-    <PermissionsEditor
-        isOpen={isPermissionsEditorOpen}
-        setIsOpen={setIsPermissionsEditorOpen}
-        permissions={permissions}
-        setPermissions={setPermissions}
     />
     <NoteEditor
         isOpen={isNoteEditorOpen}

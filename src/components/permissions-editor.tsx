@@ -3,20 +3,12 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from './ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import type { RolePermissions, UserRole, NavItemKey } from '@/types';
 import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
   // Main Views
@@ -56,13 +48,11 @@ const groupedFeatures = ALL_FEATURES.reduce((acc, feature) => {
 }, {} as Record<string, typeof ALL_FEATURES>);
 
 type PermissionsEditorProps = {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
   permissions: RolePermissions;
   setPermissions: React.Dispatch<React.SetStateAction<RolePermissions>>;
 };
 
-export function PermissionsEditor({ isOpen, setIsOpen, permissions, setPermissions }: PermissionsEditorProps) {
+export function PermissionsEditor({ permissions, setPermissions }: PermissionsEditorProps) {
   const { toast } = useToast();
 
   const handlePermissionChange = (role: UserRole, feature: NavItemKey, isChecked: boolean) => {
@@ -78,24 +68,20 @@ export function PermissionsEditor({ isOpen, setIsOpen, permissions, setPermissio
         [role]: Array.from(currentPermissions),
       };
     });
+    toast({ title: 'Permissions Updated', description: 'Changes have been saved automatically.' });
   };
 
-  const handleSaveChanges = () => {
-    // The useEffect in page.tsx will handle the actual saving
-    toast({ title: 'Permissions Updated', description: 'Changes will be saved automatically.' });
-    setIsOpen(false);
-  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Manage Permissions</DialogTitle>
-          <DialogDescription>
-            Control which sections and features each user role can access. Admins always have full access.
-          </DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="h-[60vh] border rounded-md">
+    <Card>
+      <CardHeader>
+        <CardTitle>Manage Permissions</CardTitle>
+        <CardDescription>
+            Control which sections and features each user role can access. Admins always have full access. Changes are saved automatically.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[70vh] border rounded-md">
           <Table>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
@@ -106,7 +92,7 @@ export function PermissionsEditor({ isOpen, setIsOpen, permissions, setPermissio
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Object.entries(groupedFeatures).map(([groupName, features], index) => (
+              {Object.entries(groupedFeatures).map(([groupName, features]) => (
                 <React.Fragment key={groupName}>
                     <TableRow>
                         <TableCell colSpan={ROLES.length + 1} className="font-semibold bg-muted/50 py-2">
@@ -132,11 +118,7 @@ export function PermissionsEditor({ isOpen, setIsOpen, permissions, setPermissio
             </TableBody>
           </Table>
         </ScrollArea>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveChanges}>Save Changes</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   );
 }

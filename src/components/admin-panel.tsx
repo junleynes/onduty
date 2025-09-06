@@ -27,10 +27,9 @@ type AdminPanelProps = {
   onBatchDelete: (employeeIds: string[]) => void;
   onImportMembers: () => void;
   onManageGroups: () => void;
-  onManagePermissions: () => void;
 };
 
-export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups, onManagePermissions }: AdminPanelProps) {
+export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups }: AdminPanelProps) {
   const { toast } = useToast();
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [isResetting, startResetTransition] = useTransition();
@@ -111,10 +110,6 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
                 </AlertDialog>
             ) : (
                 <>
-                    <Button variant="outline" onClick={onManagePermissions}>
-                        <ShieldCheck className="h-4 w-4 mr-2" />
-                        Manage Permissions
-                    </Button>
                     <Button variant="outline" onClick={onManageGroups}>
                         <Users className="h-4 w-4 mr-2" />
                         Manage Groups

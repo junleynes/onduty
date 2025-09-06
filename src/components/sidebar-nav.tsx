@@ -87,6 +87,7 @@ const allNavItems: Record<string, NavGroup[]> = {
             label: 'Admin',
             items: [
                 { view: 'admin', label: 'Admin Panel', icon: Shield, iconColor: 'bg-red-500' },
+                { view: 'permissions', label: 'Permissions', icon: ShieldCheck, iconColor: 'bg-red-500' },
                 { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
             ]
         }
