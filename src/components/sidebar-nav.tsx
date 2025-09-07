@@ -67,6 +67,13 @@ const allNavItems: Record<string, NavGroup[]> = {
                 { view: 'my-tasks', label: 'My Shift Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
             ]
         },
+         {
+            label: 'Communication',
+            items: [
+                { view: 'news-feeds', label: 'News Feeds', icon: Newspaper, iconColor: 'bg-cyan-500' },
+                { view: 'chat', label: 'Chat', icon: MessageSquare, iconColor: 'bg-emerald-500' },
+            ]
+        },
         {
             label: 'Operations',
             items: [
@@ -75,13 +82,6 @@ const allNavItems: Record<string, NavGroup[]> = {
                 { view: 'time-off', label: 'Time Off', icon: Plane, iconColor: 'bg-blue-500' },
                 { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
                 { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
-            ]
-        },
-         {
-            label: 'Communication',
-            items: [
-                { view: 'news-feeds', label: 'News Feeds', icon: Newspaper, iconColor: 'bg-cyan-500' },
-                { view: 'chat', label: 'Chat', icon: MessageSquare, iconColor: 'bg-emerald-500' },
             ]
         },
         {
@@ -119,7 +119,7 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
         return (
              <div className="flex flex-col h-full text-sidebar-foreground">
                 <SidebarMenu className="flex-1 px-2">
-                    {allNavItems.all.map((group) => (
+                    {adminNavGroups.map((group) => (
                          <SidebarGroup key={group.label}>
                             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
                             {group.items.map(({ view, label, icon: Icon, iconColor }) => (
