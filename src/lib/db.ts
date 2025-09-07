@@ -30,19 +30,19 @@ function initializeDatabase() {
     // Run migrations to add new columns if they don't exist
     try {
         db.exec("ALTER TABLE employees ADD COLUMN gender TEXT;");
-        console.log("Column 'gender' added to 'employees' table.");
+        console.log("Migration successful: Added 'gender' column to 'employees' table.");
     } catch (e: any) {
         if (!e.message.includes('duplicate column name')) {
-            console.error("Error adding 'gender' column:", e);
+            console.error("Error migrating 'gender' column:", e.message);
         }
     }
     
     try {
         db.exec("ALTER TABLE employees ADD COLUMN employeeClassification TEXT;");
-        console.log("Column 'employeeClassification' added to 'employees' table.");
+        console.log("Migration successful: Added 'employeeClassification' column to 'employees' table.");
     } catch (e: any) {
          if (!e.message.includes('duplicate column name')) {
-            console.error("Error adding 'employeeClassification' column:", e);
+            console.error("Error migrating 'employeeClassification' column:", e.message);
         }
     }
 
@@ -56,7 +56,32 @@ export function getDb() {
     }
       
     console.log(`Connecting to database at ${DB_PATH}`);
-    dbInstance = initializeDatabase();
+    try {
+        dbInstance = initializeDatabase();
+    } catch(error: any) {
+        if (error.code === 'SQLITE_CORRUPT' || error.message.includes('malformed') || error.message.includes('not a database')) {
+            console.error(`Database file at ${DB_PATH} is corrupted. Deleting and re-initializing.`, error);
+            if (dbInstance && dbInstance.open) {
+                dbInstance.close();
+            }
+            try {
+                fs.unlinkSync(DB_PATH);
+                const shmPath = `${DB_PATH}-shm`;
+                if (fs.existsSync(shmPath)) fs.unlinkSync(shmPath);
+                const walPath = `${DB_PATH}-wal`;
+                if (fs.existsSync(walPath)) fs.unlinkSync(walPath);
+                console.log('Corrupted database file deleted.');
+            } catch (unlinkError) {
+                console.error('Failed to delete corrupted database file:', unlinkError);
+                throw unlinkError; // If we can't delete it, we can't continue.
+            }
+            // Retry initialization
+            dbInstance = initializeDatabase();
+        } else {
+            // Re-throw other errors
+            throw error;
+        }
+    }
 
     process.on('exit', () => {
         if (dbInstance && dbInstance.open) {
