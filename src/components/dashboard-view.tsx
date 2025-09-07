@@ -45,6 +45,7 @@ const QUICK_LINKS: { view: NavItemKey; label: string; description: string; }[] =
     { view: 'onduty', label: 'On Duty', description: 'See who is currently on shift.' },
     { view: 'celebrations', label: 'Celebrations', description: 'View upcoming birthdays and anniversaries.' },
     { view: 'holidays', label: 'Holidays', description: 'Check the official company holiday list.' },
+    { view: 'allowance', label: 'Mobile Load', description: 'Manage your mobile allowance.' },
 ];
 
 type DashboardViewProps = {
