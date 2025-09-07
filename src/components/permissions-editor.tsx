@@ -32,7 +32,7 @@ const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
   { key: 'report-tardy', label: 'Tardy Report', group: 'Reports' },
   { key: 'report-wfh', label: 'WFH Certification', group: 'Reports' },
   // Admin
-  { key: 'admin', label: 'Admin Panel', group: 'Admin' },
+  { key: 'admin', label: 'Users and Groups', group: 'Admin' },
   { key: 'smtp-settings', label: 'SMTP Settings', group: 'Admin' },
   { key: 'permissions', label: 'Permissions', group: 'Admin' },
 ];

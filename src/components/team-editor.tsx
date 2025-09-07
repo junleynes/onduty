@@ -51,6 +51,8 @@ const employeeSchema = z.object({
       orgChart: z.boolean().optional(),
       mobileLoad: z.boolean().optional(),
   }).optional(),
+  gender: z.enum(['Male', 'Female']).optional(),
+  employeeClassification: z.enum(['Rank-and-File', 'Confidential', 'Managerial']).optional(),
 }).refine(data => {
     // If it's a new user (no ID), password is required and must be at least 6 chars
     if (!data.id) {
@@ -139,7 +141,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         setAvatarPreview(employee?.avatar || null);
         setSignaturePreview(employee?.signature || null);
     }
-  }, [employee, form, isOpen, isNewEmployee, isPasswordResetMode]);
+  }, [employee, form, isOpen, isNewEmployee]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'avatar' | 'signature') => {
       const file = e.target.files?.[0];
@@ -366,6 +368,52 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                 />
                             </div>
                             
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="gender"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Gender</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a gender" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="Male">Male</SelectItem>
+                                                <SelectItem value="Female">Female</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="employeeClassification"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Employee Classification</FormLabel>
+                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a classification" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="Rank-and-File">Rank-and-File</SelectItem>
+                                                <SelectItem value="Confidential">Confidential</SelectItem>
+                                                <SelectItem value="Managerial">Managerial</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+
                             <FormField
                                 control={form.control}
                                 name="reportsTo"

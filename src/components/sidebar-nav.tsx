@@ -86,7 +86,7 @@ const allNavItems: Record<string, NavGroup[]> = {
         {
             label: 'Admin',
             items: [
-                { view: 'admin', label: 'Admin Panel', icon: Shield, iconColor: 'bg-red-500' },
+                { view: 'admin', label: 'Users and Groups', icon: Shield, iconColor: 'bg-red-500' },
                 { view: 'permissions', label: 'Permissions', icon: ShieldCheck, iconColor: 'bg-red-500' },
                 { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
             ]
@@ -95,12 +95,42 @@ const allNavItems: Record<string, NavGroup[]> = {
 };
 
 export default function SidebarNav({ role, activeView, onNavigate, permissions }: SidebarNavProps) {
-  const allowedViews = new Set(permissions[role] || []);
+    if (role === 'admin') {
+        const adminNavGroups = allNavItems.all.filter(group => group.label === 'Admin');
+        return (
+             <div className="flex flex-col h-full text-sidebar-foreground">
+                <SidebarMenu className="flex-1 px-2">
+                    {adminNavGroups.map((group) => (
+                        <SidebarGroup key={group.label}>
+                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                            {group.items.map(({ view, label, icon: Icon, iconColor }) => (
+                            <SidebarMenuItem key={view}>
+                                <SidebarMenuButton
+                                onClick={() => onNavigate(view)}
+                                isActive={activeView === view}
+                                className="justify-start gap-3"
+                                tooltip={label}
+                                >
+                                <div className={`p-1.5 rounded-md text-white ${iconColor}`}>
+                                    <Icon className="size-4" />
+                                </div>
+                                <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            ))}
+                        </SidebarGroup>
+                    ))}
+                </SidebarMenu>
+            </div>
+        );
+    }
+    
+    const allowedViews = new Set(permissions[role] || []);
 
-  const navGroups = allNavItems.all.map(group => ({
+    const navGroups = allNavItems.all.map(group => ({
       ...group,
       items: group.items.filter(item => allowedViews.has(item.view))
-  })).filter(group => group.items.length > 0);
+    })).filter(group => group.items.length > 0);
 
 
   return (

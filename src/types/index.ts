@@ -29,6 +29,8 @@ export type Employee = {
   loadAllocation?: number;
   reportsTo?: string | null;
   visibility?: AppVisibility;
+  gender?: 'Male' | 'Female';
+  employeeClassification?: 'Rank-and-File' | 'Confidential' | 'Managerial';
 };
 
 export type Shift = {

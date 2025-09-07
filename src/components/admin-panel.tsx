@@ -82,7 +82,7 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
     <Card>
       <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-            <CardTitle>Admin Panel</CardTitle>
+            <CardTitle>Users and Groups</CardTitle>
             <CardDescription>Manage users, roles, and group assignments.</CardDescription>
         </div>
          <div className="flex gap-2 flex-wrap justify-start md:justify-end">

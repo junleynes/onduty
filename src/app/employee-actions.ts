@@ -31,6 +31,8 @@ const employeeSchema = z.object({
       orgChart: z.boolean().optional(),
       mobileLoad: z.boolean().optional(),
   }).optional(),
+  gender: z.enum(['Male', 'Female']).optional(),
+  employeeClassification: z.enum(['Rank-and-File', 'Confidential', 'Managerial']).optional(),
 }).refine(data => {
     // If it's a new user (no ID), password is required and must be at least 6 chars
     if (!data.id) {
@@ -91,8 +93,8 @@ export async function addEmployee(employeeData: Partial<Employee>): Promise<{ su
         };
 
         const stmt = db.prepare(`
-            INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate, reportsTo)
-            VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate, @reportsTo)
+            INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate, reportsTo, gender, employeeClassification)
+            VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate, @reportsTo, @gender, @employeeClassification)
         `);
 
         stmt.run({
@@ -115,6 +117,8 @@ export async function addEmployee(employeeData: Partial<Employee>): Promise<{ su
             visibility: JSON.stringify(newEmployee.visibility || {}),
             lastPromotionDate: newEmployee.lastPromotionDate ? new Date(newEmployee.lastPromotionDate).toISOString() : null,
             reportsTo: newEmployee.reportsTo || null,
+            gender: newEmployee.gender || null,
+            employeeClassification: newEmployee.employeeClassification || null,
         });
 
         return { success: true, employee: newEmployee };
@@ -186,7 +190,9 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
                 signature = @signature,
                 visibility = @visibility,
                 lastPromotionDate = @lastPromotionDate,
-                reportsTo = @reportsTo
+                reportsTo = @reportsTo,
+                gender = @gender,
+                employeeClassification = @employeeClassification
             WHERE id = @id
         `);
 
@@ -210,6 +216,8 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
             visibility: JSON.stringify(updatedEmployee.visibility || {}),
             lastPromotionDate: updatedEmployee.lastPromotionDate ? new Date(updatedEmployee.lastPromotionDate).toISOString() : null,
             reportsTo: updatedEmployee.reportsTo || null,
+            gender: updatedEmployee.gender || null,
+            employeeClassification: updatedEmployee.employeeClassification || null,
         });
 
         return { success: true, employee: updatedEmployee };

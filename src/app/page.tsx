@@ -209,15 +209,17 @@ function AppContent() {
       // Final check to set user or log out
       if (userToSet) {
         setCurrentUser(userToSet);
-        const userPermissions = result.data?.permissions[userToSet.role] || [];
-        if (userPermissions.includes('admin')) {
-          setActiveView('admin');
-        } else if (userPermissions.includes('schedule')) {
-          setActiveView('schedule');
-        } else if (userPermissions.includes('my-schedule')) {
-           setActiveView('my-schedule');
-        } else if (userPermissions.length > 0) {
-            setActiveView(userPermissions[0]);
+        if (userToSet.role === 'admin') {
+            setActiveView('admin');
+        } else {
+            const userPermissions = result.data?.permissions[userToSet.role] || [];
+            if (userPermissions.includes('schedule')) {
+              setActiveView('schedule');
+            } else if (userPermissions.includes('my-schedule')) {
+               setActiveView('my-schedule');
+            } else if (userPermissions.length > 0) {
+                setActiveView(userPermissions[0]);
+            }
         }
       } else {
         handleLogout(); 
@@ -517,20 +519,23 @@ function AppContent() {
     }
 
     const membersOfMyGroup = employees.filter(e => e.group === currentUser.group);
-    const userPermissions = permissions[currentUser.role] || [];
     
-    if (!userPermissions.includes(activeView)) {
-         return (
-             <Card>
-                <CardHeader>
-                    <CardTitle>Access Denied</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p>You do not have permission to view this page. Please contact an administrator.</p>
-                </CardContent>
-            </Card>
-        )
+    if (currentUser.role !== 'admin') {
+      const userPermissions = permissions[currentUser.role] || [];
+      if (!userPermissions.includes(activeView)) {
+           return (
+               <Card>
+                  <CardHeader>
+                      <CardTitle>Access Denied</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <p>You do not have permission to view this page. Please contact an administrator.</p>
+                  </CardContent>
+              </Card>
+          )
+      }
     }
+
 
     switch (activeView) {
       case 'schedule': {
