@@ -38,13 +38,13 @@ const iconMap: Record<NavItemKey, { icon: React.ElementType, color: string }> = 
 
 
 const QUICK_LINKS: { view: NavItemKey; label: string; description: string; }[] = [
-    { view: 'schedule', label: 'Schedule', description: 'View and manage team schedules.' },
     { view: 'my-schedule', label: 'My Schedule', description: 'Check your upcoming shifts.' },
+    { view: 'my-tasks', label: 'My Tasks', description: 'Check your assigned shift tasks.' },
     { view: 'team', label: 'Team', description: 'See all members of your group.' },
     { view: 'time-off', label: 'Time Off', description: 'Request and manage leave.' },
-    { view: 'my-tasks', label: 'My Tasks', description: 'Check your assigned shift tasks.' },
     { view: 'onduty', label: 'On Duty', description: 'See who is currently on shift.' },
-    { view: 'org-chart', label: 'Org Chart', description: 'Visualize the team structure.' },
+    { view: 'celebrations', label: 'Celebrations', description: 'View upcoming birthdays and anniversaries.' },
+    { view: 'holidays', label: 'Holidays', description: 'Check the official company holiday list.' },
 ];
 
 type DashboardViewProps = {
