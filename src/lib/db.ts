@@ -29,20 +29,20 @@ function initializeDatabase() {
         }
     }
     
-    // Also check for a key column in the 'leave' table to ensure schema is updated.
-    let leaveTableIsCorrect = false;
+    // Also check for columns to ensure schema is updated.
+    let schemaIsUpToDate = false;
     if (allTablesExist) {
         try {
-            const columns = db.prepare("PRAGMA table_info(leave)").all();
-            if (columns.some((col: any) => col.name === 'startDate')) {
-                leaveTableIsCorrect = true;
+            const columns = db.prepare("PRAGMA table_info(employees)").all();
+            if (columns.some((col: any) => col.name === 'gender')) {
+                schemaIsUpToDate = true;
             }
         } catch (e) {
             // Table might not exist, which is handled by allTablesExist
         }
     }
 
-    if (!allTablesExist || !leaveTableIsCorrect) {
+    if (!allTablesExist || !schemaIsUpToDate) {
         console.log('One or more database tables are missing or outdated. Applying schema...');
         const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
         if (fs.existsSync(schemaPath)) {
