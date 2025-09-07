@@ -44,6 +44,8 @@ const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
 ];
 
 const ROLES: UserRole[] = ['admin', 'manager', 'member'];
+const ADMIN_ONLY_FEATURES: NavItemKey[] = ['admin', 'permissions', 'smtp-settings', 'danger-zone'];
+
 
 const groupedFeatures = ALL_FEATURES.reduce((acc, feature) => {
     if (!acc[feature.group]) {
@@ -83,7 +85,7 @@ export function PermissionsEditor({ permissions, setPermissions }: PermissionsEd
       <CardHeader>
         <CardTitle>Manage Permissions</CardTitle>
         <CardDescription>
-            Control which sections and features each user role can access. Admins always have full access. Changes are saved automatically.
+            Control which sections and features each user role can access. Changes are saved automatically.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -108,15 +110,18 @@ export function PermissionsEditor({ permissions, setPermissions }: PermissionsEd
                     {features.map(({ key, label }) => (
                         <TableRow key={key}>
                         <TableCell className="font-medium">{label}</TableCell>
-                        {ROLES.map(role => (
-                            <TableCell key={role} className="text-center">
-                            <Checkbox
-                                checked={permissions[role]?.includes(key)}
-                                onCheckedChange={(checked) => handlePermissionChange(role, key, !!checked)}
-                                disabled={role === 'admin'}
-                            />
-                            </TableCell>
-                        ))}
+                        {ROLES.map(role => {
+                            const isChecked = role === 'admin' ? ADMIN_ONLY_FEATURES.includes(key) : permissions[role]?.includes(key);
+                            return (
+                                <TableCell key={role} className="text-center">
+                                <Checkbox
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => handlePermissionChange(role, key, !!checked)}
+                                    disabled={role === 'admin'}
+                                />
+                                </TableCell>
+                            );
+                        })}
                         </TableRow>
                     ))}
                 </React.Fragment>
