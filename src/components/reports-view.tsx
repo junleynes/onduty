@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, from 'react';
@@ -11,7 +10,7 @@ import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn, getFullName, getInitialState } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth, startOfDay, differenceInMinutes, set, addDays } from 'date-fns';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth, startOfDay, differenceInMinutes, set, addDays, endOfDay } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import { WfhCertificationTemplateUploader } from './wfh-certification-template-uploader';
@@ -108,7 +107,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [overtimeDateRange, setOvertimeDateRange] = React.useState<DateRange | undefined>();
 
     // Settings states
-    const [ndStartTime, setNdStartTime] = React.useState<string>(() => getInitialState('ndStartTime', '20:00'));
+    const [ndStartTime, setNdStartTime] = React.useState<string>(() => getInitialState('ndStartTime', '22:00'));
     const [ndEndTime, setNdEndTime] = React.useState<string>(() => getInitialState('ndEndTime', '06:00'));
     const [ndClassifications, setNdClassifications] = React.useState<string[]>(() => getInitialState('ndClassifications', ['Rank-and-File']));
 
@@ -729,9 +728,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     if (dayData.shift.isUnpaidBreak && dayData.shift.breakStartTime && dayData.shift.breakEndTime) {
                         const breakStart = parse(dayData.shift.breakStartTime, 'HH:mm', new Date());
                         const breakEnd = parse(dayData.shift.breakEndTime, 'HH:mm', new Date());
-                        let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
-                        if (breakDiff < 0) breakDiff += 24;
-                        breakHours = breakDiff;
+                        if (!isNaN(breakStart.getTime()) || !isNaN(breakEnd.getTime())) {
+                            let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
+                            if (breakDiff < 0) breakDiff += 24;
+                            breakHours = breakDiff;
+                        }
                     }
                     totalHrs = (diff - breakHours).toFixed(2);
                 }
@@ -1016,29 +1017,32 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the report.' });
             return null;
         }
-    
+
         const applicableEmployees = employees.filter(e => ndClassifications.includes(e.employeeClassification || ''));
-    
         const data: OvertimeRowData[] = [];
-        
         const daysInInterval = eachDayOfInterval({ start: overtimeDateRange.from, end: overtimeDateRange.to });
-    
+
         applicableEmployees.forEach(employee => {
             daysInInterval.forEach(day => {
-                const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day) && !s.isDayOff && !s.isHolidayOff);
-                const workExtensions = leave.filter(l => 
-                    l.employeeId === employee.id && 
-                    l.type === 'Work Extension' && 
-                    l.originalShiftDate && 
-                    isSameDay(new Date(l.originalShiftDate), day)
-                );
-    
                 let otMinutes = 0;
                 let ndMinutes = 0;
-                let shiftDisplay = "No Shift";
-    
+                
+                const shiftOnDay = shifts.find(s => 
+                    s.employeeId === employee.id && 
+                    isSameDay(new Date(s.date), day) && 
+                    !s.isDayOff && 
+                    !s.isHolidayOff
+                );
+                
+                const workExtensionsOnDay = leave.filter(l => 
+                    l.employeeId === employee.id && 
+                    l.type === 'Work Extension' && 
+                    l.startDate && 
+                    isSameDay(new Date(l.startDate), day)
+                );
+
                 // Calculate OT from Work Extensions
-                workExtensions.forEach(ext => {
+                workExtensionsOnDay.forEach(ext => {
                     if (ext.startTime && ext.endTime && ext.startDate) {
                         const start = parse(ext.startTime, 'HH:mm', new Date(ext.startDate));
                         const end = parse(ext.endTime, 'HH:mm', new Date(ext.startDate));
@@ -1046,66 +1050,51 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         otMinutes += differenceInMinutes(end, start);
                     }
                 });
-    
+
                 // Calculate ND from regular shift
-                if (shift && shift.startTime && shift.endTime) {
-                    shiftDisplay = `${shift.startTime} - ${shift.endTime}`;
-                    const shiftStart = parse(shift.startTime, 'HH:mm', day);
-                    let shiftEnd = parse(shift.endTime, 'HH:mm', day);
-                     if (shiftEnd <= shiftStart) {
+                if (shiftOnDay && shiftOnDay.startTime && shiftOnDay.endTime) {
+                    const shiftStart = parse(shiftOnDay.startTime, 'HH:mm', day);
+                    let shiftEnd = parse(shiftOnDay.endTime, 'HH:mm', day);
+                    if (shiftEnd <= shiftStart) {
                         shiftEnd = addDays(shiftEnd, 1);
                     }
-    
+
                     const [ndStartHour, ndStartMinute] = ndStartTime.split(':').map(Number);
                     const [ndEndHour, ndEndMinute] = ndEndTime.split(':').map(Number);
                     
-                    let ndPeriodStart = set(day, { hours: ndStartHour, minutes: ndStartMinute, seconds: 0, milliseconds: 0 });
-                    let ndPeriodEnd = set(day, { hours: ndEndHour, minutes: ndEndMinute, seconds: 0, milliseconds: 0 });
-    
-                    if (ndPeriodEnd <= ndPeriodStart) { // Overnight ND period, e.g., 20:00 to 06:00
-                        // We check for overlap with two periods:
-                        // 1. From ndStartTime today to midnight
-                        // 2. From midnight to ndEndTime tomorrow
-    
-                        // Period 1: Today
-                        const ndStartToday = ndPeriodStart;
-                        const ndEndToday = endOfDay(day);
-                        const overlapStart1 = Math.max(shiftStart.getTime(), ndStartToday.getTime());
-                        const overlapEnd1 = Math.min(shiftEnd.getTime(), ndEndToday.getTime());
-                        if (overlapEnd1 > overlapStart1) {
-                            ndMinutes += (overlapEnd1 - overlapStart1) / (1000 * 60);
-                        }
-    
-                        // Period 2: Tomorrow
-                        const ndStartTomorrow = startOfDay(addDays(day, 1));
-                        const ndEndTomorrow = addDays(ndPeriodEnd, 0); // it's already set to next day logic
-                        const overlapStart2 = Math.max(shiftStart.getTime(), ndStartTomorrow.getTime());
-                        const overlapEnd2 = Math.min(shiftEnd.getTime(), ndEndTomorrow.getTime());
-                         if (overlapEnd2 > overlapStart2) {
-                            ndMinutes += (overlapEnd2 - overlapStart2) / (1000 * 60);
-                        }
-                    } else { // Same-day ND period
-                        const overlapStart = Math.max(shiftStart.getTime(), ndPeriodStart.getTime());
-                        const overlapEnd = Math.min(shiftEnd.getTime(), ndPeriodEnd.getTime());
-    
-                        if (overlapEnd > overlapStart) {
-                            ndMinutes += (overlapEnd - overlapStart) / (1000 * 60);
-                        }
+                    let ndPeriodStartToday = set(day, { hours: ndStartHour, minutes: ndStartMinute, seconds: 0, milliseconds: 0 });
+                    let ndPeriodEndToday = endOfDay(day);
+                    
+                    let ndPeriodStartTomorrow = startOfDay(addDays(day, 1));
+                    let ndPeriodEndTomorrow = set(addDays(day, 1), { hours: ndEndHour, minutes: ndEndMinute, seconds: 0, milliseconds: 0 });
+
+                    // Overlap with today's ND period (e.g., 22:00 to 23:59)
+                    const overlapStart1 = Math.max(shiftStart.getTime(), ndPeriodStartToday.getTime());
+                    const overlapEnd1 = Math.min(shiftEnd.getTime(), ndPeriodEndToday.getTime());
+                    if (overlapEnd1 > overlapStart1) {
+                        ndMinutes += (overlapEnd1 - overlapStart1) / (1000 * 60);
+                    }
+                    
+                    // Overlap with tomorrow's ND period (e.g., 00:00 to 06:00)
+                    const overlapStart2 = Math.max(shiftStart.getTime(), ndPeriodStartTomorrow.getTime());
+                    const overlapEnd2 = Math.min(shiftEnd.getTime(), ndPeriodEndTomorrow.getTime());
+                    if (overlapEnd2 > overlapStart2) {
+                        ndMinutes += (overlapEnd2 - overlapStart2) / (1000 * 60);
                     }
                 }
-    
+                
                 if (otMinutes > 0 || ndMinutes > 0) {
-                     data.push({
+                    data.push({
                         employee_name: getFullName(employee),
                         date: format(day, 'yyyy-MM-dd'),
-                        shift: shiftDisplay,
+                        shift: shiftOnDay ? `${shiftOnDay.startTime} - ${shiftOnDay.endTime}` : "No Shift",
                         ot_hours: (otMinutes / 60).toFixed(2),
                         nd_hours: (ndMinutes / 60).toFixed(2)
                     });
                 }
             });
         });
-    
+
         return data;
     }
 
@@ -1186,31 +1175,31 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         if (type === 'workSchedule') {
             const rawData = generateWorkScheduleData();
             data = generateWorkSchedulePreviewData(rawData);
-            if (data) {
+            if (data && workScheduleDateRange?.from && workScheduleDateRange?.to) {
                 title = `Regular Work Schedule (${format(workScheduleDateRange!.from!, 'LLL d')} - ${format(workScheduleDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadWorkSchedule(rawData);
             }
         } else if (type === 'attendance') {
             data = generateAttendanceSheetData();
-            if (data) {
+            if (data && attendanceDateRange?.from && attendanceDateRange?.to) {
                 title = `Attendance Sheet (${format(attendanceDateRange!.from!, 'LLL d')} - ${format(attendanceDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadAttendanceSheet(data);
             }
         } else if (type === 'userSummary') {
             data = generateUserSummaryData();
-            if (data) {
+            if (data && summaryDateRange?.from && summaryDateRange?.to) {
                 title = `User Summary (${format(summaryDateRange!.from!, 'LLL d')} - ${format(summaryDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadUserSummary(data);
             }
         } else if (type === 'tardy') {
             data = generateTardyReportData();
-            if (data) {
+            if (data && tardyDateRange?.from && tardyDateRange?.to) {
                 title = `Cumulative Tardy Report (${format(tardyDateRange!.from!, 'LLL d')} - ${format(tardyDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadTardyReport(data);
             }
         } else if (type === 'wfh') {
             const rawData = generateWfhCertificationData();
-            if (rawData) {
+            if (rawData && wfhCertDateRange?.from) {
                 const previewRows = rawData.map(d => [d.DATE, d.ATTENDANCE_RENDERED, d.TOTAL_HRS_SPENT, d.REMARKS]);
                 data = {
                     headers: ['DATE', 'ATTENDANCE_RENDERED', 'TOTAL_HRS_SPENT', 'REMARKS'],
@@ -1221,7 +1210,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
         } else if (type === 'workExtension') {
             const rawData = generateWorkExtensionData();
-            if (rawData) {
+            if (rawData && workExtensionDateRange?.from && workExtensionDateRange?.to) {
                 data = {
                     headers: ['Employee', 'Work Date', 'Sched Start', 'Sched End', 'Ext Date', 'Ext Start', 'Ext End', 'Total Hours', 'Reason'],
                     rows: rawData.map(d => Object.values(d))
@@ -1231,7 +1220,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             }
         } else if (type === 'overtime') {
             const rawData = generateOvertimeData();
-             if (rawData) {
+             if (rawData && overtimeDateRange?.from && overtimeDateRange?.to) {
                 data = {
                     headers: ['Employee', 'Date', 'Shift', 'OT Hours', 'ND Hours'],
                     rows: rawData.map(d => Object.values(d))
@@ -1778,6 +1767,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     );
 }
 
-const endOfDay = (date: Date): Date => {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-}
+// const endOfDay = (date: Date): Date => {
+//     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+// }
+
+    
+
+    
