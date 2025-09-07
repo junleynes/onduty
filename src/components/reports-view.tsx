@@ -2,16 +2,16 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, from 'react';
 import type { Employee, Shift, Leave, Holiday, TardyRecord, RolePermissions } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
-import { Download, Upload, Calendar as CalendarIcon, Eye } from 'lucide-react';
+import { Download, Upload, Calendar as CalendarIcon, Eye, Settings } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
-import { cn, getFullName } from '@/lib/utils';
-import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth, startOfDay } from 'date-fns';
+import { cn, getFullName, getInitialState } from '@/lib/utils';
+import { format, eachDayOfInterval, isSameDay, getDate, startOfWeek, endOfWeek, parse, isWithinInterval, startOfMonth, endOfMonth, addMonths, getMonth, startOfDay, differenceInMinutes, set } from 'date-fns';
 import { ReportTemplateUploader } from './report-template-uploader';
 import { AttendanceTemplateUploader } from './attendance-template-uploader';
 import { WfhCertificationTemplateUploader } from './wfh-certification-template-uploader';
@@ -24,6 +24,11 @@ import { TardyImporter } from './tardy-importer';
 import { WorkExtensionTemplateUploader } from './work-extension-template-uploader';
 import type { LeaveTypeOption } from './leave-type-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogContent } from './ui/dialog';
+import { Label } from './ui/label';
+import { Input } from './ui/input';
+import { Checkbox } from './ui/checkbox';
+import { OvertimeTemplateUploader } from './overtime-template-uploader';
 
 
 type ReportsViewProps = {
@@ -41,7 +46,7 @@ type ReportsViewProps = {
     permissions: RolePermissions;
 }
 
-type ReportType = 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension';
+type ReportType = 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension' | 'overtime';
 
 type ReportData = {
     headers: string[];
@@ -79,50 +84,67 @@ type WorkExtensionRowData = {
     reason: string;
 };
 
+type OvertimeRowData = {
+    employee_name: string;
+    date: string;
+    shift: string;
+    ot_hours: string;
+    nd_hours: string;
+}
+
+const ALL_CLASSIFICATIONS = ['Rank-and-File', 'Confidential', 'Managerial'];
 
 export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes, permissions }: ReportsViewProps) {
     const { toast } = useToast();
-    const [selectedReportType, setSelectedReportType] = useState<ReportType>('wfh');
+    const [selectedReportType, setSelectedReportType] = React.useState<ReportType>('wfh');
     
     // Date states
-    const [workScheduleDateRange, setWorkScheduleDateRange] = useState<DateRange | undefined>();
-    const [attendanceWeek, setAttendanceWeek] = useState<Date | undefined>();
-    const [summaryDateRange, setSummaryDateRange] = useState<DateRange | undefined>();
-    const [tardyDateRange, setTardyDateRange] = useState<DateRange | undefined>();
-    const [wfhCertMonth, setWfhCertMonth] = useState<Date | undefined>();
-    const [workExtensionWeek, setWorkExtensionWeek] = useState<Date | undefined>();
+    const [workScheduleDateRange, setWorkScheduleDateRange] = React.useState<DateRange | undefined>();
+    const [attendanceWeek, setAttendanceWeek] = React.useState<Date | undefined>();
+    const [summaryDateRange, setSummaryDateRange] = React.useState<DateRange | undefined>();
+    const [tardyDateRange, setTardyDateRange] = React.useState<DateRange | undefined>();
+    const [wfhCertMonth, setWfhCertMonth] = React.useState<Date | undefined>();
+    const [workExtensionWeek, setWorkExtensionWeek] = React.useState<Date | undefined>();
+    const [overtimeDateRange, setOvertimeDateRange] = React.useState<DateRange | undefined>();
+
+    // Settings states
+    const [ndStartTime, setNdStartTime] = React.useState<string>(() => getInitialState('ndStartTime', '20:00'));
+    const [ndEndTime, setNdEndTime] = React.useState<string>(() => getInitialState('ndEndTime', '06:00'));
+    const [ndClassifications, setNdClassifications] = React.useState<string[]>(() => getInitialState('ndClassifications', ['Rank-and-File']));
 
     // Dialog states
-    const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = useState(false);
-    const [isAttendanceUploaderOpen, setIsAttendanceUploaderOpen] = useState(false);
-    const [isWfhCertUploaderOpen, setIsWfhCertUploaderOpen] = useState(false);
-    const [isTardyImporterOpen, setIsTardyImporterOpen] = useState(false);
-    const [isWorkExtensionUploaderOpen, setIsWorkExtensionUploaderOpen] = useState(false);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = React.useState(false);
+    const [isAttendanceUploaderOpen, setIsAttendanceUploaderOpen] = React.useState(false);
+    const [isWfhCertUploaderOpen, setIsWfhCertUploaderOpen] = React.useState(false);
+    const [isTardyImporterOpen, setIsTardyImporterOpen] = React.useState(false);
+    const [isWorkExtensionUploaderOpen, setIsWorkExtensionUploaderOpen] = React.useState(false);
+    const [isOvertimeUploaderOpen, setIsOvertimeUploaderOpen] = React.useState(false);
+    const [isOvertimeSettingsOpen, setIsOvertimeSettingsOpen] = React.useState(false);
+    const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
     
     // Preview states
-    const [previewData, setPreviewData] = useState<ReportData | null>(null);
-    const [reportGenerator, setReportGenerator] = useState<(() => Promise<void>) | null>(null);
-    const [reportTitle, setReportTitle] = useState('');
+    const [previewData, setPreviewData] = React.useState<ReportData | null>(null);
+    const [reportGenerator, setReportGenerator] = React.useState<(() => Promise<void>) | null>(null);
+    const [reportTitle, setReportTitle] = React.useState('');
 
     const userPermissions = permissions[currentUser.role] || [];
 
 
-    const attendanceDateRange = useMemo(() => {
+    const attendanceDateRange = React.useMemo(() => {
         if (!attendanceWeek) return undefined;
         const start = startOfWeek(attendanceWeek, { weekStartsOn: 1 });
         const end = endOfWeek(attendanceWeek, { weekStartsOn: 1 });
         return { from: start, to: end };
     }, [attendanceWeek]);
 
-    const workExtensionDateRange = useMemo(() => {
+    const workExtensionDateRange = React.useMemo(() => {
         if (!workExtensionWeek) return undefined;
         const start = startOfWeek(workExtensionWeek, { weekStartsOn: 1 });
         const end = endOfWeek(workExtensionWeek, { weekStartsOn: 1 });
         return { from: start, to: end };
     }, [workExtensionWeek]);
 
-    const wfhCertDateRange = useMemo(() => {
+    const wfhCertDateRange = React.useMemo(() => {
         if (!wfhCertMonth) return undefined;
         const start = startOfMonth(wfhCertMonth);
         const end = endOfMonth(wfhCertMonth);
@@ -987,6 +1009,161 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
         }
     }
+    
+    // --- Overtime/ND Functions ---
+    const generateOvertimeData = (): OvertimeRowData[] | null => {
+        if (!overtimeDateRange || !overtimeDateRange.from || !overtimeDateRange.to) {
+            toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the report.' });
+            return null;
+        }
+
+        const applicableEmployees = employees.filter(e => ndClassifications.includes(e.employeeClassification || ''));
+
+        const data: OvertimeRowData[] = [];
+        
+        const daysInInterval = eachDayOfInterval({ start: overtimeDateRange.from, end: overtimeDateRange.to });
+
+        applicableEmployees.forEach(employee => {
+            daysInInterval.forEach(day => {
+                const shift = shifts.find(s => s.employeeId === employee.id && isSameDay(new Date(s.date), day) && !s.isDayOff && !s.isHolidayOff);
+                const workExtensions = leave.filter(l => l.employeeId === employee.id && l.type === 'Work Extension' && l.originalShiftDate && isSameDay(new Date(l.originalShiftDate), day));
+
+                let otMinutes = 0;
+                let ndMinutes = 0;
+                let shiftDisplay = "No Shift";
+
+                // Calculate OT from Work Extensions
+                workExtensions.forEach(ext => {
+                    if (ext.startTime && ext.endTime) {
+                        const start = parse(ext.startTime, 'HH:mm', new Date(ext.startDate));
+                        const end = parse(ext.endTime, 'HH:mm', new Date(ext.endDate));
+                        otMinutes += differenceInMinutes(end, start);
+                    }
+                });
+
+                // Calculate ND from regular shift
+                if (shift && shift.startTime && shift.endTime) {
+                    shiftDisplay = `${shift.startTime} - ${shift.endTime}`;
+                    const shiftStart = parse(shift.startTime, 'HH:mm', day);
+                    const shiftEnd = parse(shift.endTime, 'HH:mm', day);
+                     if (shiftEnd < shiftStart) {
+                        shiftEnd.setDate(shiftEnd.getDate() + 1);
+                    }
+
+                    const [ndStartHour, ndStartMinute] = ndStartTime.split(':').map(Number);
+                    const [ndEndHour, ndEndMinute] = ndEndTime.split(':').map(Number);
+                    
+                    let ndPeriodStart = set(day, { hours: ndStartHour, minutes: ndStartMinute, seconds: 0, milliseconds: 0 });
+                    let ndPeriodEnd = set(day, { hours: ndEndHour, minutes: ndEndMinute, seconds: 0, milliseconds: 0 });
+                    
+                    if (ndPeriodEnd <= ndPeriodStart) { // Overnight ND period
+                        ndPeriodEnd.setDate(ndPeriodEnd.getDate() + 1);
+                    }
+                    
+                    // Check overlap between shift and ND period
+                    const overlapStart = Math.max(shiftStart.getTime(), ndPeriodStart.getTime());
+                    const overlapEnd = Math.min(shiftEnd.getTime(), ndPeriodEnd.getTime());
+
+                    if (overlapEnd > overlapStart) {
+                        ndMinutes += (overlapEnd - overlapStart) / (1000 * 60);
+                    }
+                    
+                    // Handle case where shift crosses midnight and might overlap with the *next* day's ND start
+                    if (shiftEnd.getDate() > shiftStart.getDate()) {
+                        let nextDayNdPeriodStart = set(day, { hours: ndStartHour, minutes: ndStartMinute, seconds: 0, milliseconds: 0 });
+                        nextDayNdPeriodStart.setDate(nextDayNdPeriodStart.getDate() + 1);
+                        let nextDayNdPeriodEnd = set(day, { hours: ndEndHour, minutes: ndEndMinute, seconds: 0, milliseconds: 0 });
+                        nextDayNdPeriodEnd.setDate(nextDayNdPeriodEnd.getDate() + 2);
+                        
+                         const nextDayOverlapStart = Math.max(shiftStart.getTime(), nextDayNdPeriodStart.getTime());
+                         const nextDayOverlapEnd = Math.min(shiftEnd.getTime(), nextDayNdPeriodEnd.getTime());
+
+                         if (nextDayOverlapEnd > nextDayOverlapStart) {
+                            ndMinutes += (nextDayOverlapEnd - nextDayOverlapStart) / (1000 * 60);
+                        }
+                    }
+                }
+
+                if (otMinutes > 0 || ndMinutes > 0) {
+                     data.push({
+                        employee_name: getFullName(employee),
+                        date: format(day, 'yyyy-MM-dd'),
+                        shift: shiftDisplay,
+                        ot_hours: (otMinutes / 60).toFixed(2),
+                        nd_hours: (ndMinutes / 60).toFixed(2)
+                    });
+                }
+            });
+        });
+
+        return data;
+    }
+
+    const handleDownloadOvertime = async (data: OvertimeRowData[] | null) => {
+        if (!data) return;
+        const overtimeTemplate = templates.overtimeTemplate;
+        if (!overtimeTemplate) {
+            toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an Overtime/ND template first.' });
+            return;
+        }
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const buffer = Buffer.from(overtimeTemplate, 'binary');
+            await workbook.xlsx.load(buffer);
+            const worksheet = workbook.worksheets[0];
+            if (!worksheet) throw new Error("Template worksheet not found.");
+
+            let templateRowNumber = -1;
+            worksheet.eachRow((row, rowNumber) => {
+                 row.eachCell((cell) => {
+                    if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
+                       templateRowNumber = rowNumber;
+                    }
+                 });
+            });
+            if (templateRowNumber === -1) throw new Error("Template row with `{{employee_name}}` not found.");
+
+            const templateRow = worksheet.getRow(templateRowNumber);
+            const templateStyles = new Map<number, Partial<ExcelJS.Style>>();
+            templateRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                templateStyles.set(colNumber, { ...cell.style });
+            });
+
+             const placeholderMap: { [key: string]: keyof OvertimeRowData } = {
+                '{{employee_name}}': 'employee_name',
+                '{{date}}': 'date',
+                '{{shift}}': 'shift',
+                '{{ot_hours}}': 'ot_hours',
+                '{{nd_hours}}': 'nd_hours',
+            };
+
+            data.forEach((rowData, index) => {
+                const newRow = worksheet.insertRow(templateRowNumber + index + 1, {});
+                 templateRow.eachCell({ includeEmpty: true }, (templateCell, colNumber) => {
+                    const newCell = newRow.getCell(colNumber);
+                    let templateValue = templateCell.text;
+                    for (const placeholder in placeholderMap) {
+                        if (templateValue.includes(placeholder)) {
+                            templateValue = templateValue.replace(placeholder, rowData[placeholderMap[placeholder as keyof typeof placeholderMap]]);
+                        }
+                    }
+                    newCell.value = templateValue;
+                    newCell.style = templateStyles.get(colNumber) || {};
+                });
+            });
+
+            worksheet.spliceRows(templateRowNumber, 1);
+            
+            const uint8Array = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `Overtime and ND Report - ${format(overtimeDateRange!.from!, 'yyyy-MM-dd')} to ${format(overtimeDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+
+        } catch (error) {
+            console.error("Error generating Overtime/ND report:", error);
+            toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
+        }
+    }
 
 
     // --- Event Handlers ---
@@ -1042,6 +1219,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 title = `Work Extension Summary (${format(workExtensionDateRange!.from!, 'LLL d')} - ${format(workExtensionDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadWorkExtension(rawData);
             }
+        } else if (type === 'overtime') {
+            const rawData = generateOvertimeData();
+             if (rawData) {
+                data = {
+                    headers: ['Employee', 'Date', 'Shift', 'OT Hours', 'ND Hours'],
+                    rows: rawData.map(d => Object.values(d))
+                };
+                title = `Overtime & Night Differential (${format(overtimeDateRange!.from!, 'LLL d')} - ${format(overtimeDateRange!.to!, 'LLL d, y')})`;
+                generator = () => handleDownloadOvertime(rawData);
+            }
         }
         
         if (data) {
@@ -1065,6 +1252,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             handleDownloadWfhCertification(generateWfhCertificationData());
         } else if (type === 'workExtension') {
             handleDownloadWorkExtension(generateWorkExtensionData());
+        } else if (type === 'overtime') {
+            handleDownloadOvertime(generateOvertimeData());
         }
     };
     
@@ -1096,6 +1285,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         openUploader?: () => void;
         permissionKey: `report-${ReportType}`;
         isDateRequired: boolean;
+        settingsComponent?: React.ReactNode;
     }> = {
         workSchedule: {
             label: "Regular Work Schedule",
@@ -1229,6 +1419,57 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             ),
             templateKey: 'workExtensionTemplate',
             openUploader: () => setIsWorkExtensionUploaderOpen(true),
+        },
+        overtime: {
+            label: "Overtime and Night Differential",
+            description: "Generates reports based on employee overtime and night differential.",
+            permissionKey: 'report-overtime',
+            isDateRequired: true,
+            dateComponent: (
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="overtime-date"
+                        variant={"outline"}
+                        className={cn(
+                        "w-full sm:w-[300px] justify-start text-left font-normal",
+                        !overtimeDateRange && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {overtimeDateRange?.from ? (
+                        overtimeDateRange.to ? (
+                            <>
+                            {format(overtimeDateRange.from, "LLL dd, y")} -{" "}
+                            {format(overtimeDateRange.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(overtimeDateRange.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Pick a date range</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={overtimeDateRange?.from}
+                        selected={overtimeDateRange}
+                        onSelect={setOvertimeDateRange}
+                        numberOfMonths={2}
+                    />
+                    </PopoverContent>
+                </Popover>
+            ),
+             templateKey: 'overtimeTemplate',
+             openUploader: () => setIsOvertimeUploaderOpen(true),
+             settingsComponent: (
+                 <Button variant="outline" size="icon" onClick={() => setIsOvertimeSettingsOpen(true)}>
+                    <Settings className="h-4 w-4" />
+                </Button>
+             )
         },
         userSummary: {
             label: 'Summary Per User',
@@ -1371,11 +1612,20 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             case 'tardy': return !!tardyDateRange;
             case 'wfh': return !!wfhCertMonth;
             case 'workExtension': return !!workExtensionDateRange;
+            case 'overtime': return !!overtimeDateRange;
             default: return false;
         }
     }
     
     const isDownloadDisabled = (currentReport.templateKey && !templates[currentReport.templateKey]) || (currentReport.isDateRequired && !isDateFilled());
+    
+    const handleSaveOvertimeSettings = () => {
+        localStorage.setItem('ndStartTime', ndStartTime);
+        localStorage.setItem('ndEndTime', ndEndTime);
+        localStorage.setItem('ndClassifications', JSON.stringify(ndClassifications));
+        toast({ title: 'Overtime settings saved.' });
+        setIsOvertimeSettingsOpen(false);
+    }
 
     return (
         <>
@@ -1408,12 +1658,15 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4">
                            {currentReport.dateComponent}
-                            {currentReport.openUploader && (
-                                <Button variant="outline" onClick={currentReport.openUploader}>
-                                    <Upload className="mr-2 h-4 w-4" />
-                                    {selectedReportType === 'tardy' ? 'Import Tardy Data' : 'Upload Template'}
-                                </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {currentReport.openUploader && (
+                                    <Button variant="outline" onClick={currentReport.openUploader}>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        {selectedReportType === 'tardy' ? 'Import Tardy Data' : 'Upload Template'}
+                                    </Button>
+                                )}
+                                {currentReport.settingsComponent}
+                            </div>
                         </div>
                         <div className="pt-6 flex flex-wrap gap-2">
                             <Button onClick={() => handleViewReport(selectedReportType)} disabled={currentReport.isDateRequired && !isDateFilled()}>
@@ -1454,6 +1707,56 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 onImport={setTardyRecords}
                 employees={employees}
             />
+            <OvertimeTemplateUploader 
+                isOpen={isOvertimeUploaderOpen}
+                setIsOpen={setIsOvertimeUploaderOpen}
+                onTemplateUpload={(data) => setTemplates(prev => ({...prev, overtimeTemplate: data}))}
+            />
+            <Dialog open={isOvertimeSettingsOpen} onOpenChange={setIsOvertimeSettingsOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Overtime & Night Differential Settings</DialogTitle>
+                        <DialogDescription>Configure the rules for OT and ND calculation.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="nd-start">ND Start Time</Label>
+                                <Input id="nd-start" type="time" value={ndStartTime} onChange={e => setNdStartTime(e.target.value)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="nd-end">ND End Time</Label>
+                                <Input id="nd-end" type="time" value={ndEndTime} onChange={e => setNdEndTime(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Applicable Employee Classifications</Label>
+                            <div className="space-y-1">
+                            {ALL_CLASSIFICATIONS.map(classification => (
+                                <div key={classification} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`class-${classification}`}
+                                        checked={ndClassifications.includes(classification)}
+                                        onCheckedChange={(checked) => {
+                                            setNdClassifications(prev => 
+                                                checked ? [...prev, classification] : prev.filter(c => c !== classification)
+                                            );
+                                        }}
+                                    />
+                                    <label htmlFor={`class-${classification}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        {classification}
+                                    </label>
+                                </div>
+                            ))}
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsOvertimeSettingsOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveOvertimeSettings}>Save Settings</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <ReportPreviewDialog 
                 isOpen={isPreviewOpen}
                 setIsOpen={setIsPreviewOpen}
@@ -1464,10 +1767,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-    
-
-    
-
-    
-

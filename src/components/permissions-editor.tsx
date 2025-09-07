@@ -28,6 +28,7 @@ const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
   { key: 'report-work-schedule', label: 'Work Schedule Report', group: 'Reports' },
   { key: 'report-attendance', label: 'Attendance Sheet Report', group: 'Reports' },
   { key: 'report-work-extension', label: 'Work Extension Report', group: 'Reports' },
+  { key: 'report-overtime', label: 'Overtime/ND Report', group: 'Reports' },
   { key: 'report-user-summary', label: 'User Summary Report', group: 'Reports' },
   { key: 'report-tardy', label: 'Tardy Report', group: 'Reports' },
   { key: 'report-wfh', label: 'WFH Certification', group: 'Reports' },
