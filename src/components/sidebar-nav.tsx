@@ -28,6 +28,7 @@ import {
     AlertTriangle,
     Home,
     Newspaper,
+    HelpCircle,
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarContent, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import type { UserRole, RolePermissions } from '@/types';
@@ -67,13 +68,6 @@ const allNavItems: Record<string, NavGroup[]> = {
                 { view: 'my-tasks', label: 'My Shift Tasks', icon: ClipboardCheck, iconColor: 'bg-green-500' },
             ]
         },
-         {
-            label: 'Communication',
-            items: [
-                { view: 'news-feeds', label: 'News Feeds', icon: Newspaper, iconColor: 'bg-cyan-500' },
-                { view: 'chat', label: 'Chat', icon: MessageSquare, iconColor: 'bg-emerald-500' },
-            ]
-        },
         {
             label: 'Operations',
             items: [
@@ -100,6 +94,12 @@ const allNavItems: Record<string, NavGroup[]> = {
             ]
         },
         {
+            label: 'Support',
+            items: [
+                { view: 'faq', label: 'FAQ', icon: HelpCircle, iconColor: 'bg-cyan-500' },
+            ]
+        },
+        {
             label: 'Admin',
             items: [
                 { view: 'admin', label: 'Users and Groups', icon: Shield, iconColor: 'bg-red-500' },
@@ -117,35 +117,30 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
     if (role === 'admin') {
         const adminNavGroups = allNavItems.all.filter(group => group.label === 'Admin');
         return (
-             <div className="flex flex-col h-full text-sidebar-foreground">
-                <SidebarContent>
-                    <SidebarMenu className="flex-1 px-2">
-                        {adminNavGroups.map((group) => (
-                            <SidebarGroup key={group.label}>
-                                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                                {group.items.map(({ view, label, icon: Icon, iconColor }) => (
-                                <SidebarMenuItem key={view}>
-                                    <SidebarMenuButton
-                                    onClick={() => onNavigate(view)}
-                                    isActive={activeView === view}
-                                    className="justify-start gap-3"
-                                    tooltip={label}
-                                    >
-                                    <div className={`p-1.5 rounded-md text-white ${iconColor}`}>
-                                        <Icon className="size-4" />
-                                    </div>
-                                    <span className="group-data-[collapsible=icon]:hidden">{label}</span>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                                ))}
-                            </SidebarGroup>
-                        ))}
-                    </SidebarMenu>
-                </SidebarContent>
-                 <SidebarFooter>
-                    <SidebarTrigger className="m-auto" />
-                </SidebarFooter>
-            </div>
+             <SidebarContent>
+                <SidebarMenu className="flex-1 px-2">
+                    {adminNavGroups.map((group) => (
+                        <SidebarGroup key={group.label}>
+                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                            {group.items.map(({ view, label, icon: Icon, iconColor }) => (
+                            <SidebarMenuItem key={view}>
+                                <SidebarMenuButton
+                                onClick={() => onNavigate(view)}
+                                isActive={activeView === view}
+                                className="justify-start gap-3"
+                                tooltip={label}
+                                >
+                                <div className={`p-1.5 rounded-md text-white ${iconColor}`}>
+                                    <Icon className="size-4" />
+                                </div>
+                                <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                            ))}
+                        </SidebarGroup>
+                    ))}
+                </SidebarMenu>
+            </SidebarContent>
         );
     }
     
@@ -161,8 +156,7 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
 
 
   return (
-    <div className="flex flex-col h-full text-sidebar-foreground">
-      <SidebarContent>
+    <SidebarContent>
         <SidebarMenu className="flex-1 px-2">
             {navGroups.map((group) => (
                 <SidebarGroup key={group.label}>
@@ -185,10 +179,6 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
                 </SidebarGroup>
             ))}
         </SidebarMenu>
-      </SidebarContent>
-       <SidebarFooter>
-            <SidebarTrigger className="m-auto" />
-        </SidebarFooter>
-    </div>
+    </SidebarContent>
   );
 }

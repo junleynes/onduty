@@ -45,8 +45,7 @@ import type { NavItemKey } from '@/types';
 import { PermissionsEditor } from '@/components/permissions-editor';
 import DangerZoneView from '@/components/danger-zone-view';
 import DashboardView from '@/components/dashboard-view';
-import ChatView from '@/components/chat-view';
-import NewsFeedsView from '@/components/news-feeds-view';
+import FaqView from '@/components/faq-view';
 
 
 export type NavItem = NavItemKey;
@@ -658,10 +657,8 @@ function AppContent() {
         return <MyTasksView tasks={tasks} setTasks={setTasks} shifts={shifts} currentUser={currentUser} />;
       case 'task-manager':
         return <TaskManagerView tasks={tasks} setTasks={setTasks} currentUser={currentUser} employees={employees} />;
-      case 'news-feeds':
-        return <NewsFeedsView />;
-      case 'chat':
-        return <ChatView />;
+      case 'faq':
+        return <FaqView />;
       case 'reports':
           return <ReportsView 
                     employees={employees} 
