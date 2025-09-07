@@ -502,6 +502,36 @@ function AppContent() {
     setEditingNote(null);
     toast({ title: 'Note Deleted', variant: 'destructive' });
   };
+  
+  const handlePurgeData = (dataType: 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad') => {
+        switch (dataType) {
+            case 'users':
+                const adminUser = employees.find(e => e.id === 'emp-admin-01');
+                setEmployees(adminUser ? [adminUser] : []);
+                setShifts([]);
+                setLeave([]);
+                setTasks([]);
+                setAllowances([]);
+                setTardyRecords([]);
+                break;
+            case 'shiftTemplates':
+                setShiftTemplates([]);
+                break;
+            case 'holidays':
+                setHolidays([]);
+                break;
+            case 'reportTemplates':
+                setTemplates({});
+                break;
+            case 'tasks':
+                setTasks([]);
+                break;
+            case 'mobileLoad':
+                setAllowances([]);
+                setEmployees(prev => prev.map(e => ({ ...e, loadAllocation: 0 })));
+                break;
+        }
+    };
 
 
 
@@ -646,7 +676,7 @@ function AppContent() {
       case 'smtp-settings':
         return <SmtpSettingsView settings={smtpSettings} onSave={setSmtpSettings} />;
       case 'danger-zone':
-        return <DangerZoneView />;
+        return <DangerZoneView onPurgeData={handlePurgeData} />;
       default:
         return (
             <Card>

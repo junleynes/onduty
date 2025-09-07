@@ -67,11 +67,11 @@ export async function verifyUser(email: string, password: string): Promise<{ suc
                 firstName: "Super",
                 lastName: "Admin",
                 email: "admin@onduty.local",
+                password: "P@ssw0rd", // Ensure password is included in the returned object
                 phone: "123-456-7890",
                 position: "System Administrator",
                 role: "admin",
                 group: "Administration",
-                password: "P@ssw0rd", // Ensure password is included in the returned object
             };
             return { success: true, user: adminUser };
         } else {
@@ -171,6 +171,40 @@ export async function resetToFactorySettings(): Promise<{ success: boolean; erro
         return { success: true };
     } catch (error) {
         console.error('Failed to reset database:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+
+export async function purgeData(dataType: 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad'): Promise<{ success: boolean; error?: string }> {
+    const db = getDb();
+    try {
+        switch (dataType) {
+            case 'users':
+                db.prepare("DELETE FROM employees WHERE role != 'admin' AND email != 'admin@onduty.local'").run();
+                break;
+            case 'shiftTemplates':
+                db.prepare('DELETE FROM shift_templates').run();
+                break;
+            case 'holidays':
+                db.prepare('DELETE FROM holidays').run();
+                break;
+            case 'reportTemplates':
+                db.prepare("DELETE FROM key_value_store WHERE key LIKE '%Template'").run();
+                break;
+            case 'tasks':
+                db.prepare('DELETE FROM tasks').run();
+                break;
+            case 'mobileLoad':
+                db.prepare('DELETE FROM communication_allowances').run();
+                db.prepare("UPDATE employees SET loadAllocation = 0").run();
+                break;
+            default:
+                return { success: false, error: 'Invalid data type specified for purging.' };
+        }
+        return { success: true };
+    } catch (error) {
+        console.error(`Failed to purge ${dataType}:`, error);
         return { success: false, error: (error as Error).message };
     }
 }
