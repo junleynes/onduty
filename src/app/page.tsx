@@ -45,6 +45,8 @@ import type { NavItemKey } from '@/types';
 import { PermissionsEditor } from '@/components/permissions-editor';
 import DangerZoneView from '@/components/danger-zone-view';
 import DashboardView from '@/components/dashboard-view';
+import ChatView from '@/components/chat-view';
+import NewsFeedsView from '@/components/news-feeds-view';
 
 
 export type NavItem = NavItemKey;
@@ -562,21 +564,21 @@ function AppContent() {
 
     const membersOfMyGroup = employees.filter(e => e.group === currentUser.group);
     
-    if (currentUser.role !== 'admin') {
-      const userPermissions = permissions[currentUser.role] || [];
-      // Also allow dashboard for non-admins
-      if (!userPermissions.includes(activeView) && activeView !== 'dashboard') {
-           return (
-               <Card>
-                  <CardHeader>
-                      <CardTitle>Access Denied</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                      <p>You do not have permission to view this page. Please contact an administrator.</p>
-                  </CardContent>
-              </Card>
-          )
-      }
+    const userPermissions = permissions[currentUser.role] || [];
+    // Admins have all permissions, non-admins must have the view explicitly granted
+    const hasPermission = currentUser.role === 'admin' || userPermissions.includes(activeView)
+
+    if (!hasPermission) {
+         return (
+             <Card>
+                <CardHeader>
+                    <CardTitle>Access Denied</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>You do not have permission to view this page. Please contact an administrator.</p>
+                </CardContent>
+            </Card>
+        )
     }
 
 
@@ -656,6 +658,10 @@ function AppContent() {
         return <MyTasksView tasks={tasks} setTasks={setTasks} shifts={shifts} currentUser={currentUser} />;
       case 'task-manager':
         return <TaskManagerView tasks={tasks} setTasks={setTasks} currentUser={currentUser} employees={employees} />;
+      case 'news-feeds':
+        return <NewsFeedsView />;
+      case 'chat':
+        return <ChatView />;
       case 'reports':
           return <ReportsView 
                     employees={employees} 

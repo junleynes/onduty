@@ -25,6 +25,8 @@ const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
   { key: 'org-chart', label: 'Org Chart', group: 'Main Views' },
   { key: 'celebrations', label: 'Celebrations', group: 'Main Views' },
   { key: 'holidays', label: 'Holidays', group: 'Main Views' },
+  { key: 'news-feeds', label: 'News Feeds', group: 'Communication' },
+  { key: 'chat', label: 'Chat', group: 'Communication' },
   // Reports Access
   { key: 'reports', label: 'Reports Page Access', group: 'Reports' },
   { key: 'report-work-schedule', label: 'Work Schedule Report', group: 'Reports' },

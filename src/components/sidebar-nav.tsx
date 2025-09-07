@@ -27,6 +27,7 @@ import {
     ShieldCheck,
     AlertTriangle,
     Home,
+    Newspaper,
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole, RolePermissions } from '@/types';
@@ -76,6 +77,13 @@ const allNavItems: Record<string, NavGroup[]> = {
                 { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]
         },
+         {
+            label: 'Communication',
+            items: [
+                { view: 'news-feeds', label: 'News Feeds', icon: Newspaper, iconColor: 'bg-cyan-500' },
+                { view: 'chat', label: 'Chat', icon: MessageSquare, iconColor: 'bg-emerald-500' },
+            ]
+        },
         {
             label: 'People',
             items: [
@@ -104,13 +112,15 @@ const allNavItems: Record<string, NavGroup[]> = {
 };
 
 export default function SidebarNav({ role, activeView, onNavigate, permissions }: SidebarNavProps) {
+    const adminOnlyViews = new Set(['admin', 'permissions', 'smtp-settings', 'danger-zone']);
+    
     if (role === 'admin') {
         const adminNavGroups = allNavItems.all.filter(group => group.label === 'Admin');
         return (
              <div className="flex flex-col h-full text-sidebar-foreground">
                 <SidebarMenu className="flex-1 px-2">
-                    {adminNavGroups.map((group) => (
-                        <SidebarGroup key={group.label}>
+                    {allNavItems.all.map((group) => (
+                         <SidebarGroup key={group.label}>
                             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
                             {group.items.map(({ view, label, icon: Icon, iconColor }) => (
                             <SidebarMenuItem key={view}>
@@ -141,7 +151,7 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
 
     const navGroups = allNavItems.all.map(group => ({
       ...group,
-      items: group.items.filter(item => allowedViews.has(item.view) && item.view !== 'admin' && item.view !== 'permissions' && item.view !== 'smtp-settings' && item.view !== 'danger-zone')
+      items: group.items.filter(item => allowedViews.has(item.view) && !adminOnlyViews.has(item.view))
     })).filter(group => group.items.length > 0);
 
 
