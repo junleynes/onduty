@@ -408,6 +408,7 @@ function AppContent() {
   const handleImportMembers = async (newMembers: Partial<Employee>[]) => {
     let successCount = 0;
     let errorCount = 0;
+    let updatedEmployees = [...employees];
 
     for (const member of newMembers) {
       if (!member.email) {
@@ -416,18 +417,32 @@ function AppContent() {
         continue;
       }
       
-      const existingEmployee = employees.find(e => e.email.toLowerCase() === member.email!.toLowerCase());
+      const existingEmployee = updatedEmployees.find(e => e.email.toLowerCase() === member.email!.toLowerCase());
       
       const memberWithId = {
           ...member,
           id: existingEmployee?.id || uuidv4(),
+      };
+
+      // Resolve reportsTo ID after all employees are potentially added
+      if (typeof member.reportsTo === 'string' && member.reportsTo) {
+          const manager = updatedEmployees.find(e => 
+              (e.firstName + ' ' + e.lastName).toLowerCase() === member.reportsTo?.toLowerCase() ||
+              (e.firstName + ' ' + e.middleInitial + ' ' + e.lastName).toLowerCase() === member.reportsTo?.toLowerCase()
+          );
+          if (manager) {
+              memberWithId.reportsTo = manager.id;
+          } else {
+              console.warn(`Manager "${member.reportsTo}" not found for employee "${member.firstName} ${member.lastName}". Setting reportsTo to null.`);
+              memberWithId.reportsTo = null;
+          }
       }
 
       if (existingEmployee) {
         // Update existing employee
         const result = await updateEmployee({ ...existingEmployee, ...memberWithId });
         if (result.success && result.employee) {
-            setEmployees(prev => prev.map(emp => emp.id === result.employee!.id ? {...emp, ...result.employee} as Employee : emp));
+            updatedEmployees = updatedEmployees.map(emp => emp.id === result.employee!.id ? {...emp, ...result.employee} as Employee : emp);
             successCount++;
         } else {
             console.error(`Failed to update imported member ${member.email}:`, result.error);
@@ -437,7 +452,7 @@ function AppContent() {
         // Add new employee
         const result = await addEmployee(memberWithId);
         if (result.success && result.employee) {
-            setEmployees(prev => [...prev, result.employee!]);
+            updatedEmployees.push(result.employee);
             successCount++;
         } else {
              console.error(`Failed to add imported member ${member.email}:`, result.error);
@@ -445,12 +460,14 @@ function AppContent() {
         }
       }
     }
+    
+    setEmployees(updatedEmployees);
 
     toast({
       title: 'Import Complete',
       description: `${successCount} member(s) processed successfully. ${errorCount > 0 ? `${errorCount} failed.` : ''}`
     });
-  }
+  };
 
   const handleImportHolidays = (newHolidays: Partial<Holiday>[]) => {
       const holidaysWithIds: Holiday[] = newHolidays.map((holiday) => ({
@@ -737,6 +754,7 @@ function AppContent() {
         isOpen={isImporterOpen}
         setIsOpen={setIsImporterOpen}
         onImport={handleImportMembers}
+        employees={employees}
     />
     <GroupEditor
         isOpen={isGroupEditorOpen}

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -17,14 +18,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
 import type { Employee, UserRole } from '@/types';
+import { findEmployeeByName } from '@/lib/utils';
 
 type MemberImporterProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onImport: (newMembers: Partial<Employee>[]) => void;
+  employees: Employee[];
 };
 
-export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterProps) {
+export function MemberImporter({ isOpen, setIsOpen, onImport, employees }: MemberImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const { toast } = useToast();
@@ -81,6 +84,8 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
                 mobileLoad: (row['Show in Mobile Load'] || 'true').toLowerCase() === 'true',
             };
 
+            const reportsToName = row['Reports To'] || null;
+
             return {
               firstName: row['First Name'] || '',
               lastName: row['Last Name'] || '',
@@ -97,6 +102,9 @@ export function MemberImporter({ isOpen, setIsOpen, onImport }: MemberImporterPr
               role: ['admin', 'manager', 'member'].includes(role) ? role : 'member',
               loadAllocation: !isNaN(loadAllocationValue) ? loadAllocationValue : 0,
               visibility: visibility,
+              reportsTo: reportsToName, // Keep name for now, resolve to ID later
+              gender: row['Gender'] as 'Male' | 'Female' | undefined,
+              employeeClassification: row['Employee Classification'] as 'Rank-and-File' | 'Confidential' | 'Managerial' | undefined,
             };
           });
 
