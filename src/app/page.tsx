@@ -43,6 +43,7 @@ import TimeOffView from '@/components/time-off-view';
 import type { LeaveTypeOption } from '@/components/leave-type-editor';
 import type { NavItemKey } from '@/types';
 import { PermissionsEditor } from '@/components/permissions-editor';
+import DangerZoneView from '@/components/danger-zone-view';
 
 
 export type NavItem = NavItemKey;
@@ -643,7 +644,9 @@ function AppContent() {
        case 'permissions':
         return <PermissionsEditor permissions={permissions} setPermissions={setPermissions} />;
       case 'smtp-settings':
-        return <SmtpSettingsView settings={smtpSettings} onSave={setSmtpSettings} />
+        return <SmtpSettingsView settings={smtpSettings} onSave={setSmtpSettings} />;
+      case 'danger-zone':
+        return <DangerZoneView />;
       default:
         return (
             <Card>

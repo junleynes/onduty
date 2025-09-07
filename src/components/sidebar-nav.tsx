@@ -25,6 +25,7 @@ import {
     FileText,
     Plane,
     ShieldCheck,
+    AlertTriangle,
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole, RolePermissions } from '@/types';
@@ -89,6 +90,7 @@ const allNavItems: Record<string, NavGroup[]> = {
                 { view: 'admin', label: 'Users and Groups', icon: Shield, iconColor: 'bg-red-500' },
                 { view: 'permissions', label: 'Permissions', icon: ShieldCheck, iconColor: 'bg-red-500' },
                 { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
+                { view: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle, iconColor: 'bg-destructive' },
             ]
         }
     ]
