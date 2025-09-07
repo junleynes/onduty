@@ -26,6 +26,7 @@ import {
     Plane,
     ShieldCheck,
     AlertTriangle,
+    Home,
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from '@/components/ui/sidebar';
 import type { UserRole, RolePermissions } from '@/types';
@@ -52,6 +53,12 @@ type NavGroup = {
 
 const allNavItems: Record<string, NavGroup[]> = {
     all: [
+         {
+            label: 'Home',
+            items: [
+                { view: 'dashboard', label: 'Dashboard', icon: Home, iconColor: 'bg-blue-500' },
+            ]
+        },
         {
             label: 'Overview',
             items: [
@@ -128,10 +135,13 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
     }
     
     const allowedViews = new Set(permissions[role] || []);
+    // Ensure dashboard is always available for non-admins
+    allowedViews.add('dashboard');
+
 
     const navGroups = allNavItems.all.map(group => ({
       ...group,
-      items: group.items.filter(item => allowedViews.has(item.view))
+      items: group.items.filter(item => allowedViews.has(item.view) && item.view !== 'admin' && item.view !== 'permissions' && item.view !== 'smtp-settings' && item.view !== 'danger-zone')
     })).filter(group => group.items.length > 0);
 
 

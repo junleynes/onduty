@@ -44,6 +44,7 @@ import type { LeaveTypeOption } from '@/components/leave-type-editor';
 import type { NavItemKey } from '@/types';
 import { PermissionsEditor } from '@/components/permissions-editor';
 import DangerZoneView from '@/components/danger-zone-view';
+import DashboardView from '@/components/dashboard-view';
 
 
 export type NavItem = NavItemKey;
@@ -73,7 +74,7 @@ function AppContent() {
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<Employee | null>(null);
-  const [activeView, setActiveView] = useState<NavItem>('schedule');
+  const [activeView, setActiveView] = useState<NavItem>('dashboard');
   
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isImporterOpen, setIsImporterOpen] = useState(false);
@@ -213,14 +214,7 @@ function AppContent() {
         if (userToSet.role === 'admin') {
             setActiveView('admin');
         } else {
-            const userPermissions = result.data?.permissions[userToSet.role] || [];
-            if (userPermissions.includes('schedule')) {
-              setActiveView('schedule');
-            } else if (userPermissions.includes('my-schedule')) {
-               setActiveView('my-schedule');
-            } else if (userPermissions.length > 0) {
-                setActiveView(userPermissions[0]);
-            }
+            setActiveView('dashboard');
         }
       } else {
         handleLogout(); 
@@ -553,7 +547,8 @@ function AppContent() {
     
     if (currentUser.role !== 'admin') {
       const userPermissions = permissions[currentUser.role] || [];
-      if (!userPermissions.includes(activeView)) {
+      // Also allow dashboard for non-admins
+      if (!userPermissions.includes(activeView) && activeView !== 'dashboard') {
            return (
                <Card>
                   <CardHeader>
@@ -569,6 +564,8 @@ function AppContent() {
 
 
     switch (activeView) {
+      case 'dashboard':
+        return <DashboardView onNavigate={handleNavigate} permissions={permissions} role={currentUser.role} />;
       case 'schedule': {
         const scheduleEmployees = (currentUser.role === 'admin' ? employees : membersOfMyGroup).filter(e => e.role !== 'admin');
         

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -12,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
   // Main Views
+  { key: 'dashboard', label: 'Dashboard', group: 'Main Views' },
   { key: 'my-schedule', label: 'My Schedule', group: 'Main Views' },
   { key: 'my-tasks', label: 'My Tasks', group: 'Main Views' },
   { key: 'schedule', label: 'Schedule', group: 'Main Views' },
@@ -36,6 +38,7 @@ const ALL_FEATURES: { key: NavItemKey; label: string, group: string }[] = [
   { key: 'admin', label: 'Users and Groups', group: 'Admin' },
   { key: 'smtp-settings', label: 'SMTP Settings', group: 'Admin' },
   { key: 'permissions', label: 'Permissions', group: 'Admin' },
+  { key: 'danger-zone', label: 'Danger Zone', group: 'Admin' },
 ];
 
 const ROLES: UserRole[] = ['admin', 'manager', 'member'];

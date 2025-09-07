@@ -139,7 +139,7 @@ export type TardyRecord = {
 }
 
 export type NavItemKey = 
-  | 'my-schedule' | 'my-tasks'
+  | 'dashboard' | 'my-schedule' | 'my-tasks'
   | 'schedule' | 'onduty' | 'time-off' | 'allowance' | 'task-manager'
   | 'team' | 'org-chart' | 'celebrations' | 'holidays'
   | 'reports'
