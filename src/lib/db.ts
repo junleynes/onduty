@@ -12,54 +12,40 @@ export let dbInstance: Database.Database | null = null;
 function initializeDatabase() {
     const db = new Database(DB_PATH);
 
-    const requiredTables = [
-        'employees', 'shifts', 'leave', 'notes', 'holidays', 'tasks',
-        'communication_allowances', 'groups', 'smtp_settings',
-        'tardy_records', 'key_value_store', 'shift_templates', 'leave_types',
-        'permissions'
-    ];
-
-    let allTablesExist = true;
-    const checkStmt = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?");
-
-    for (const table of requiredTables) {
-        if (!checkStmt.get(table)) {
-            allTablesExist = false;
-            break;
-        }
-    }
-    
-    // Also check for columns to ensure schema is updated.
-    let schemaIsUpToDate = false;
-    if (allTablesExist) {
+    // Run schema to create tables if they don't exist
+    const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
+    if (fs.existsSync(schemaPath)) {
         try {
-            const columns = db.prepare("PRAGMA table_info(employees)").all();
-            if (columns.some((col: any) => col.name === 'gender')) {
-                schemaIsUpToDate = true;
-            }
-        } catch (e) {
-            // Table might not exist, which is handled by allTablesExist
+            const schema = fs.readFileSync(schemaPath, 'utf8');
+            db.exec(schema);
+        } catch(e) {
+            console.error('Failed to initialize database from schema:', e);
+            throw e;
         }
+    } else {
+            console.error(`CRITICAL: Schema file not found at ${schemaPath}. Cannot initialize database.`);
+            throw new Error(`Schema file not found at ${schemaPath}`);
     }
 
-    if (!allTablesExist || !schemaIsUpToDate) {
-        console.log('One or more database tables are missing or outdated. Applying schema...');
-        const schemaPath = path.join(process.cwd(), 'src', 'lib', 'schema.sql');
-        if (fs.existsSync(schemaPath)) {
-            try {
-                const schema = fs.readFileSync(schemaPath, 'utf8');
-                db.exec(schema);
-                console.log('Database schema applied successfully.');
-            } catch(e) {
-                console.error('Failed to initialize database from schema:', e);
-                throw e;
-            }
-        } else {
-             console.error(`CRITICAL: Schema file not found at ${schemaPath}. Cannot initialize database.`);
-             throw new Error(`Schema file not found at ${schemaPath}`);
+    // Run migrations to add new columns if they don't exist
+    try {
+        db.exec("ALTER TABLE employees ADD COLUMN gender TEXT;");
+        console.log("Column 'gender' added to 'employees' table.");
+    } catch (e: any) {
+        if (!e.message.includes('duplicate column name')) {
+            console.error("Error adding 'gender' column:", e);
         }
     }
     
+    try {
+        db.exec("ALTER TABLE employees ADD COLUMN employeeClassification TEXT;");
+        console.log("Column 'employeeClassification' added to 'employees' table.");
+    } catch (e: any) {
+         if (!e.message.includes('duplicate column name')) {
+            console.error("Error adding 'employeeClassification' column:", e);
+        }
+    }
+
     return db;
 }
 

@@ -31,8 +31,8 @@ const employeeSchema = z.object({
       orgChart: z.boolean().optional(),
       mobileLoad: z.boolean().optional(),
   }).optional(),
-  gender: z.enum(['Male', 'Female']).optional(),
-  employeeClassification: z.enum(['Rank-and-File', 'Confidential', 'Managerial']).optional(),
+  gender: z.enum(['Male', 'Female']).optional().nullable(),
+  employeeClassification: z.enum(['Rank-and-File', 'Confidential', 'Managerial']).optional().nullable(),
 }).refine(data => {
     // If it's a new user (no ID), password is required and must be at least 6 chars
     if (!data.id) {
