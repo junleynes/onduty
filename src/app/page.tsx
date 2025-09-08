@@ -48,6 +48,7 @@ import DashboardView from '@/components/dashboard-view';
 import FaqView from '@/components/faq-view';
 import NewsFeedsView from '@/components/news-feeds-view';
 import ChatView from '@/components/chat-view';
+import { AlafTemplateUploader } from '@/components/alaf-template-uploader';
 
 
 export type NavItem = NavItemKey;
@@ -93,6 +94,7 @@ function AppContent() {
   const [viewingNote, setViewingNote] = useState<Note | Holiday | null>(null);
   const [isNoteEditorOpen, setIsNoteEditorOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Partial<Note> | null>(null);
+  const [isAlafUploaderOpen, setIsAlafUploaderOpen] = useState(false);
 
 
   const { notifications, setNotifications, addNotification, addNotificationForUser } = useNotifications();
@@ -669,6 +671,7 @@ function AppContent() {
                   employees={employees}
                   leaveTypes={leaveTypes}
                   smtpSettings={smtpSettings}
+                  onUploadAlaf={() => setIsAlafUploaderOpen(true)}
                />;
       case 'allowance':
         return <AllowanceView 
@@ -826,6 +829,11 @@ function AppContent() {
             }}
         />
     )}
+     <AlafTemplateUploader 
+        isOpen={isAlafUploaderOpen}
+        setIsOpen={setIsAlafUploaderOpen}
+        onTemplateUpload={(data) => setTemplates(prev => ({...prev, alafTemplate: data}))}
+    />
     </>
   );
 }
