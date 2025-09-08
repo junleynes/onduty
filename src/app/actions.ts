@@ -1,11 +1,13 @@
 
 'use server';
 
-import type { SmtpSettings, Employee, Shift, AppVisibility } from '@/types';
+import type { SmtpSettings, Employee, Shift, AppVisibility, Leave } from '@/types';
 import nodemailer from 'nodemailer';
 import { getDb } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { format } from 'date-fns';
 
 
 type Attachment = {
@@ -213,5 +215,80 @@ export async function purgeData(dataType: 'users' | 'shiftTemplates' | 'holidays
     } catch (error) {
         console.error(`Failed to purge ${dataType}:`, error);
         return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: boolean; pdfDataUri?: string; error?: string; }> {
+    const db = getDb();
+    try {
+        const templateData = db.prepare("SELECT value FROM key_value_store WHERE key = 'alafTemplate'").get() as { value: string } | undefined;
+        if (!templateData || !templateData.value) {
+            return { success: false, error: "ALAF template not found. Please upload one in the Reports section." };
+        }
+
+        const employee = db.prepare("SELECT * FROM employees WHERE id = ?").get(leaveRequest.employeeId) as Employee | undefined;
+        if (!employee) {
+            return { success: false, error: "Employee not found." };
+        }
+
+        const manager = leaveRequest.managedBy ? db.prepare("SELECT * FROM employees WHERE id = ?").get(leaveRequest.managedBy) as Employee | undefined : undefined;
+
+        const templateBytes = Buffer.from(templateData.value, 'base64');
+        const pdfDoc = await PDFDocument.load(templateBytes);
+        const form = pdfDoc.getForm();
+
+        const fields = {
+            employee_name: `${employee.firstName} ${employee.lastName}`,
+            date_filed: format(new Date(leaveRequest.dateFiled), 'yyyy-MM-dd'),
+            department: leaveRequest.department || '',
+            employee_id: leaveRequest.idNumber || '',
+            leave_type: leaveRequest.type,
+            leave_dates: `${format(new Date(leaveRequest.startDate), 'yyyy-MM-dd')} to ${format(new Date(leaveRequest.endDate), 'yyyy-MM-dd')}`,
+            reason: leaveRequest.reason || '',
+            contact_info: leaveRequest.contactInfo || '',
+            approval_status: leaveRequest.status.toUpperCase(),
+            approval_date: leaveRequest.managedAt ? format(new Date(leaveRequest.managedAt), 'yyyy-MM-dd') : '',
+        };
+
+        for (const [fieldName, fieldValue] of Object.entries(fields)) {
+            try {
+                const field = form.getTextField(fieldName);
+                field.setText(fieldValue);
+            } catch (e) {
+                console.warn(`Could not find or set text field: ${fieldName}`);
+            }
+        }
+        
+        // Handle signatures
+        if (leaveRequest.employeeSignature) {
+            try {
+                const signatureField = form.getButton('employee_signature');
+                const pngImage = await pdfDoc.embedPng(leaveRequest.employeeSignature);
+                signatureField.setImage(pngImage);
+            } catch (e) {
+                console.warn("Could not find or set employee signature field: employee_signature");
+            }
+        }
+        
+        if (leaveRequest.managerSignature) {
+            try {
+                const signatureField = form.getButton('manager_signature');
+                const pngImage = await pdfDoc.embedPng(leaveRequest.managerSignature);
+                signatureField.setImage(pngImage);
+            } catch (e) {
+                console.warn("Could not find or set manager signature field: manager_signature");
+            }
+        }
+
+        form.flatten(); // Make fields non-editable
+
+        const pdfBytes = await pdfDoc.save();
+        const pdfDataUri = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
+
+        return { success: true, pdfDataUri };
+
+    } catch (error: any) {
+        console.error('Failed to generate PDF:', error);
+        return { success: false, error: error.message };
     }
 }
