@@ -79,6 +79,7 @@ export async function getData() {
       requestedAt: l.requestedAt ? new Date(l.requestedAt) : undefined,
       managedAt: l.managedAt ? new Date(l.managedAt) : undefined,
       originalShiftDate: l.originalShiftDate ? new Date(l.originalShiftDate) : undefined,
+      dateFiled: l.dateFiled ? new Date(l.dateFiled) : new Date(),
     }));
     
     const processedNotes: Note[] = notes.map(n => ({
@@ -233,10 +234,15 @@ export async function saveAllData({
     }
 
     // --- LEAVE ---
-    db.prepare('DELETE FROM leave').run();
-    const leaveStmt = db.prepare('INSERT OR REPLACE INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime) VALUES (@id, @employeeId, @type, @color, @startDate, @endDate, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime)');
+    const leaveUpsertStmt = db.prepare(`
+      INSERT INTO leave (id, employeeId, type, color, startDate, endDate, isAllDay, startTime, endTime, status, reason, requestedAt, managedBy, managedAt, originalShiftDate, originalStartTime, originalEndTime, dateFiled, department, idNumber, contactInfo, employeeSignature, managerSignature, pdfDataUri) 
+      VALUES (@id, @employeeId, @type, @color, @startDate, @endDate, @isAllDay, @startTime, @endTime, @status, @reason, @requestedAt, @managedBy, @managedAt, @originalShiftDate, @originalStartTime, @originalEndTime, @dateFiled, @department, @idNumber, @contactInfo, @employeeSignature, @managerSignature, @pdfDataUri) 
+      ON CONFLICT(id) DO UPDATE SET
+        employeeId=excluded.employeeId, type=excluded.type, color=excluded.color, startDate=excluded.startDate, endDate=excluded.endDate, isAllDay=excluded.isAllDay, startTime=excluded.startTime, endTime=excluded.endTime, status=excluded.status, reason=excluded.reason, requestedAt=excluded.requestedAt, managedBy=excluded.managedBy, managedAt=excluded.managedAt, originalShiftDate=excluded.originalShiftDate, originalStartTime=excluded.originalStartTime, originalEndTime=excluded.originalEndTime, dateFiled=excluded.dateFiled, department=excluded.department, idNumber=excluded.idNumber, contactInfo=excluded.contactInfo, employeeSignature=excluded.employeeSignature, managerSignature=excluded.managerSignature, pdfDataUri=excluded.pdfDataUri
+    `);
+    
     for(const l of leave) {
-       leaveStmt.run({
+       leaveUpsertStmt.run({
             id: l.id,
             employeeId: l.employeeId,
             type: l.type,
@@ -253,7 +259,14 @@ export async function saveAllData({
             managedAt: l.managedAt?.toISOString(),
             originalShiftDate: l.originalShiftDate?.toISOString(),
             originalStartTime: l.originalStartTime,
-            originalEndTime: l.originalEndTime
+            originalEndTime: l.originalEndTime,
+            dateFiled: l.dateFiled?.toISOString(),
+            department: l.department,
+            idNumber: l.idNumber,
+            contactInfo: l.contactInfo,
+            employeeSignature: l.employeeSignature,
+            managerSignature: l.managerSignature,
+            pdfDataUri: l.pdfDataUri
         });
     }
 

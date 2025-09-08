@@ -54,6 +54,28 @@ function initializeDatabase() {
             console.error("Error migrating 'personnelNumber' column:", e.message);
         }
     }
+    
+    // Migrations for Leave PDF feature
+    const leaveColumns = [
+        { name: 'dateFiled', type: 'TEXT' },
+        { name: 'department', type: 'TEXT' },
+        { name: 'idNumber', type: 'TEXT' },
+        { name: 'contactInfo', type: 'TEXT' },
+        { name: 'employeeSignature', type: 'TEXT' },
+        { name: 'managerSignature', type: 'TEXT' },
+        { name: 'pdfDataUri', type: 'TEXT' },
+    ];
+    
+    leaveColumns.forEach(col => {
+         try {
+            db.exec(`ALTER TABLE leave ADD COLUMN ${col.name} ${col.type};`);
+            console.log(`Migration successful: Added '${col.name}' column to 'leave' table.`);
+        } catch (e: any) {
+             if (!e.message.includes('duplicate column name')) {
+                console.error(`Error migrating '${col.name}' column:`, e.message);
+            }
+        }
+    });
 
 
     return db;

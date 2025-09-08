@@ -17,13 +17,10 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DatePicker } from './ui/date-picker';
-import type { Leave } from '@/types';
+import type { Leave, Employee } from '@/types';
 import { Textarea } from './ui/textarea';
-import { Separator } from './ui/separator';
 import { Input } from './ui/input';
 import type { LeaveTypeOption } from './leave-type-editor';
-import { DateRange } from 'react-day-picker';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -31,28 +28,15 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 const requestSchema = z.object({
+  idNumber: z.string().optional(),
+  department: z.string().optional(),
+  contactInfo: z.string().optional(),
   type: z.string().min(1, { message: 'Leave type is required.' }),
   reason: z.string().min(1, 'Reason is required.'),
   dateRange: z.object({
       from: z.date({ required_error: "A start date is required."}),
       to: z.date({ required_error: "An end date is required."}),
-  }).optional(),
-  // Extended Work Period
-  date: z.date().optional(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
-  // Original Shift (for work extension)
-  originalShiftDate: z.date().optional(),
-  originalStartTime: z.string().optional(),
-  originalEndTime: z.string().optional(),
-}).refine(data => {
-    if (data.type === 'Work Extension') {
-      return data.originalShiftDate && data.originalStartTime && data.originalEndTime && data.date && data.startTime && data.endTime;
-    }
-    return data.dateRange && data.dateRange.from && data.dateRange.to;
-}, {
-    message: "All date and time fields are required.",
-    path: ['dateRange'], 
+  }),
 });
 
 
@@ -62,9 +46,10 @@ type LeaveRequestDialogProps = {
   request: Partial<Leave> | null;
   onSave: (request: Partial<Leave>) => void;
   leaveTypes: LeaveTypeOption[];
+  currentUser: Employee;
 };
 
-export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTypes }: LeaveRequestDialogProps) {
+export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTypes, currentUser }: LeaveRequestDialogProps) {
   const form = useForm<z.infer<typeof requestSchema>>({
     resolver: zodResolver(requestSchema),
     defaultValues: {},
@@ -78,43 +63,27 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
         type: request?.type || 'VL',
         reason: request?.reason || '',
         dateRange: { from: fromDate, to: toDate },
-        // Extended
-        date: request?.startDate ? new Date(request.startDate) : new Date(),
-        startTime: request?.startTime || '',
-        endTime: request?.endTime || '',
-        // Original
-        originalShiftDate: request?.originalShiftDate ? new Date(request.originalShiftDate) : undefined,
-        originalStartTime: request?.originalStartTime || '',
-        originalEndTime: request?.originalEndTime || '',
+        idNumber: request?.idNumber || currentUser.employeeNumber,
+        department: request?.department || currentUser.group,
+        contactInfo: request?.contactInfo || currentUser.phone,
       });
     }
-  }, [request, isOpen, form]);
+  }, [request, isOpen, form, currentUser]);
 
   const onSubmit = (values: z.infer<typeof requestSchema>) => {
     const finalValues: Partial<Leave> = {
       type: values.type,
       reason: values.reason,
-      isAllDay: values.type !== 'Work Extension'
+      department: values.department,
+      idNumber: values.idNumber,
+      contactInfo: values.contactInfo,
+      startDate: values.dateRange.from,
+      endDate: values.dateRange.to,
+      isAllDay: true, // All requests via this form are full day
     };
-    
-    if (values.type === 'Work Extension' && values.date) {
-        finalValues.startDate = values.date;
-        finalValues.endDate = values.date;
-        finalValues.startTime = values.startTime;
-        finalValues.endTime = values.endTime;
-        finalValues.originalShiftDate = values.originalShiftDate;
-        finalValues.originalStartTime = values.originalStartTime;
-        finalValues.originalEndTime = values.originalEndTime;
-    } else if (values.dateRange?.from && values.dateRange.to) {
-        finalValues.startDate = values.dateRange.from;
-        finalValues.endDate = values.dateRange.to;
-    }
-    
     onSave(finalValues);
   };
   
-  const selectedType = form.watch('type');
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
@@ -126,12 +95,61 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+             <div className="grid grid-cols-2 gap-4">
+               <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input readOnly disabled value={`${currentUser.firstName} ${currentUser.lastName}`} />
+                  </FormControl>
+                </FormItem>
+                 <FormItem>
+                  <FormLabel>Date Filed</FormLabel>
+                  <FormControl>
+                    <Input readOnly disabled value={format(new Date(), 'MMMM d, yyyy')} />
+                  </FormControl>
+                </FormItem>
+             </div>
+             <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Division/Department</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="idNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>ID Number</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="contactInfo"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Contact Information</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
             <FormField
               control={form.control}
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Request Type</FormLabel>
+                  <FormLabel>Leave Type</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -148,145 +166,61 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
                 </FormItem>
               )}
             />
-
-            {selectedType === 'Work Extension' ? (
-                <>
-                    <Separator />
-                    <div className="space-y-4">
-                        <h4 className="font-medium text-sm">Original Shift Details</h4>
-                        <FormField
-                            control={form.control}
-                            name="originalShiftDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Original Shift Date</FormLabel>
-                                <DatePicker date={field.value} onDateChange={field.onChange} />
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="originalStartTime"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Original Start Time</FormLabel>
-                                        <FormControl><Input type="time" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="originalEndTime"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Original End Time</FormLabel>
-                                        <FormControl><Input type="time" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </div>
-                    <Separator />
-                     <div className="space-y-4">
-                        <h4 className="font-medium text-sm">Extended Work Period</h4>
-                         <FormField
-                            control={form.control}
-                            name="date"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Date of Work Extended</FormLabel>
-                                <DatePicker date={field.value} onDateChange={field.onChange} />
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <div className="grid grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="startTime"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Extended Start Time</FormLabel>
-                                        <FormControl><Input type="time" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="endTime"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Extended End Time</FormLabel>
-                                        <FormControl><Input type="time" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </div>
-                </>
-            ) : (
-                <FormField
-                    control={form.control}
-                    name="dateRange"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Leave Dates</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button
-                                            id="date"
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-full justify-start text-left font-normal",
-                                                !field.value && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {field.value?.from ? (
-                                                field.value.to ? (
-                                                    <>
-                                                        {format(field.value.from, "LLL dd, y")} -{" "}
-                                                        {format(field.value.to, "LLL dd, y")}
-                                                    </>
-                                                ) : (
-                                                    format(field.value.from, "LLL dd, y")
-                                                )
+            <FormField
+                control={form.control}
+                name="dateRange"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Dates of Leave</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button
+                                        id="date"
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal",
+                                            !field.value && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {field.value?.from ? (
+                                            field.value.to ? (
+                                                <>
+                                                    {format(field.value.from, "LLL dd, y")} -{" "}
+                                                    {format(field.value.to, "LLL dd, y")}
+                                                </>
                                             ) : (
-                                                <span>Pick a date range</span>
-                                            )}
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        initialFocus
-                                        mode="range"
-                                        defaultMonth={field.value?.from}
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        numberOfMonths={2}
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            )}
+                                                format(field.value.from, "LLL dd, y")
+                                            )
+                                        ) : (
+                                            <span>Pick a date range</span>
+                                        )}
+                                    </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    initialFocus
+                                    mode="range"
+                                    defaultMonth={field.value?.from}
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    numberOfMonths={2}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
            
              <FormField
               control={form.control}
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reason</FormLabel>
+                  <FormLabel>Reason/Remarks</FormLabel>
                    <FormControl>
                     <Textarea {...field} placeholder="Please provide a brief reason for your request..." />
                   </FormControl>

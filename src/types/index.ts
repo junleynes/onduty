@@ -72,6 +72,15 @@ export type Leave = {
   originalShiftDate?: Date;
   originalStartTime?: string;
   originalEndTime?: string;
+
+  // New fields for PDF generation
+  dateFiled: Date;
+  department?: string;
+  idNumber?: string;
+  contactInfo?: string;
+  employeeSignature?: string; // base64
+  managerSignature?: string; // base64
+  pdfDataUri?: string; // base64
 };
 
 export type Notification = {

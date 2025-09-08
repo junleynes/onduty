@@ -28,6 +28,7 @@ import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { OvertimeTemplateUploader } from './overtime-template-uploader';
+import { AlafTemplateUploader } from './alaf-template-uploader';
 
 
 type ReportsViewProps = {
@@ -45,7 +46,7 @@ type ReportsViewProps = {
     permissions: RolePermissions;
 }
 
-type ReportType = 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension' | 'overtime';
+type ReportType = 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension' | 'overtime' | 'alaf';
 
 type ReportData = {
     headers: string[];
@@ -130,6 +131,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [isOvertimeUploaderOpen, setIsOvertimeUploaderOpen] = React.useState(false);
     const [isOvertimeSettingsOpen, setIsOvertimeSettingsOpen] = React.useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+    const [isAlafUploaderOpen, setIsAlafUploaderOpen] = React.useState(false);
     
     // Preview states
     const [previewData, setPreviewData] = React.useState<ReportData | null>(null);
@@ -1676,11 +1678,20 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             ),
             templateKey: 'wfhCertificationTemplate',
             openUploader: () => setIsWfhCertUploaderOpen(true),
+        },
+        alaf: {
+            label: "ALAF (Leave Form) Template",
+            description: "Upload and manage the PDF template for the Application for Leave of Absence Form.",
+            permissionKey: 'report-alaf',
+            isDateRequired: false,
+            dateComponent: <></>,
+            templateKey: 'alafTemplate',
+            openUploader: () => setIsAlafUploaderOpen(true),
         }
     };
     
     const availableReports = Object.entries(reportConfig)
-        .filter(([, config]) => userPermissions.includes(config.permissionKey))
+        .filter(([, config]) => userPermissions.includes(config.permissionKey) || (config.permissionKey as string) === 'report-alaf' ) // Admins can always see ALAF
         .map(([key]) => key as ReportType);
 
     const currentReport = reportConfig[selectedReportType];
@@ -1751,16 +1762,18 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                 {currentReport.settingsComponent}
                             </div>
                         </div>
-                        <div className="pt-6 flex flex-wrap gap-2">
-                            <Button onClick={() => handleViewReport(selectedReportType)} disabled={currentReport.isDateRequired && !isDateFilled()}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Report
-                            </Button>
-                            <Button onClick={() => handleDirectDownload(selectedReportType)} disabled={isDownloadDisabled}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Generate & Download
-                            </Button>
-                        </div>
+                        {selectedReportType !== 'alaf' && (
+                            <div className="pt-6 flex flex-wrap gap-2">
+                                <Button onClick={() => handleViewReport(selectedReportType)} disabled={currentReport.isDateRequired && !isDateFilled()}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View Report
+                                </Button>
+                                <Button onClick={() => handleDirectDownload(selectedReportType)} disabled={isDownloadDisabled}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Generate & Download
+                                </Button>
+                            </div>
+                        )}
                     </Card>
                 </CardContent>
             </Card>
@@ -1794,6 +1807,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 isOpen={isOvertimeUploaderOpen}
                 setIsOpen={setIsOvertimeUploaderOpen}
                 onTemplateUpload={(data) => setTemplates(prev => ({...prev, overtimeTemplate: data}))}
+            />
+             <AlafTemplateUploader 
+                isOpen={isAlafUploaderOpen}
+                setIsOpen={setIsAlafUploaderOpen}
+                onTemplateUpload={(data) => setTemplates(prev => ({...prev, alafTemplate: data}))}
             />
             <Dialog open={isOvertimeSettingsOpen} onOpenChange={setIsOvertimeSettingsOpen}>
                 <DialogContent>

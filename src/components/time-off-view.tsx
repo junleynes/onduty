@@ -10,12 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format, isSameDay } from 'date-fns';
 import { getFullName } from '@/lib/utils';
-import { PlusCircle, Check, X } from 'lucide-react';
+import { PlusCircle, Check, X, FileDown, Mail, Eye } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
 import type { LeaveTypeOption } from './leave-type-editor';
+import { generateLeavePdf, sendEmail } from '@/app/actions';
+import type { SmtpSettings } from '@/types';
 
 type TimeOffViewProps = {
   leaveRequests: Leave[];
@@ -23,9 +25,10 @@ type TimeOffViewProps = {
   currentUser: Employee;
   employees: Employee[];
   leaveTypes: LeaveTypeOption[];
+  smtpSettings: SmtpSettings;
 };
 
-export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUser, employees, leaveTypes }: TimeOffViewProps) {
+export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUser, employees, leaveTypes, smtpSettings }: TimeOffViewProps) {
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
@@ -71,6 +74,11 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
         status: 'pending',
         requestedAt: new Date(),
         ...requestData,
+        dateFiled: new Date(),
+        department: currentUser.group || '',
+        idNumber: currentUser.employeeNumber || '',
+        contactInfo: currentUser.phone || '',
+        employeeSignature: currentUser.signature,
         color: leaveTypeDetails?.color || '#6b7280',
       } as Leave;
       setLeaveRequests(prev => [newRequest, ...prev]);
@@ -79,21 +87,82 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
     setIsRequestDialogOpen(false);
   };
   
-  const handleManageRequest = (requestId: string, newStatus: 'approved' | 'rejected') => {
-    setLeaveRequests(prev => prev.map(req => {
-      if (req.id === requestId) {
-        const leaveTypeDetails = leaveTypes.find(lt => lt.type === req.type);
-        return { 
-          ...req, 
-          status: newStatus, 
-          managedBy: currentUser.id, 
-          managedAt: new Date(),
-          color: leaveTypeDetails?.color || req.color
-        };
-      }
-      return req;
-    }));
-    toast({ title: `Request ${newStatus}` });
+  const handleManageRequest = async (requestId: string, newStatus: 'approved' | 'rejected') => {
+    let updatedRequest: Leave | undefined;
+    
+    setLeaveRequests(prev => {
+        const newLeaveRequests = prev.map(req => {
+            if (req.id === requestId) {
+                const leaveTypeDetails = leaveTypes.find(lt => lt.type === req.type);
+                updatedRequest = { 
+                    ...req, 
+                    status: newStatus, 
+                    managedBy: currentUser.id, 
+                    managedAt: new Date(),
+                    managerSignature: currentUser.signature,
+                    color: leaveTypeDetails?.color || req.color
+                };
+                return updatedRequest;
+            }
+            return req;
+        });
+        return newLeaveRequests;
+    });
+
+    if (newStatus === 'approved' && updatedRequest) {
+        toast({ title: "Generating PDF...", description: "Please wait a moment." });
+        const result = await generateLeavePdf(updatedRequest);
+        if (result.success && result.pdfDataUri) {
+            setLeaveRequests(prev => prev.map(req => req.id === requestId ? { ...req, pdfDataUri: result.pdfDataUri } : req));
+            toast({ title: "Request Approved & PDF Generated", description: "The leave form has been created." });
+        } else {
+            toast({ variant: 'destructive', title: 'PDF Generation Failed', description: result.error });
+        }
+    } else {
+        toast({ title: `Request ${newStatus}` });
+    }
+  };
+
+  const handleDownloadPdf = (pdfDataUri: string, employeeName: string) => {
+    const link = document.createElement('a');
+    link.href = pdfDataUri;
+    link.download = `Leave Application - ${employeeName}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleSendEmail = async (leaveRequest: Leave) => {
+    const employee = employees.find(e => e.id === leaveRequest.employeeId);
+    if (!employee || !leaveRequest.pdfDataUri) return;
+    
+    const subject = `Leave Request - ${getFullName(employee)}`;
+    const body = `
+      <p>Dear ${employee.firstName},</p>
+      <p>Please find attached your leave application form for your request from ${format(new Date(leaveRequest.startDate), 'MMM d, yyyy')} to ${format(new Date(leaveRequest.endDate), 'MMM d, yyyy')}.</p>
+      <p>Details:</p>
+      <ul>
+        <li><strong>Type:</strong> ${leaveRequest.type}</li>
+        <li><strong>Reason:</strong> ${leaveRequest.reason}</li>
+        <li><strong>Status:</strong> ${leaveRequest.status}</li>
+      </ul>
+      <p>Thank you,</p>
+      <p>OnDuty System</p>
+    `;
+    const attachment = {
+      filename: `Leave Application - ${getFullName(employee)}.pdf`,
+      content: leaveRequest.pdfDataUri.split('base64,')[1],
+      contentType: 'application/pdf',
+    };
+
+    toast({ title: 'Sending email...', description: `Sending leave form to ${employee.email}` });
+    const result = await sendEmail({ to: employee.email, subject, htmlBody: body, attachments: [attachment] }, smtpSettings);
+
+    if (result.success) {
+      toast({ title: 'Email Sent!', description: 'The leave form has been sent successfully.' });
+    } else {
+      toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
+    }
   };
   
   const RequestTable = ({ requests, forManagerView = false }: { requests: Leave[], forManagerView?: boolean }) => (
@@ -125,14 +194,28 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
                     <TableCell className="max-w-[200px] truncate">{req.reason}</TableCell>
                     <TableCell><Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge></TableCell>
                     <TableCell className="text-right">
-                        {forManagerView && req.status === 'pending' && (
+                        {forManagerView ? (
+                          req.status === 'pending' ? (
                             <div className="flex gap-2 justify-end">
                                 <Button size="sm" variant="outline" className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => handleManageRequest(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
                                 <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => handleManageRequest(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
                             </div>
-                        )}
-                        {!forManagerView && req.status === 'pending' && (
+                          ) : req.pdfDataUri && (
+                            <div className="flex gap-2 justify-end">
+                              <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
+                              <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="outline" onClick={() => handleSendEmail(req)}><Mail className="h-4 w-4" /></Button>
+                            </div>
+                          )
+                        ) : (
+                           req.status === 'pending' ? (
                              <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>Edit</Button>
+                           ) : req.pdfDataUri && (
+                            <div className="flex gap-2 justify-end">
+                               <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
+                               <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4" /></Button>
+                            </div>
+                           )
                         )}
                     </TableCell>
                 </TableRow>
@@ -179,6 +262,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
         onSave={handleSaveRequest}
         request={editingRequest}
         leaveTypes={leaveTypes}
+        currentUser={currentUser}
       />
     </>
   );
