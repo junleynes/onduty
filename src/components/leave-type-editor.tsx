@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -16,8 +17,9 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from './ui/input';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Upload } from 'lucide-react';
 import { ScrollArea } from './ui/scroll-area';
+import { Separator } from './ui/separator';
 
 export type LeaveTypeOption = {
   type: string;
@@ -38,9 +40,10 @@ type LeaveTypeEditorProps = {
   setIsOpen: (isOpen: boolean) => void;
   leaveTypes: LeaveTypeOption[];
   setLeaveTypes: React.Dispatch<React.SetStateAction<LeaveTypeOption[]>>;
+  onImport: () => void;
 };
 
-export function LeaveTypeEditor({ isOpen, setIsOpen, leaveTypes, setLeaveTypes }: LeaveTypeEditorProps) {
+export function LeaveTypeEditor({ isOpen, setIsOpen, leaveTypes, setLeaveTypes, onImport }: LeaveTypeEditorProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -124,6 +127,17 @@ export function LeaveTypeEditor({ isOpen, setIsOpen, leaveTypes, setLeaveTypes }
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add New Leave Type
             </Button>
+            <Separator />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onImport}
+              className="w-full"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Import from CSV
+            </Button>
+
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>
                 Cancel

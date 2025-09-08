@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScheduleImporter } from './schedule-importer';
 import { TemplateImporter } from './template-importer';
 import { LeaveTypeEditor, type LeaveTypeOption } from './leave-type-editor';
+import { LeaveTypeImporter } from './leave-type-importer';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -80,6 +81,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
   
   const [isLeaveTypeEditorOpen, setIsLeaveTypeEditorOpen] = useState(false);
+  const [isLeaveTypeImporterOpen, setIsLeaveTypeImporterOpen] = useState(false);
 
   const [isImporterOpen, setIsImporterOpen] = useState(false);
   const [isTemplateImporterOpen, setIsTemplateImporterOpen] = useState(false);
@@ -390,6 +392,15 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   
   const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
       setShiftTemplates(prev => [...prev, ...importedTemplates]);
+  };
+
+  const handleImportLeaveTypes = (importedLeaveTypes: LeaveTypeOption[]) => {
+    setLeaveTypes(currentTypes => {
+        const typeMap = new Map(currentTypes.map(t => [t.type, t]));
+        importedLeaveTypes.forEach(t => typeMap.set(t.type, t));
+        return Array.from(typeMap.values());
+    });
+    toast({ title: 'Import Successful', description: `${importedLeaveTypes.length} leave types imported or updated.`})
   };
 
   const handleSaveDraft = () => {
@@ -884,6 +895,12 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         setIsOpen={setIsLeaveTypeEditorOpen}
         leaveTypes={leaveTypes}
         setLeaveTypes={setLeaveTypes}
+        onImport={() => setIsLeaveTypeImporterOpen(true)}
+      />
+      <LeaveTypeImporter
+        isOpen={isLeaveTypeImporterOpen}
+        setIsOpen={setIsLeaveTypeImporterOpen}
+        onImport={handleImportLeaveTypes}
       />
       <ScheduleImporter
         isOpen={isImporterOpen}
