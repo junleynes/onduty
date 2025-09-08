@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { resetToFactorySettings, purgeData } from '@/app/actions';
+import { purgeData } from '@/app/actions';
 import { Loader2, History, Trash2 } from 'lucide-react';
 import { Separator } from './ui/separator';
 
-type PurgeableData = 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad';
+type PurgeableData = 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad' | 'leaveTypes' | 'groups';
 
 type DangerZoneViewProps = {
     onPurgeData: (dataType: PurgeableData) => void;
@@ -18,20 +18,7 @@ type DangerZoneViewProps = {
 
 export default function DangerZoneView({ onPurgeData }: DangerZoneViewProps) {
     const { toast } = useToast();
-    const [isResetting, startResetTransition] = useTransition();
     const [isPurging, startPurgeTransition] = useTransition();
-
-    const handleFactoryReset = () => {
-        startResetTransition(async () => {
-          const result = await resetToFactorySettings();
-          if (result.success) {
-            toast({ title: "System Reset Successful", description: "The application has been restored to factory settings. Please log in again." });
-            setTimeout(() => window.location.reload(), 1500);
-          } else {
-            toast({ variant: 'destructive', title: 'Reset Failed', description: result.error || "An unknown error occurred." });
-          }
-        });
-      };
 
     const handlePurge = (dataType: PurgeableData, friendlyName: string) => {
         startPurgeTransition(async () => {
@@ -52,6 +39,8 @@ export default function DangerZoneView({ onPurgeData }: DangerZoneViewProps) {
         { type: 'reportTemplates', title: 'Delete All Report Templates', description: 'This will permanently delete all uploaded Excel templates for reports.', buttonText: 'Delete Report Templates', friendlyName: 'report templates' },
         { type: 'tasks', title: 'Delete All Tasks', description: 'This will permanently delete all personal, global, and shift-specific tasks.', buttonText: 'Delete Tasks', friendlyName: 'tasks' },
         { type: 'mobileLoad', title: 'Reset All Mobile Load Data', description: 'This will delete all historical mobile load balance records and reset every user\'s Load Allocation to zero.', buttonText: 'Reset Mobile Load', friendlyName: 'mobile load data' },
+        { type: 'leaveTypes', title: 'Delete All Leave Types', description: 'This will permanently delete all leave types.', buttonText: 'Delete Leave Types', friendlyName: 'leave types' },
+        { type: 'groups', title: 'Delete All Groups', description: 'This will permanently delete all groups and unassign all users from their current group.', buttonText: 'Delete Groups', friendlyName: 'groups' },
     ];
 
     return (
@@ -61,7 +50,7 @@ export default function DangerZoneView({ onPurgeData }: DangerZoneViewProps) {
                 <CardDescription>These actions are irreversible and will affect the entire application. Please proceed with caution.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {purgeItems.map((item, index) => (
+                {purgeItems.map((item) => (
                     <React.Fragment key={item.type}>
                         <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
                             <div>
@@ -70,7 +59,7 @@ export default function DangerZoneView({ onPurgeData }: DangerZoneViewProps) {
                             </div>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" disabled={isPurging} className="w-48">
+                                    <Button variant="destructive" disabled={isPurging} className="w-48 shrink-0">
                                         {isPurging ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                                         {item.buttonText}
                                     </Button>
@@ -89,35 +78,6 @@ export default function DangerZoneView({ onPurgeData }: DangerZoneViewProps) {
                         </div>
                     </React.Fragment>
                 ))}
-
-                <Separator />
-
-                <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                    <div>
-                        <h4 className="font-semibold">Restore Factory Settings</h4>
-                        <p className="text-sm text-muted-foreground">This will delete all application data and restore it to its initial state.</p>
-                    </div>
-                     <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" disabled={isResetting} className="w-48">
-                                {isResetting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
-                                Factory Reset
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action is permanent and cannot be undone. All application data will be deleted, and you will be logged out.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleFactoryReset}>Yes, restore factory settings</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
             </CardContent>
         </Card>
     );

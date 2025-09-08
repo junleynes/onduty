@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -46,6 +45,8 @@ import { PermissionsEditor } from '@/components/permissions-editor';
 import DangerZoneView from '@/components/danger-zone-view';
 import DashboardView from '@/components/dashboard-view';
 import FaqView from '@/components/faq-view';
+import NewsFeedsView from '@/components/news-feeds-view';
+import ChatView from '@/components/chat-view';
 
 
 export type NavItem = NavItemKey;
@@ -515,7 +516,7 @@ function AppContent() {
     toast({ title: 'Note Deleted', variant: 'destructive' });
   };
   
-  const handlePurgeData = (dataType: 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad') => {
+  const handlePurgeData = (dataType: 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad' | 'leaveTypes' | 'groups') => {
         switch (dataType) {
             case 'users':
                 const adminUser = employees.find(e => e.id === 'emp-admin-01');
@@ -541,6 +542,12 @@ function AppContent() {
             case 'mobileLoad':
                 setAllowances([]);
                 setEmployees(prev => prev.map(e => ({ ...e, loadAllocation: 0 })));
+                break;
+            case 'leaveTypes':
+                setLeaveTypes([]);
+                break;
+            case 'groups':
+                setGroups([]);
                 break;
         }
     };
@@ -723,7 +730,7 @@ function AppContent() {
   return (
     <>
     <div className='flex h-screen w-full'>
-      <Sidebar collapsible="icon">
+      <Sidebar>
         <SidebarNav role={role} permissions={permissions} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <div className="flex flex-col flex-1 overflow-hidden">

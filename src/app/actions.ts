@@ -176,7 +176,7 @@ export async function resetToFactorySettings(): Promise<{ success: boolean; erro
 }
 
 
-export async function purgeData(dataType: 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad'): Promise<{ success: boolean; error?: string }> {
+export async function purgeData(dataType: 'users' | 'shiftTemplates' | 'holidays' | 'reportTemplates' | 'tasks' | 'mobileLoad' | 'leaveTypes' | 'groups'): Promise<{ success: boolean; error?: string }> {
     const db = getDb();
     try {
         switch (dataType) {
@@ -198,6 +198,13 @@ export async function purgeData(dataType: 'users' | 'shiftTemplates' | 'holidays
             case 'mobileLoad':
                 db.prepare('DELETE FROM communication_allowances').run();
                 db.prepare("UPDATE employees SET loadAllocation = 0").run();
+                break;
+            case 'leaveTypes':
+                db.prepare('DELETE FROM leave_types').run();
+                break;
+            case 'groups':
+                db.prepare("UPDATE employees SET 'group' = NULL").run();
+                db.prepare('DELETE FROM groups').run();
                 break;
             default:
                 return { success: false, error: 'Invalid data type specified for purging.' };
