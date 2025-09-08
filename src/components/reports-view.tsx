@@ -114,11 +114,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [overtimeDateRange, setOvertimeDateRange] = React.useState<DateRange | undefined>();
 
     // Settings states
-    const [ndStartTime, setNdStartTime] = React.useState<string>(() => getInitialState('ndStartTime', '22:00'));
+    const [ndStartTime, setNdStartTime] = React.useState<string>(() => getInitialState('ndStartTime', '20:00'));
     const [ndEndTime, setNdEndTime] = React.useState<string>(() => getInitialState('ndEndTime', '06:00'));
     const [ndClassifications, setNdClassifications] = React.useState<string[]>(() => getInitialState('ndClassifications', ['Rank-and-File']));
-    const [otTypeCode, setOtTypeCode] = React.useState<string>(() => getInitialState('otTypeCode', 'OT'));
-    const [ndTypeCode, setNdTypeCode] = React.useState<string>(() => getInitialState('ndTypeCode', 'ND'));
+    const [otTypeCode, setOtTypeCode] = React.useState<string>(() => getInitialState('otTypeCode', '801'));
+    const [ndTypeCode, setNdTypeCode] = React.useState<string>(() => getInitialState('ndTypeCode', '803'));
 
 
     // Dialog states
@@ -260,7 +260,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             unpaidbreak_start: dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
                             unpaidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
                             paidbreak_start: !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
-                            paidbreak_end: !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
+                            paidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
                         };
                     } else { // Should not happen if logic is correct, but as a fallback
                         const defaultTemplate = getDefaultShiftTemplate(employee);
@@ -576,9 +576,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 if (shift.isUnpaidBreak && shift.breakStartTime && shift.breakEndTime) {
                     const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
                     const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
-                    let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
-                    if (breakDiff < 0) breakDiff += 24;
-                    breakHours = breakDiff;
+                    if (!isNaN(breakStart.getTime()) || !isNaN(breakEnd.getTime())) {
+                      let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
+                      if (breakDiff < 0) breakDiff += 24;
+                      breakHours = breakDiff;
+                    }
                 }
                 
                 return acc + (diff - breakHours);
@@ -739,9 +741,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         const breakStart = parse(dayData.shift.breakStartTime, 'HH:mm', new Date());
                         const breakEnd = parse(dayData.shift.breakEndTime, 'HH:mm', new Date());
                         if (!isNaN(breakStart.getTime()) || !isNaN(breakEnd.getTime())) {
-                            let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
+                           let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
                             if (breakDiff < 0) breakDiff += 24;
-                            breakHours = breakDiff;
+                            breakHours = breakDiff; 
                         }
                     }
                     totalHrs = (diff - breakHours).toFixed(2);
@@ -1051,8 +1053,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
                         if (otMinutes > 0) {
                             data.push({
-                                'SURNAME': employee.lastName,
-                                'EMPLOYEE NAME': getFullName(employee),
+                                'SURNAME': employee.lastName.toUpperCase(),
+                                'EMPLOYEE NAME': `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
                                 'TYPE': 'OT',
                                 'PERSONNEL NUMBER': employee.personnelNumber || '',
                                 'TYPE CODE': otTypeCode,
@@ -1109,8 +1111,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     
                     if (totalNdMinutes > 0) {
                         data.push({
-                           'SURNAME': employee.lastName,
-                           'EMPLOYEE NAME': getFullName(employee),
+                           'SURNAME': employee.lastName.toUpperCase(),
+                           'EMPLOYEE NAME': `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
                            'TYPE': 'ND',
                            'PERSONNEL NUMBER': employee.personnelNumber || '',
                            'TYPE CODE': ndTypeCode,
@@ -1199,7 +1201,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     let templateValue = templateCell.text;
                     for (const placeholder in placeholderMap) {
                         if (templateValue.includes(placeholder)) {
-                            templateValue = templateValue.replace(new RegExp(placeholder, 'g'), rowData[placeholderMap[placeholder as keyof typeof placeholderMap]]);
+                            templateValue = templateValue.replace(new RegExp(placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), rowData[placeholderMap[placeholder as keyof typeof placeholderMap]]);
                         }
                     }
                     newCell.value = templateValue;
@@ -1300,9 +1302,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         } else if (type === 'overtime') {
             const rawData = generateOvertimeData();
              if (rawData && overtimeDateRange?.from && overtimeDateRange?.to) {
+                const headers = ['SURNAME', 'EMPLOYEE NAME', 'TYPE', 'PERSONNEL NUMBER', 'TYPE CODE', 'START TIME', 'END TIME', 'START DATE', 'END DATE', 'TOTAL HOURS', 'REASONS/REMARKS'];
                 data = {
-                    headers: Object.keys(rawData[0] || {}),
-                    rows: rawData.map(d => Object.values(d))
+                    headers: headers,
+                    rows: rawData.map(d => headers.map(h => d[h as keyof OvertimeRowData]))
                 };
                 title = `Overtime & Night Differential (${format(overtimeDateRange!.from!, 'LLL d')} - ${format(overtimeDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadOvertime(rawData);
@@ -1857,3 +1860,5 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
+
+    
