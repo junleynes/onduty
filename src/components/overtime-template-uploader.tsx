@@ -85,6 +85,7 @@ export function OvertimeTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }
                     <li><b>Global Placeholders:</b> These can be used anywhere in the sheet for the person generating the report.
                         <ul className="list-disc pl-5">
                             <li>`{'{{employee_name}}'}` - The current user's full name.</li>
+                            <li>`{'{{group}}'}` - The current user's group name.</li>
                             <li>`{'{{employee_signature}}'}` - The current user's digital signature image.</li>
                         </ul>
                     </li>
