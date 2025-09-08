@@ -84,12 +84,19 @@ type WorkExtensionRowData = {
 };
 
 type OvertimeRowData = {
-    employee_name: string;
-    date: string;
-    shift: string;
-    ot_hours: string;
-    nd_hours: string;
+    SURNAME: string;
+    'EMPLOYEE NAME': string;
+    TYPE: 'OT' | 'ND';
+    'PERSONNEL NUMBER': string;
+    'TYPE CODE': string;
+    'START TIME': string;
+    'END TIME': string;
+    'START DATE': string;
+    'END DATE': string;
+    'TOTAL HOURS': string;
+    'REASONS/REMARKS': string;
 }
+
 
 const ALL_CLASSIFICATIONS = ['Rank-and-File', 'Confidential', 'Managerial'];
 
@@ -110,6 +117,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [ndStartTime, setNdStartTime] = React.useState<string>(() => getInitialState('ndStartTime', '22:00'));
     const [ndEndTime, setNdEndTime] = React.useState<string>(() => getInitialState('ndEndTime', '06:00'));
     const [ndClassifications, setNdClassifications] = React.useState<string[]>(() => getInitialState('ndClassifications', ['Rank-and-File']));
+    const [otTypeCode, setOtTypeCode] = React.useState<string>(() => getInitialState('otTypeCode', 'OT'));
+    const [ndTypeCode, setNdTypeCode] = React.useState<string>(() => getInitialState('ndTypeCode', 'ND'));
+
 
     // Dialog states
     const [isWorkScheduleUploaderOpen, setIsWorkScheduleUploaderOpen] = React.useState(false);
@@ -1017,86 +1027,108 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the report.' });
             return null;
         }
-
+    
         const applicableEmployees = employees.filter(e => ndClassifications.includes(e.employeeClassification || ''));
         const data: OvertimeRowData[] = [];
         const daysInInterval = eachDayOfInterval({ start: overtimeDateRange.from, end: overtimeDateRange.to });
-
+    
         applicableEmployees.forEach(employee => {
             daysInInterval.forEach(day => {
-                let otMinutes = 0;
-                let ndMinutes = 0;
-                
-                const shiftOnDay = shifts.find(s => 
-                    s.employeeId === employee.id && 
-                    isSameDay(new Date(s.date), day) && 
-                    !s.isDayOff && 
-                    !s.isHolidayOff
-                );
-                
-                const workExtensionsOnDay = leave.filter(l => 
-                    l.employeeId === employee.id && 
-                    l.type === 'Work Extension' && 
-                    l.startDate && 
+                // OT Calculations
+                const workExtensionsOnDay = leave.filter(l =>
+                    l.employeeId === employee.id &&
+                    l.type === 'Work Extension' &&
+                    l.startDate &&
                     isSameDay(new Date(l.startDate), day)
                 );
-
-                // Calculate OT from Work Extensions
+    
                 workExtensionsOnDay.forEach(ext => {
                     if (ext.startTime && ext.endTime && ext.startDate) {
                         const start = parse(ext.startTime, 'HH:mm', new Date(ext.startDate));
                         const end = parse(ext.endTime, 'HH:mm', new Date(ext.startDate));
                         if(end < start) end.setDate(end.getDate() + 1);
-                        otMinutes += differenceInMinutes(end, start);
+                        const otMinutes = differenceInMinutes(end, start);
+    
+                        if (otMinutes > 0) {
+                            data.push({
+                                'SURNAME': employee.lastName,
+                                'EMPLOYEE NAME': getFullName(employee),
+                                'TYPE': 'OT',
+                                'PERSONNEL NUMBER': employee.employeeNumber || '',
+                                'TYPE CODE': otTypeCode,
+                                'START DATE': format(start, 'yyyy-MM-dd'),
+                                'END DATE': format(end, 'yyyy-MM-dd'),
+                                'START TIME': format(start, 'HH:mm'),
+                                'END TIME': format(end, 'HH:mm'),
+                                'TOTAL HOURS': (otMinutes / 60).toFixed(2),
+                                'REASONS/REMARKS': ext.reason || ''
+                            });
+                        }
                     }
                 });
-
-                // Calculate ND from regular shift
+    
+                // ND Calculations
+                const shiftOnDay = shifts.find(s =>
+                    s.employeeId === employee.id &&
+                    isSameDay(new Date(s.date), day) &&
+                    !s.isDayOff &&
+                    !s.isHolidayOff
+                );
+    
                 if (shiftOnDay && shiftOnDay.startTime && shiftOnDay.endTime) {
                     const shiftStart = parse(shiftOnDay.startTime, 'HH:mm', day);
                     let shiftEnd = parse(shiftOnDay.endTime, 'HH:mm', day);
                     if (shiftEnd <= shiftStart) {
                         shiftEnd = addDays(shiftEnd, 1);
                     }
-
+    
                     const [ndStartHour, ndStartMinute] = ndStartTime.split(':').map(Number);
                     const [ndEndHour, ndEndMinute] = ndEndTime.split(':').map(Number);
-                    
+    
                     let ndPeriodStartToday = set(day, { hours: ndStartHour, minutes: ndStartMinute, seconds: 0, milliseconds: 0 });
                     let ndPeriodEndToday = endOfDay(day);
-                    
+    
                     let ndPeriodStartTomorrow = startOfDay(addDays(day, 1));
                     let ndPeriodEndTomorrow = set(addDays(day, 1), { hours: ndEndHour, minutes: ndEndMinute, seconds: 0, milliseconds: 0 });
-
+    
+                    let totalNdMinutes = 0;
+    
                     // Overlap with today's ND period (e.g., 22:00 to 23:59)
                     const overlapStart1 = Math.max(shiftStart.getTime(), ndPeriodStartToday.getTime());
                     const overlapEnd1 = Math.min(shiftEnd.getTime(), ndPeriodEndToday.getTime());
                     if (overlapEnd1 > overlapStart1) {
-                        ndMinutes += (overlapEnd1 - overlapStart1) / (1000 * 60);
+                        totalNdMinutes += (overlapEnd1 - overlapStart1) / (1000 * 60);
                     }
-                    
+    
                     // Overlap with tomorrow's ND period (e.g., 00:00 to 06:00)
                     const overlapStart2 = Math.max(shiftStart.getTime(), ndPeriodStartTomorrow.getTime());
                     const overlapEnd2 = Math.min(shiftEnd.getTime(), ndPeriodEndTomorrow.getTime());
                     if (overlapEnd2 > overlapStart2) {
-                        ndMinutes += (overlapEnd2 - overlapStart2) / (1000 * 60);
+                        totalNdMinutes += (overlapEnd2 - overlapStart2) / (1000 * 60);
                     }
-                }
-                
-                if (otMinutes > 0 || ndMinutes > 0) {
-                    data.push({
-                        employee_name: getFullName(employee),
-                        date: format(day, 'yyyy-MM-dd'),
-                        shift: shiftOnDay ? `${shiftOnDay.startTime} - ${shiftOnDay.endTime}` : "No Shift",
-                        ot_hours: (otMinutes / 60).toFixed(2),
-                        nd_hours: (ndMinutes / 60).toFixed(2)
-                    });
+    
+                    if (totalNdMinutes > 0) {
+                        data.push({
+                           'SURNAME': employee.lastName,
+                           'EMPLOYEE NAME': getFullName(employee),
+                           'TYPE': 'ND',
+                           'PERSONNEL NUMBER': employee.employeeNumber || '',
+                           'TYPE CODE': ndTypeCode,
+                           'START DATE': format(shiftStart, 'yyyy-MM-dd'),
+                           'END DATE': format(shiftEnd, 'yyyy-MM-dd'),
+                           'START TIME': format(shiftStart, 'HH:mm'),
+                           'END TIME': format(shiftEnd, 'HH:mm'),
+                           'TOTAL HOURS': (totalNdMinutes / 60).toFixed(2),
+                           'REASONS/REMARKS': ''
+                        });
+                    }
                 }
             });
         });
-
+    
         return data;
     }
+
 
     const handleDownloadOvertime = async (data: OvertimeRowData[] | null) => {
         if (!data) return;
@@ -1116,12 +1148,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             let templateRowNumber = -1;
             worksheet.eachRow((row, rowNumber) => {
                  row.eachCell((cell) => {
-                    if (typeof cell.value === 'string' && cell.value.includes('{{employee_name}}')) {
+                    if (typeof cell.value === 'string' && cell.value.includes('{{SURNAME}}')) {
                        templateRowNumber = rowNumber;
                     }
                  });
             });
-            if (templateRowNumber === -1) throw new Error("Template row with `{{employee_name}}` not found.");
+            if (templateRowNumber === -1) throw new Error("Template row with `{{SURNAME}}` not found.");
 
             const templateRow = worksheet.getRow(templateRowNumber);
             const templateStyles = new Map<number, Partial<ExcelJS.Style>>();
@@ -1130,11 +1162,17 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
 
              const placeholderMap: { [key: string]: keyof OvertimeRowData } = {
-                '{{employee_name}}': 'employee_name',
-                '{{date}}': 'date',
-                '{{shift}}': 'shift',
-                '{{ot_hours}}': 'ot_hours',
-                '{{nd_hours}}': 'nd_hours',
+                '{{SURNAME}}': 'SURNAME',
+                '{{EMPLOYEE NAME}}': 'EMPLOYEE NAME',
+                '{{TYPE}}': 'TYPE',
+                '{{PERSONNEL NUMBER}}': 'PERSONNEL NUMBER',
+                '{{TYPE CODE}}': 'TYPE CODE',
+                '{{START TIME}}': 'START TIME',
+                '{{END TIME}}': 'END TIME',
+                '{{START DATE}}': 'START DATE',
+                '{{END DATE}}': 'END DATE',
+                '{{TOTAL HOURS}}': 'TOTAL HOURS',
+                '{{REASONS/REMARKS}}': 'REASONS/REMARKS',
             };
 
             data.forEach((rowData, index) => {
@@ -1144,7 +1182,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     let templateValue = templateCell.text;
                     for (const placeholder in placeholderMap) {
                         if (templateValue.includes(placeholder)) {
-                            templateValue = templateValue.replace(placeholder, rowData[placeholderMap[placeholder as keyof typeof placeholderMap]]);
+                            templateValue = templateValue.replace(new RegExp(placeholder, 'g'), rowData[placeholderMap[placeholder as keyof typeof placeholderMap]]);
                         }
                     }
                     newCell.value = templateValue;
@@ -1222,7 +1260,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             const rawData = generateOvertimeData();
              if (rawData && overtimeDateRange?.from && overtimeDateRange?.to) {
                 data = {
-                    headers: ['Employee', 'Date', 'Shift', 'OT Hours', 'ND Hours'],
+                    headers: Object.keys(rawData[0] || {}),
                     rows: rawData.map(d => Object.values(d))
                 };
                 title = `Overtime & Night Differential (${format(overtimeDateRange!.from!, 'LLL d')} - ${format(overtimeDateRange!.to!, 'LLL d, y')})`;
@@ -1622,6 +1660,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         localStorage.setItem('ndStartTime', ndStartTime);
         localStorage.setItem('ndEndTime', ndEndTime);
         localStorage.setItem('ndClassifications', JSON.stringify(ndClassifications));
+        localStorage.setItem('otTypeCode', otTypeCode);
+        localStorage.setItem('ndTypeCode', ndTypeCode);
         toast({ title: 'Overtime settings saved.' });
         setIsOvertimeSettingsOpen(false);
     }
@@ -1715,7 +1755,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Overtime & Night Differential Settings</DialogTitle>
-                        <DialogDescription>Configure the rules for OT and ND calculation.</DialogDescription>
+                        <DialogDescription>Configure the rules and codes for OT and ND calculation.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
@@ -1728,8 +1768,18 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                 <Input id="nd-end" type="time" value={ndEndTime} onChange={e => setNdEndTime(e.target.value)} />
                             </div>
                         </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="ot-code">OT Type Code</Label>
+                                <Input id="ot-code" value={otTypeCode} onChange={e => setOtTypeCode(e.target.value)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="nd-code">ND Type Code</Label>
+                                <Input id="nd-code" value={ndTypeCode} onChange={e => setNdTypeCode(e.target.value)} />
+                            </div>
+                        </div>
                         <div className="space-y-2">
-                            <Label>Applicable Employee Classifications</Label>
+                            <Label>Applicable Employee Classifications for ND</Label>
                             <div className="space-y-1">
                             {ALL_CLASSIFICATIONS.map(classification => (
                                 <div key={classification} className="flex items-center space-x-2">
@@ -1766,11 +1816,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-// const endOfDay = (date: Date): Date => {
-//     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
-// }
-
-    
-
-    

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -342,7 +341,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     name="employeeNumber"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Employee Number</FormLabel>
+                                        <FormLabel>Personnel Number</FormLabel>
                                         <FormControl>
                                         <Input {...field} />
                                         </FormControl>
@@ -625,4 +624,3 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
     </Dialog>
   );
 }
-

@@ -82,13 +82,19 @@ export function OvertimeTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }
             <AlertTitle>Template Instructions</AlertTitle>
             <AlertDescription>
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
-                    <li><b>Row Placeholders:</b> Create one row in your template that contains these placeholders. The system will duplicate this row for each entry in your selected date range.
+                    <li><b>Row Placeholders:</b> Create one row in your template that contains these placeholders. The system will duplicate this row for each OT or ND entry.
                         <ul className="list-disc pl-5">
-                            <li>`{'{{employee_name}}'}`</li>
-                            <li>`{'{{date}}'}`</li>
-                            <li>`{'{{shift}}'}`</li>
-                            <li>`{'{{ot_hours}}'}`</li>
-                            <li>`{'{{nd_hours}}'}`</li>
+                            <li>`{'{{SURNAME}}'}`</li>
+                            <li>`{'{{EMPLOYEE NAME}}'}`</li>
+                            <li>`{'{{TYPE}}'}` - (OT or ND)</li>
+                            <li>`{'{{PERSONNEL NUMBER}}'}`</li>
+                            <li>`{'{{TYPE CODE}}'}`</li>
+                            <li>`{'{{START TIME}}'}`</li>
+                            <li>`{'{{END TIME}}'}`</li>
+                            <li>`{'{{START DATE}}'}`</li>
+                            <li>`{'{{END DATE}}'}`</li>
+                            <li>`{'{{TOTAL HOURS}}'}`</li>
+                            <li>`{'{{REASONS/REMARKS}}'}`</li>
                         </ul>
                     </li>
                 </ul>
