@@ -28,15 +28,13 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
 const requestSchema = z.object({
-  idNumber: z.string().optional(),
-  department: z.string().optional(),
-  contactInfo: z.string().optional(),
   type: z.string().min(1, { message: 'Leave type is required.' }),
   reason: z.string().min(1, 'Reason is required.'),
   dateRange: z.object({
       from: z.date({ required_error: "A start date is required."}),
       to: z.date({ required_error: "An end date is required."}),
   }),
+  isAllDay: z.boolean(),
 });
 
 
@@ -63,9 +61,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
         type: request?.type || 'VL',
         reason: request?.reason || '',
         dateRange: { from: fromDate, to: toDate },
-        idNumber: request?.idNumber || currentUser.employeeNumber,
-        department: request?.department || currentUser.group,
-        contactInfo: request?.contactInfo || currentUser.phone,
+        isAllDay: request?.isAllDay ?? true,
       });
     }
   }, [request, isOpen, form, currentUser]);
@@ -74,12 +70,9 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
     const finalValues: Partial<Leave> = {
       type: values.type,
       reason: values.reason,
-      department: values.department,
-      idNumber: values.idNumber,
-      contactInfo: values.contactInfo,
       startDate: values.dateRange.from,
       endDate: values.dateRange.to,
-      isAllDay: true, // All requests via this form are full day
+      isAllDay: values.isAllDay,
     };
     onSave(finalValues);
   };
@@ -109,41 +102,6 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
                   </FormControl>
                 </FormItem>
              </div>
-             <FormField
-                control={form.control}
-                name="department"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Division/Department</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-            <div className="grid grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="idNumber"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>ID Number</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="contactInfo"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Contact Information</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
             <FormField
               control={form.control}
               name="type"
@@ -211,6 +169,27 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
                             </PopoverContent>
                         </Popover>
                         <FormMessage />
+                    </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="isAllDay"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Leave Duration</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(value === 'true')} defaultValue={String(field.value)}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="true">Whole day</SelectItem>
+                            <SelectItem value="false">Half day</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
                     </FormItem>
                 )}
             />
