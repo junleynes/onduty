@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format, isSameDay } from 'date-fns';
 import { getFullName } from '@/lib/utils';
-import { PlusCircle, Check, X, FileDown, Mail, Eye } from 'lucide-react';
+import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,9 +26,10 @@ type TimeOffViewProps = {
   employees: Employee[];
   leaveTypes: LeaveTypeOption[];
   smtpSettings: SmtpSettings;
+  onUploadAlaf: () => void;
 };
 
-export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUser, employees, leaveTypes, smtpSettings }: TimeOffViewProps) {
+export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUser, employees, leaveTypes, smtpSettings, onUploadAlaf }: TimeOffViewProps) {
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
@@ -74,6 +75,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
         status: 'pending',
         requestedAt: new Date(),
         ...requestData,
+        endDate: requestData.endDate || requestData.startDate, // Ensure endDate is set
         dateFiled: new Date(),
         department: currentUser.group || '',
         idNumber: currentUser.employeeNumber || '',
@@ -233,10 +235,18 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
             <CardTitle>Time Off Requests</CardTitle>
             <CardDescription>Manage your leave requests and work extensions.</CardDescription>
           </div>
-           <Button onClick={handleNewRequest}>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                New Request
-            </Button>
+           <div className="flex gap-2">
+                {isManager && (
+                    <Button variant="outline" onClick={onUploadAlaf}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload ALAF Template
+                    </Button>
+                )}
+               <Button onClick={handleNewRequest}>
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    New Request
+                </Button>
+           </div>
         </CardHeader>
         <CardContent>
             <Tabs defaultValue={isManager ? "team-requests" : "my-requests"} className="w-full">

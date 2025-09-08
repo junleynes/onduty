@@ -32,7 +32,7 @@ const requestSchema = z.object({
   reason: z.string().min(1, 'Reason is required.'),
   dateRange: z.object({
       from: z.date({ required_error: "A start date is required."}),
-      to: z.date({ required_error: "An end date is required."}),
+      to: z.date().optional(),
   }),
   isAllDay: z.boolean(),
 });
@@ -71,7 +71,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
       type: values.type,
       reason: values.reason,
       startDate: values.dateRange.from,
-      endDate: values.dateRange.to,
+      endDate: values.dateRange.to || values.dateRange.from,
       isAllDay: values.isAllDay,
     };
     onSave(finalValues);
@@ -138,7 +138,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
                                         variant={"outline"}
                                         className={cn(
                                             "w-full justify-start text-left font-normal",
-                                            !field.value && "text-muted-foreground"
+                                            !field.value.from && "text-muted-foreground"
                                         )}
                                     >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -152,7 +152,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
                                                 format(field.value.from, "LLL dd, y")
                                             )
                                         ) : (
-                                            <span>Pick a date range</span>
+                                            <span>Pick a date or range</span>
                                         )}
                                     </Button>
                                 </FormControl>
