@@ -1153,9 +1153,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         let newText = text;
                         newText = newText.replace(/{{employee_name}}/g, getFullName(currentUser));
                         newText = newText.replace(/{{group}}/g, currentUser.group || '');
+                        newText = newText.replace(/{{current_date}}/g, format(new Date(), 'MM/dd/yyyy'));
                         return newText;
                     }
-                    if (typeof cell.value === 'string') {
+                    if (cell.value && typeof cell.value === 'string') {
                         cell.value = replacePlaceholders(cell.value);
                     }
                 });

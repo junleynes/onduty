@@ -87,6 +87,7 @@ export function OvertimeTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }
                             <li>`{'{{employee_name}}'}` - The current user's full name.</li>
                             <li>`{'{{group}}'}` - The current user's group name.</li>
                             <li>`{'{{employee_signature}}'}` - The current user's digital signature image.</li>
+                            <li>`{'{{current_date}}'}` - The date the report was generated.</li>
                         </ul>
                     </li>
                     <li><b>Row Placeholders:</b> Create one row in your template that contains these placeholders. The system will duplicate this row for each OT or ND entry.
