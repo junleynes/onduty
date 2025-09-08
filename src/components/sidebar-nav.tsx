@@ -111,18 +111,23 @@ const allNavItems: Record<string, NavGroup[]> = {
     ]
 };
 
+const adminNavItems: NavItemConfig[] = [
+    { view: 'admin', label: 'Users and Groups', icon: Shield, iconColor: 'bg-red-500' },
+    { view: 'permissions', label: 'Permissions', icon: ShieldCheck, iconColor: 'bg-red-500' },
+    { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
+    { view: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle, iconColor: 'bg-destructive' },
+];
+
+
 export default function SidebarNav({ role, activeView, onNavigate, permissions }: SidebarNavProps) {
-    const adminOnlyViews = new Set(['admin', 'permissions', 'smtp-settings', 'danger-zone']);
-    
     if (role === 'admin') {
-        const adminNavGroups = allNavItems.all.filter(group => group.label === 'Admin');
         return (
-             <SidebarContent>
-                <SidebarMenu className="flex-1 px-2">
-                    {adminNavGroups.map((group) => (
-                        <SidebarGroup key={group.label}>
-                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                            {group.items.map(({ view, label, icon: Icon, iconColor }) => (
+             <>
+                <SidebarContent>
+                    <SidebarMenu className="flex-1 px-2">
+                        <SidebarGroup>
+                            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+                            {adminNavItems.map(({ view, label, icon: Icon, iconColor }) => (
                             <SidebarMenuItem key={view}>
                                 <SidebarMenuButton
                                 onClick={() => onNavigate(view)}
@@ -138,9 +143,12 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
                             </SidebarMenuItem>
                             ))}
                         </SidebarGroup>
-                    ))}
-                </SidebarMenu>
-            </SidebarContent>
+                    </SidebarMenu>
+                </SidebarContent>
+                <SidebarFooter>
+                    <SidebarTrigger />
+                </SidebarFooter>
+            </>
         );
     }
     
@@ -151,34 +159,39 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
 
     const navGroups = allNavItems.all.map(group => ({
       ...group,
-      items: group.items.filter(item => allowedViews.has(item.view) && !adminOnlyViews.has(item.view))
-    })).filter(group => group.items.length > 0);
+      items: group.items.filter(item => allowedViews.has(item.view))
+    })).filter(group => group.items.length > 0 && group.label !== 'Admin');
 
 
   return (
-    <SidebarContent>
-        <SidebarMenu className="flex-1 px-2">
-            {navGroups.map((group) => (
-                <SidebarGroup key={group.label}>
-                    <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                    {group.items.map(({ view, label, icon: Icon, iconColor }) => (
-                    <SidebarMenuItem key={view}>
-                        <SidebarMenuButton
-                        onClick={() => onNavigate(view)}
-                        isActive={activeView === view}
-                        className="justify-start gap-3"
-                        tooltip={label}
-                        >
-                        <div className={`p-1.5 rounded-md text-white ${iconColor}`}>
-                            <Icon className="size-4" />
-                        </div>
-                        <span className="group-data-[collapsible=icon]:hidden">{label}</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    ))}
-                </SidebarGroup>
-            ))}
-        </SidebarMenu>
-    </SidebarContent>
+    <>
+        <SidebarContent>
+            <SidebarMenu className="flex-1 px-2">
+                {navGroups.map((group) => (
+                    <SidebarGroup key={group.label}>
+                        <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                        {group.items.map(({ view, label, icon: Icon, iconColor }) => (
+                        <SidebarMenuItem key={view}>
+                            <SidebarMenuButton
+                            onClick={() => onNavigate(view)}
+                            isActive={activeView === view}
+                            className="justify-start gap-3"
+                            tooltip={label}
+                            >
+                            <div className={`p-1.5 rounded-md text-white ${iconColor}`}>
+                                <Icon className="size-4" />
+                            </div>
+                            <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        ))}
+                    </SidebarGroup>
+                ))}
+            </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+            <SidebarTrigger />
+        </SidebarFooter>
+    </>
   );
 }

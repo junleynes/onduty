@@ -804,7 +804,7 @@ function AppContent() {
 
 export default function Home() {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <AppContent />
     </SidebarProvider>
   );
