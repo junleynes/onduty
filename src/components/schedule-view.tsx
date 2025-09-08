@@ -58,9 +58,11 @@ type ScheduleViewProps = {
   setShiftTemplates: React.Dispatch<React.SetStateAction<ShiftTemplate[]>>;
   leaveTypes: LeaveTypeOption[];
   setLeaveTypes: React.Dispatch<React.SetStateAction<LeaveTypeOption[]>>;
+  monthlyEmployeeOrder: Record<string, string[]>;
+  setMonthlyEmployeeOrder: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
 }
 
-export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, smtpSettings, shiftTemplates, setShiftTemplates, leaveTypes, setLeaveTypes }: ScheduleViewProps) {
+export default function ScheduleView({ employees, setEmployees, shifts, setShifts, leave, setLeave, notes, setNotes, holidays, setTasks, tasks, setHolidays, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, smtpSettings, shiftTemplates, setShiftTemplates, leaveTypes, setLeaveTypes, monthlyEmployeeOrder, setMonthlyEmployeeOrder }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
   
   const visibleEmployees = useMemo(() => employees.filter(e => e.visibility?.schedule !== false), [employees]);
@@ -73,9 +75,15 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const [viewEmployeeOrder, setViewEmployeeOrder] = useState<string[] | null>(null);
 
   useEffect(() => {
-    // Reset the custom order when the view or date range changes significantly
-    setViewEmployeeOrder(null);
-  }, [viewMode, currentDate.getMonth()]);
+    // When the month changes, check for a saved order for that month.
+    const monthKey = format(currentDate, 'yyyy-MM');
+    if (monthlyEmployeeOrder[monthKey]) {
+        setViewEmployeeOrder(monthlyEmployeeOrder[monthKey]);
+    } else {
+        // If no order exists for the new month, reset to default (null will trigger alphabetical sort)
+        setViewEmployeeOrder(null);
+    }
+  }, [currentDate.getMonth(), currentDate.getFullYear(), monthlyEmployeeOrder]);
 
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
@@ -126,12 +134,12 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   
   const orderedEmployees = useMemo(() => {
     const employeeMap = new Map(visibleEmployees.map(e => [e.id, e]));
-    let baseEmployees = visibleEmployees;
+    let baseEmployees = [...visibleEmployees].sort((a,b) => a.lastName.localeCompare(b.lastName));
 
     if (viewEmployeeOrder) {
       const orderedSet = new Set(viewEmployeeOrder);
       const ordered = viewEmployeeOrder.map(id => employeeMap.get(id)).filter((e): e is Employee => !!e);
-      const unordered = visibleEmployees.filter(e => !orderedSet.has(e.id));
+      const unordered = baseEmployees.filter(e => !orderedSet.has(e.id));
       baseEmployees = [...ordered, ...unordered];
     }
       
@@ -359,9 +367,10 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     shifts: Shift[],
     leave: Leave[],
     employeeOrder: string[],
-    overwrittenCells: { employeeId: string, date: Date }[]
+    overwrittenCells: { employeeId: string, date: Date }[],
+    monthKey: string
   }) => {
-    const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells } = importedData;
+    const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKey } = importedData;
   
     const cellsToOverwrite = new Set(
       overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
@@ -385,9 +394,17 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     setShifts([...remainingShifts, ...shiftsWithStatus]);
     setLeave([...remainingLeave, ...importedLeave]);
     
-    const currentEmployeeIds = employees.map(e => e.id);
-    const validOrder = employeeOrder.filter(id => currentEmployeeIds.includes(id));
-    setViewEmployeeOrder(validOrder);
+    // Set the employee order for the imported month
+    setMonthlyEmployeeOrder(prev => ({
+        ...prev,
+        [monthKey]: employeeOrder
+    }));
+
+    // Immediately apply the new order to the view if we are in that month
+    const currentMonthKey = format(currentDate, 'yyyy-MM');
+    if (currentMonthKey === monthKey) {
+      setViewEmployeeOrder(employeeOrder);
+    }
   };
   
   const handleImportTemplates = (importedTemplates: ShiftTemplate[]) => {
@@ -471,6 +488,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     const [draggedItem] = newOrder.splice(draggedIndex, 1);
     newOrder.splice(targetIndex, 0, draggedItem);
     
+    const monthKey = format(currentDate, 'yyyy-MM');
+    setMonthlyEmployeeOrder(prev => ({
+        ...prev,
+        [monthKey]: newOrder
+    }));
     setViewEmployeeOrder(newOrder);
   };
 

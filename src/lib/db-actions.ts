@@ -45,6 +45,9 @@ export async function getData() {
         return acc;
     }, { admin: [], manager: [], member: [] } as RolePermissions);
 
+    const monthlyOrderData = db.prepare("SELECT value FROM key_value_store WHERE key = 'monthlyEmployeeOrder'").get() as { value: string } | undefined;
+    const monthlyEmployeeOrder = monthlyOrderData ? JSON.parse(monthlyOrderData.value) : {};
+
 
     // Process data to match client-side types (e.g., parsing JSON, converting dates)
     const processedEmployees: Employee[] = employees.map(e => ({
@@ -145,6 +148,7 @@ export async function getData() {
         shiftTemplates: processedShiftTemplates,
         leaveTypes,
         permissions,
+        monthlyEmployeeOrder,
       }
     };
   } catch (error) {
@@ -169,6 +173,7 @@ export async function saveAllData({
   shiftTemplates,
   leaveTypes,
   permissions,
+  monthlyEmployeeOrder,
 }: {
   employees: Employee[];
   shifts: Shift[];
@@ -184,6 +189,7 @@ export async function saveAllData({
   shiftTemplates: ShiftTemplate[];
   leaveTypes: LeaveTypeOption[];
   permissions: RolePermissions;
+  monthlyEmployeeOrder: Record<string, string[]>;
 }) {
   const db = getDb();
   const saveTransaction = db.transaction(() => {
@@ -331,13 +337,15 @@ export async function saveAllData({
         leaveTypeUpsertStmt.run(lt);
     }
 
-    // --- KEY-VALUE STORE (e.g. excel templates) ---
+    // --- KEY-VALUE STORE (e.g. excel templates and monthly order) ---
     const templateStmt = db.prepare('INSERT INTO key_value_store (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
     for(const [key, value] of Object.entries(templates)) {
       if (value) {
         templateStmt.run({ key, value });
       }
     }
+    // Save the monthly employee order
+    templateStmt.run({ key: 'monthlyEmployeeOrder', value: JSON.stringify(monthlyEmployeeOrder) });
     
     // --- PERMISSIONS ---
     const permissionsStmt = db.prepare('INSERT INTO permissions (role, allowed_views) VALUES (@role, @allowed_views) ON CONFLICT(role) DO UPDATE SET allowed_views=excluded.allowed_views');

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -70,6 +71,7 @@ function AppContent() {
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplate[]>([]);
   const [leaveTypes, setLeaveTypes] = useState<LeaveTypeOption[]>([]);
   const [permissions, setPermissions] = useState<RolePermissions>({ admin: [], manager: [], member: []});
+  const [monthlyEmployeeOrder, setMonthlyEmployeeOrder] = useState<Record<string, string[]>>({});
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,6 +116,7 @@ function AppContent() {
         shiftTemplates,
         leaveTypes,
         permissions,
+        monthlyEmployeeOrder,
     };
 
     const saveData = async () => {
@@ -141,7 +144,7 @@ function AppContent() {
     const timeoutId = setTimeout(saveData, 1500); // Debounce saves
     return () => clearTimeout(timeoutId);
 
-  }, [initialDataLoaded, isLoading, toast, employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, leaveTypes, permissions]);
+  }, [initialDataLoaded, isLoading, toast, employees, shifts, leave, notes, holidays, tasks, allowances, groups, smtpSettings, tardyRecords, templates, shiftTemplates, leaveTypes, permissions, monthlyEmployeeOrder]);
 
   // Load initial data from DB and check for user
   useEffect(() => {
@@ -191,6 +194,7 @@ function AppContent() {
         setLeaveTypes(result.data.leaveTypes);
         setTemplates(result.data.templates);
         setPermissions(result.data.permissions);
+        setMonthlyEmployeeOrder(result.data.monthlyEmployeeOrder);
         
         // If it wasn't the special admin, find the user from the DB
         if (!userToSet) {
@@ -235,8 +239,13 @@ function AppContent() {
 
         const today = new Date();
         const storageKey = `celebrations-notified-${format(today, 'yyyy-MM-dd')}`;
-        const notifiedToday: string[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
+        
+        const getNotifiedToday = () => {
+             if (typeof window === 'undefined') return [];
+             return JSON.parse(localStorage.getItem(storageKey) || '[]');
+        }
+        
+        const notifiedToday: string[] = getNotifiedToday();
 
         const celebrationsToNotify: { employee: Employee; type: 'birthday' | 'anniversary' }[] = [];
 
@@ -251,9 +260,18 @@ function AppContent() {
             }
             if (employee.startDate) {
                 const startDate = new Date(employee.startDate);
-                if (getYear(startDate) !== getYear(today) && getMonth(startDate) === getMonth(today) && getDate(startDate) === getDate(today)) {
-                     if (!notifiedToday.includes(`${employee.id}-anniversary`)) {
-                        celebrationsToNotify.push({ employee, type: 'anniversary' });
+                const yearsOfService = differenceInYears(today, startDate);
+        
+                const isMilestone = yearsOfService >= 5 && yearsOfService % 5 === 0;
+
+                if (isMilestone) {
+                    if (getMonth(startDate) === getMonth(today) && getDate(startDate) === getDate(today)) {
+                         if (!notifiedToday.includes(`${employee.id}-anniversary`)) {
+                            celebrationsToNotify.push({
+                                employee,
+                                type: 'anniversary',
+                            });
+                        }
                     }
                 }
             }
@@ -622,6 +640,8 @@ function AppContent() {
             setShiftTemplates={setShiftTemplates}
             leaveTypes={leaveTypes}
             setLeaveTypes={setLeaveTypes}
+            monthlyEmployeeOrder={monthlyEmployeeOrder}
+            setMonthlyEmployeeOrder={setMonthlyEmployeeOrder}
           />
         );
       }
@@ -714,7 +734,7 @@ function AppContent() {
             </Card>
         );
     }
-  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, leaveForView, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded, leaveTypes, permissions]);
+  }, [activeView, employees, shifts, leave, notes, holidays, tasks, allowances, smtpSettings, tardyRecords, templates, shiftTemplates, leaveForView, currentUser, groups, shiftsForView, addNotification, router, toast, initialDataLoaded, leaveTypes, permissions, monthlyEmployeeOrder]);
 
   if (!initialDataLoaded || !currentUser) {
       return (
