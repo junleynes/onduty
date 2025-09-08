@@ -97,8 +97,8 @@ export function MemberImporter({ isOpen, setIsOpen, onImport, employees }: Membe
               group: row['Group'] || '',
               email: row['Email'] || '',
               phone: row['Phone'] || '',
-              employeeNumber: row['Employee Number'] || '',
-              personnelNumber: row['Personnel Number'] || '',
+              employeeNumber: row['ID Number'] || '',
+              personnelNumber: row['Employee Number'] || '',
               password: row['Password'] || 'password', // Default password if not provided
               role: ['admin', 'manager', 'member'].includes(role) ? role : 'member',
               loadAllocation: !isNaN(loadAllocationValue) ? loadAllocationValue : 0,

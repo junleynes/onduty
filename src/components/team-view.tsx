@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -52,7 +53,8 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
         const worksheet = workbook.addWorksheet('Team Members');
 
         worksheet.columns = [
-            { header: 'Employee Number', key: 'employeeNumber', width: 20 },
+            { header: 'ID Number', key: 'employeeNumber', width: 20 },
+            { header: 'Employee Number', key: 'personnelNumber', width: 20 },
             { header: 'Last Name', key: 'lastName', width: 20 },
             { header: 'First Name', key: 'firstName', width: 20 },
             { header: 'M.I.', key: 'middleInitial', width: 10 },
