@@ -10,7 +10,7 @@ import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
-import { isSameDay, getMonth, getDate, getYear, format } from 'date-fns';
+import { isSameDay, getMonth, getDate, getYear, format, differenceInYears } from 'date-fns';
 import { getData, saveAllData } from '@/lib/db-actions';
 import { addEmployee, updateEmployee } from '@/app/employee-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -668,6 +668,7 @@ function AppContent() {
                   currentUser={currentUser}
                   employees={employees}
                   leaveTypes={leaveTypes}
+                  smtpSettings={smtpSettings}
                />;
       case 'allowance':
         return <AllowanceView 
