@@ -1,5 +1,4 @@
 
-
 'use client';
 import { 
     CalendarDays, 
@@ -53,6 +52,13 @@ type NavGroup = {
     items: NavItemConfig[];
 };
 
+const adminNavItems: NavItemConfig[] = [
+    { view: 'admin', label: 'Users and Groups', icon: Shield, iconColor: 'bg-red-500' },
+    { view: 'permissions', label: 'Permissions', icon: ShieldCheck, iconColor: 'bg-red-500' },
+    { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
+    { view: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle, iconColor: 'bg-destructive' },
+];
+
 const allNavItems: Record<string, NavGroup[]> = {
     all: [
          {
@@ -99,24 +105,8 @@ const allNavItems: Record<string, NavGroup[]> = {
                 { view: 'faq', label: 'FAQ', icon: HelpCircle, iconColor: 'bg-cyan-500' },
             ]
         },
-        {
-            label: 'Admin',
-            items: [
-                { view: 'admin', label: 'Users and Groups', icon: Shield, iconColor: 'bg-red-500' },
-                { view: 'permissions', label: 'Permissions', icon: ShieldCheck, iconColor: 'bg-red-500' },
-                { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
-                { view: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle, iconColor: 'bg-destructive' },
-            ]
-        }
     ]
 };
-
-const adminNavItems: NavItemConfig[] = [
-    { view: 'admin', label: 'Users and Groups', icon: Shield, iconColor: 'bg-red-500' },
-    { view: 'permissions', label: 'Permissions', icon: ShieldCheck, iconColor: 'bg-red-500' },
-    { view: 'smtp-settings', label: 'SMTP Settings', icon: Mail, iconColor: 'bg-gray-500' },
-    { view: 'danger-zone', label: 'Danger Zone', icon: AlertTriangle, iconColor: 'bg-destructive' },
-];
 
 
 export default function SidebarNav({ role, activeView, onNavigate, permissions }: SidebarNavProps) {
@@ -145,9 +135,6 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
                         </SidebarGroup>
                     </SidebarMenu>
                 </SidebarContent>
-                <SidebarFooter>
-                    <SidebarTrigger />
-                </SidebarFooter>
             </>
         );
     }
@@ -189,9 +176,6 @@ export default function SidebarNav({ role, activeView, onNavigate, permissions }
                 ))}
             </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter>
-            <SidebarTrigger />
-        </SidebarFooter>
     </>
   );
 }

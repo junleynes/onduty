@@ -2,7 +2,7 @@
 'use client';
 import { LayoutGrid, Bell, CircleUser, User, Shield, LogOut, KeyRound, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useSidebar } from '@/components/ui/sidebar';
+import { useSidebar, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Employee, Notification } from '@/types';
 import { cn, getFullName, getInitials, getBackgroundColor } from '@/lib/utils';
 import {
@@ -48,6 +48,7 @@ export default function Header({ currentUser, onLogout, onEditProfile, onResetPa
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-4 border-b bg-card px-4 md:px-6 shrink-0">
       <div className="flex items-center gap-2">
+        <SidebarTrigger />
         <LayoutGrid className="h-6 w-6 text-primary" />
         <h1 className="text-xl font-bold text-primary tracking-tight">OnDuty</h1>
       </div>
