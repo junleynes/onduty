@@ -82,6 +82,12 @@ export function OvertimeTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }
             <AlertTitle>Template Instructions</AlertTitle>
             <AlertDescription>
                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
+                    <li><b>Global Placeholders:</b> These can be used anywhere in the sheet for the person generating the report.
+                        <ul className="list-disc pl-5">
+                            <li>`{'{{employee_name}}'}` - The current user's full name.</li>
+                            <li>`{'{{employee_signature}}'}` - The current user's digital signature image.</li>
+                        </ul>
+                    </li>
                     <li><b>Row Placeholders:</b> Create one row in your template that contains these placeholders. The system will duplicate this row for each OT or ND entry.
                         <ul className="list-disc pl-5">
                             <li>`{'{{SURNAME}}'}`</li>

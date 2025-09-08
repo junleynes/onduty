@@ -1054,7 +1054,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                 'SURNAME': employee.lastName,
                                 'EMPLOYEE NAME': getFullName(employee),
                                 'TYPE': 'OT',
-                                'PERSONNEL NUMBER': employee.employeeNumber || '',
+                                'PERSONNEL NUMBER': employee.personnelNumber || '',
                                 'TYPE CODE': otTypeCode,
                                 'START DATE': format(start, 'yyyy-MM-dd'),
                                 'END DATE': format(end, 'yyyy-MM-dd'),
@@ -1112,7 +1112,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                            'SURNAME': employee.lastName,
                            'EMPLOYEE NAME': getFullName(employee),
                            'TYPE': 'ND',
-                           'PERSONNEL NUMBER': employee.employeeNumber || '',
+                           'PERSONNEL NUMBER': employee.personnelNumber || '',
                            'TYPE CODE': ndTypeCode,
                            'START DATE': format(shiftStart, 'yyyy-MM-dd'),
                            'END DATE': format(shiftEnd, 'yyyy-MM-dd'),
@@ -1144,6 +1144,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             await workbook.xlsx.load(buffer);
             const worksheet = workbook.worksheets[0];
             if (!worksheet) throw new Error("Template worksheet not found.");
+
+            // Handle global placeholders
+            worksheet.eachRow({ includeEmpty: true }, (row) => {
+                row.eachCell({ includeEmpty: true }, (cell) => {
+                    const replacePlaceholders = (text: string) => {
+                        if (!text) return text;
+                        let newText = text;
+                        newText = newText.replace(/{{employee_name}}/g, getFullName(currentUser));
+                        return newText;
+                    }
+                    if (cell.value && typeof cell.value === 'string') {
+                        cell.value = replacePlaceholders(cell.value);
+                    }
+                });
+            });
 
             let templateRowNumber = -1;
             worksheet.eachRow((row, rowNumber) => {
@@ -1192,6 +1207,30 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
             worksheet.spliceRows(templateRowNumber, 1);
             
+            // Handle signature
+            let sigRowNumber = -1;
+            let sigColNumber = -1;
+            worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+                row.eachCell((cell, colNumber) => {
+                    if (typeof cell.value === 'string' && cell.value.includes('{{employee_signature}}')) {
+                        sigRowNumber = rowNumber;
+                        sigColNumber = colNumber;
+                        cell.value = cell.value.replace('{{employee_signature}}', '');
+                    }
+                });
+            });
+
+            if (currentUser.signature && sigRowNumber > -1) {
+                const signatureImageId = workbook.addImage({
+                    base64: currentUser.signature.split(',')[1],
+                    extension: 'png',
+                });
+                worksheet.addImage(signatureImageId, {
+                    tl: { col: sigColNumber - 1, row: sigRowNumber - 1 },
+                    ext: { width: 100, height: 40 }
+                });
+            }
+
             const uint8Array = await workbook.xlsx.writeBuffer();
             const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
             saveAs(blob, `Overtime and ND Report - ${format(overtimeDateRange!.from!, 'yyyy-MM-dd')} to ${format(overtimeDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
