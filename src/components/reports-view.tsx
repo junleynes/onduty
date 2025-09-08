@@ -1302,10 +1302,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         } else if (type === 'overtime') {
             const rawData = generateOvertimeData();
              if (rawData && overtimeDateRange?.from && overtimeDateRange?.to) {
-                const headers = ['SURNAME', 'EMPLOYEE NAME', 'TYPE', 'PERSONNEL NUMBER', 'TYPE CODE', 'START TIME', 'END TIME', 'START DATE', 'END DATE', 'TOTAL HOURS', 'REASONS/REMARKS'];
+                const headers: (keyof OvertimeRowData)[] = ['SURNAME', 'EMPLOYEE NAME', 'TYPE', 'PERSONNEL NUMBER', 'TYPE CODE', 'START TIME', 'END TIME', 'START DATE', 'END DATE', 'TOTAL HOURS', 'REASONS/REMARKS'];
                 data = {
                     headers: headers,
-                    rows: rawData.map(d => headers.map(h => d[h as keyof OvertimeRowData]))
+                    rows: rawData.map(d => headers.map(h => d[h]))
                 };
                 title = `Overtime & Night Differential (${format(overtimeDateRange!.from!, 'LLL d')} - ${format(overtimeDateRange!.to!, 'LLL d, y')})`;
                 generator = () => handleDownloadOvertime(rawData);
@@ -1860,5 +1860,3 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         </>
     );
 }
-
-    
