@@ -6,32 +6,24 @@ import type { Employee } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
-import { Cake, PartyPopper, Gift } from 'lucide-react';
-import { format, isSameDay, isWithinInterval, add, getMonth, getDate, getYear, startOfDay } from 'date-fns';
+import { Cake } from 'lucide-react';
+import { format, isWithinInterval, add, getYear, startOfDay } from 'date-fns';
 
 type CelebrationsViewProps = {
   employees: Employee[];
 };
 
-const CelebrationItem = ({ employee, type }: { employee: Employee; type: 'birthday' | 'anniversary' }) => {
-  const originalDate = type === 'birthday' ? employee.birthDate : employee.startDate;
+const CelebrationItem = ({ employee }: { employee: Employee }) => {
+  const originalDate = employee.birthDate;
   if (!originalDate) return null;
   
   const date = new Date(originalDate);
 
   const today = startOfDay(new Date());
   
-  // Set the celebration date to this year for comparison
-  const celebrationDateThisYear = new Date(date);
-  celebrationDateThisYear.setFullYear(today.getFullYear());
-
   const years = today.getFullYear() - getYear(date);
-  const isBirthday = type === 'birthday';
-  const celebrationText = isBirthday ? `Turns ${years}` : `Work Anniversary (${years} years)`;
+  const celebrationText = `Turns ${years}`;
   
-  // For anniversaries, don't show if it's their start year
-  if (!isBirthday && years === 0) return null;
-
   return (
     <li className="flex items-center gap-4 py-3">
       <Avatar className="h-10 w-10">
@@ -59,7 +51,6 @@ export default function CelebrationsView({ employees }: CelebrationsViewProps) {
   const interval = { start: today, end: nextMonth };
 
   const upcomingBirthdays: Employee[] = [];
-  const upcomingAnniversaries: Employee[] = [];
 
   employees.forEach(employee => {
     // Check birthdays
@@ -76,28 +67,11 @@ export default function CelebrationsView({ employees }: CelebrationsViewProps) {
           upcomingBirthdays.push(employee);
       }
     }
-
-    // Check anniversaries
-    if (employee.startDate) {
-      const startDate = new Date(employee.startDate);
-       if (getYear(startDate) === getYear(today)) return; // No anniversary in the first year
-      
-      let anniversaryDateThisYear = new Date(startDate);
-      anniversaryDateThisYear.setFullYear(today.getFullYear());
-
-      if (anniversaryDateThisYear < today) {
-        anniversaryDateThisYear.setFullYear(today.getFullYear() + 1);
-      }
-      
-       if(isWithinInterval(anniversaryDateThisYear, interval)) {
-          upcomingAnniversaries.push(employee);
-      }
-    }
   });
 
-  const sortFn = (a: Employee, b: Employee, type: 'birthday' | 'anniversary') => {
-      const dateA = new Date(type === 'birthday' ? a.birthDate! : a.startDate!);
-      const dateB = new Date(type === 'birthday' ? b.birthDate! : b.startDate!);
+  const sortFn = (a: Employee, b: Employee) => {
+      const dateA = new Date(a.birthDate!);
+      const dateB = new Date(b.birthDate!);
       
       let nextDateA = new Date(dateA.setFullYear(today.getFullYear()));
       if (nextDateA < today) nextDateA.setFullYear(today.getFullYear() + 1);
@@ -108,12 +82,11 @@ export default function CelebrationsView({ employees }: CelebrationsViewProps) {
       return nextDateA.getTime() - nextDateB.getTime();
   }
 
-  upcomingBirthdays.sort((a,b) => sortFn(a,b, 'birthday'));
-  upcomingAnniversaries.sort((a,b) => sortFn(a,b, 'anniversary'));
+  upcomingBirthdays.sort(sortFn);
 
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -127,34 +100,11 @@ export default function CelebrationsView({ employees }: CelebrationsViewProps) {
         <CardContent>
            {upcomingBirthdays.length > 0 ? (
              <ul className="divide-y">
-                {upcomingBirthdays.map(emp => <CelebrationItem key={`${emp.id}-bday`} employee={emp} type="birthday" />)}
+                {upcomingBirthdays.map(emp => <CelebrationItem key={`${emp.id}-bday`} employee={emp} />)}
              </ul>
             ) : (
              <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
                 <p>No birthdays in the next 30 days.</p>
-             </div>
-            )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-            <div className="flex items-center gap-3">
-                <PartyPopper className="h-6 w-6 text-yellow-500" />
-                <div>
-                    <CardTitle>Work Anniversaries</CardTitle>
-                    <CardDescription>Celebrating in the next 30 days.</CardDescription>
-                </div>
-            </div>
-        </CardHeader>
-        <CardContent>
-           {upcomingAnniversaries.length > 0 ? (
-             <ul className="divide-y">
-                {upcomingAnniversaries.map(emp => <CelebrationItem key={`${emp.id}-anniv`} employee={emp} type="anniversary" />)}
-             </ul>
-            ) : (
-             <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                <p>No work anniversaries in the next 30 days.</p>
              </div>
             )}
         </CardContent>
