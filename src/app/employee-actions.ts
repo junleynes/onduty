@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 const employeeSchema = z.object({
   id: z.string().optional(),
   employeeNumber: z.string().optional(),
+  personnelNumber: z.string().optional(),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   middleInitial: z.string().max(1).optional(),
@@ -93,13 +94,14 @@ export async function addEmployee(employeeData: Partial<Employee>): Promise<{ su
         };
 
         const stmt = db.prepare(`
-            INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate, reportsTo, gender, employeeClassification)
-            VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate, @reportsTo, @gender, @employeeClassification)
+            INSERT INTO employees (id, employeeNumber, firstName, lastName, middleInitial, email, phone, password, position, role, "group", avatar, loadAllocation, birthDate, startDate, signature, visibility, lastPromotionDate, reportsTo, gender, employeeClassification, personnelNumber)
+            VALUES (@id, @employeeNumber, @firstName, @lastName, @middleInitial, @email, @phone, @password, @position, @role, @group, @avatar, @loadAllocation, @birthDate, @startDate, @signature, @visibility, @lastPromotionDate, @reportsTo, @gender, @employeeClassification, @personnelNumber)
         `);
 
         stmt.run({
             id: newEmployee.id,
             employeeNumber: newEmployee.employeeNumber || null,
+            personnelNumber: newEmployee.personnelNumber || null,
             firstName: newEmployee.firstName,
             lastName: newEmployee.lastName,
             middleInitial: newEmployee.middleInitial || null,
@@ -174,6 +176,7 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
         const stmt = db.prepare(`
             UPDATE employees SET
                 employeeNumber = @employeeNumber,
+                personnelNumber = @personnelNumber,
                 firstName = @firstName,
                 lastName = @lastName,
                 middleInitial = @middleInitial,
@@ -199,6 +202,7 @@ export async function updateEmployee(employeeData: Partial<Employee>): Promise<{
         stmt.run({
             id: updatedEmployee.id,
             employeeNumber: updatedEmployee.employeeNumber || null,
+            personnelNumber: updatedEmployee.personnelNumber || null,
             firstName: updatedEmployee.firstName,
             lastName: updatedEmployee.lastName,
             middleInitial: updatedEmployee.middleInitial || null,

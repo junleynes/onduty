@@ -12,6 +12,7 @@ export type AppVisibility = {
 export type Employee = {
   id: string;
   employeeNumber?: string;
+  personnelNumber?: string;
   firstName: string;
   lastName: string;
   middleInitial?: string;

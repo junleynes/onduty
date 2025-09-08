@@ -45,6 +45,16 @@ function initializeDatabase() {
             console.error("Error migrating 'employeeClassification' column:", e.message);
         }
     }
+    
+    try {
+        db.exec("ALTER TABLE employees ADD COLUMN personnelNumber TEXT;");
+        console.log("Migration successful: Added 'personnelNumber' column to 'employees' table.");
+    } catch (e: any) {
+         if (!e.message.includes('duplicate column name')) {
+            console.error("Error migrating 'personnelNumber' column:", e.message);
+        }
+    }
+
 
     return db;
 }

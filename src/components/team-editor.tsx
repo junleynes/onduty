@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 const employeeSchema = z.object({
   id: z.string().optional(),
   employeeNumber: z.string().optional(),
+  personnelNumber: z.string().optional(),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   middleInitial: z.string().max(1).optional(),
@@ -100,6 +101,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
         const defaultValues = isNewEmployee ? {
             id: undefined,
             employeeNumber: '',
+            personnelNumber: '',
             firstName: '',
             lastName: '',
             middleInitial: '',
@@ -339,6 +341,19 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                 <FormField
                                     control={form.control}
                                     name="employeeNumber"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Employee Number</FormLabel>
+                                        <FormControl>
+                                        <Input {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="personnelNumber"
                                     render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Personnel Number</FormLabel>
