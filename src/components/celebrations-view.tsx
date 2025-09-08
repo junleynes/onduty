@@ -53,7 +53,6 @@ export default function CelebrationsView({ employees }: CelebrationsViewProps) {
   const upcomingBirthdays: Celebration[] = [];
   const upcomingAnniversaries: Celebration[] = [];
   
-  const MILESTONE_YEARS = new Set([1, 3, 5]);
 
   employees.forEach(employee => {
     // Check birthdays
@@ -82,7 +81,7 @@ export default function CelebrationsView({ employees }: CelebrationsViewProps) {
         const yearsOfService = differenceInYears(today, startDate);
         const anniversaryYear = yearsOfService + 1; // We are looking for the *upcoming* anniversary
 
-        const isMilestone = MILESTONE_YEARS.has(anniversaryYear) || (anniversaryYear > 5 && anniversaryYear % 5 === 0);
+        const isMilestone = anniversaryYear >= 5 && anniversaryYear % 5 === 0;
 
         if (isMilestone) {
             let nextAnniversaryDate = new Date(startDate.setFullYear(today.getFullYear()));
