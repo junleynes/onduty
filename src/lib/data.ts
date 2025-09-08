@@ -28,15 +28,7 @@ export const initialShiftTemplates: {
   isUnpaidBreak?: boolean;
 }[] = [];
 
-export const initialLeaveTypes: LeaveTypeOption[] = [
-  { type: 'VL', color: '#3b82f6' },
-  { type: 'SL', color: '#f97316' },
-  { type: 'EL', color: '#ef4444' },
-  { type: 'WFH', color: '#22c55e' },
-  { type: 'OB', color: '#8b5cf6' },
-  { type: 'TARDY', color: '#eab308' },
-  { type: 'Work Extension', color: '#6b7280' },
-];
+export const initialLeaveTypes: LeaveTypeOption[] = [];
 
 
 export const weekDays: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
