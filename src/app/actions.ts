@@ -7,7 +7,7 @@ import { getDb } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { format } from 'date-fns';
+import { format, differenceInCalendarDays } from 'date-fns';
 
 
 type Attachment = {
@@ -237,13 +237,16 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
         const pdfDoc = await PDFDocument.load(templateBytes);
         const form = pdfDoc.getForm();
 
+        const totalDays = differenceInCalendarDays(new Date(leaveRequest.endDate), new Date(leaveRequest.startDate)) + 1;
+
         const fields = {
             employee_name: `${employee.firstName} ${employee.lastName}`,
             date_filed: format(new Date(leaveRequest.dateFiled), 'yyyy-MM-dd'),
             department: leaveRequest.department || '',
             employee_id: leaveRequest.idNumber || '',
-            leave_type: leaveRequest.type,
+            // leave_type is now handled by checkboxes
             leave_dates: `${format(new Date(leaveRequest.startDate), 'yyyy-MM-dd')} to ${format(new Date(leaveRequest.endDate), 'yyyy-MM-dd')}`,
+            total_days: String(totalDays),
             reason: leaveRequest.reason || '',
             contact_info: leaveRequest.contactInfo || '',
             approval_status: leaveRequest.status.toUpperCase(),
@@ -259,6 +262,22 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
             }
         }
         
+        // Handle Leave Type Checkbox
+        try {
+            // pdf-lib finds fields by their exact name.
+            // We use the leave type from the request as the field name.
+            const checkbox = form.getCheckBox(leaveRequest.type);
+            checkbox.check();
+        } catch (e) {
+            console.warn(`Could not find checkbox for leave type: "${leaveRequest.type}". Trying to set "leave_type" text field as fallback.`);
+            // Fallback to setting the text field if the checkbox isn't found
+            try {
+                form.getTextField('leave_type').setText(leaveRequest.type);
+            } catch (textFieldError) {
+                 console.warn(`Could not find fallback text field "leave_type" either.`);
+            }
+        }
+
         // Handle signatures
         if (leaveRequest.employeeSignature) {
             try {
