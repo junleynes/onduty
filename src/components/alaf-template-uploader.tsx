@@ -95,11 +95,13 @@ export function AlafTemplateUploader({ isOpen, setIsOpen, onTemplateUpload }: Al
                     <li><code>total_days</code></li>
                     <li><code>reason</code></li>
                     <li><code>contact_info</code></li>
-                    <li><code>approval_status</code></li>
                     <li><code>approval_date</code></li>
                 </ul>
                  <p className="text-xs mt-2 font-semibold">Checkbox Fields:</p>
-                 <p className="text-xs mt-1">For leave types, create checkboxes. The name of the checkbox field must exactly match the "Type" you define in the "Manage Leave Types" editor (e.g., "Vacation Leave", "Sick Leave").</p>
+                 <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
+                    <li>For leave types, create checkboxes where the name exactly matches the leave type defined in the system (e.g., "Vacation Leave", "Sick Leave").</li>
+                    <li>For approval status, create checkboxes named <code>approved</code> and <code>rejected</code>.</li>
+                 </ul>
                  <p className="text-xs mt-2 font-semibold">Image Fields (for signatures):</p>
                  <ul className="list-disc pl-5 text-xs space-y-1 mt-2">
                     <li><code>employee_signature</code></li>

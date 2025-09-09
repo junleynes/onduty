@@ -244,12 +244,10 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
             date_filed: format(new Date(leaveRequest.dateFiled), 'yyyy-MM-dd'),
             department: leaveRequest.department || '',
             employee_id: leaveRequest.idNumber || '',
-            // leave_type is now handled by checkboxes
             leave_dates: `${format(new Date(leaveRequest.startDate), 'yyyy-MM-dd')} to ${format(new Date(leaveRequest.endDate), 'yyyy-MM-dd')}`,
             total_days: String(totalDays),
             reason: leaveRequest.reason || '',
             contact_info: leaveRequest.contactInfo || '',
-            approval_status: leaveRequest.status.toUpperCase(),
             approval_date: leaveRequest.managedAt ? format(new Date(leaveRequest.managedAt), 'yyyy-MM-dd') : '',
         };
 
@@ -264,19 +262,27 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
         
         // Handle Leave Type Checkbox
         try {
-            // pdf-lib finds fields by their exact name.
-            // We use the leave type from the request as the field name.
             const checkbox = form.getCheckBox(leaveRequest.type);
             checkbox.check();
         } catch (e) {
-            console.warn(`Could not find checkbox for leave type: "${leaveRequest.type}". Trying to set "leave_type" text field as fallback.`);
+            console.warn(`Could not find checkbox for leave type: "${leaveRequest.type}".`);
+        }
+        
+        // Handle Approval Status Checkbox
+        try {
+            const statusCheckboxName = leaveRequest.status; // 'approved' or 'rejected'
+            const statusCheckbox = form.getCheckBox(statusCheckboxName);
+            statusCheckbox.check();
+        } catch (e) {
+            console.warn(`Could not find checkbox for approval status: "${leaveRequest.status}". Trying to set "approval_status" text field as fallback.`);
             // Fallback to setting the text field if the checkbox isn't found
             try {
-                form.getTextField('leave_type').setText(leaveRequest.type);
+                form.getTextField('approval_status').setText(leaveRequest.status.toUpperCase());
             } catch (textFieldError) {
-                 console.warn(`Could not find fallback text field "leave_type" either.`);
+                 console.warn(`Could not find fallback text field "approval_status" either.`);
             }
         }
+
 
         // Handle signatures
         if (leaveRequest.employeeSignature) {
