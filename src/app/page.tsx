@@ -758,15 +758,17 @@ function AppContent() {
         <SidebarNav role={role} permissions={permissions} activeView={activeView} onNavigate={handleNavigate} />
       </Sidebar>
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header 
-          currentUser={currentUser} 
-          onLogout={handleLogout} 
-          onEditProfile={handleOpenProfileEditor} 
-          onResetPassword={handleOpenPasswordEditor}
-          notifications={userNotifications}
-          setNotifications={setNotifications}
-          onNavigate={handleNavigate}
-        />
+        {activeView !== 'dashboard' && (
+          <Header 
+            currentUser={currentUser} 
+            onLogout={handleLogout} 
+            onEditProfile={handleOpenProfileEditor} 
+            onResetPassword={handleOpenPasswordEditor}
+            notifications={userNotifications}
+            setNotifications={setNotifications}
+            onNavigate={handleNavigate}
+          />
+        )}
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8">
             {currentView}
         </main>
