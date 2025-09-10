@@ -610,7 +610,7 @@ function AppContent() {
 
     switch (activeView) {
       case 'dashboard':
-        return <DashboardView onNavigate={handleNavigate} permissions={permissions} role={currentUser.role} />;
+        return <DashboardView onNavigate={handleNavigate} permissions={permissions} role={currentUser.role} currentUser={currentUser} />;
       case 'schedule': {
         const scheduleEmployees = (currentUser.role === 'admin' ? employees : membersOfMyGroup).filter(e => e.role !== 'admin');
         

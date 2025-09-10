@@ -2,11 +2,11 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { NavItemKey, RolePermissions, UserRole } from '@/types';
+import type { NavItemKey, RolePermissions, UserRole, Employee } from '@/types';
 import { Button } from './ui/button';
-import { ArrowRight, Calendar, CalendarDays, ClipboardCheck, Clock, GitMerge, Home, Plane, Users, PartyPopper, Gift, FileText, Smartphone, ListChecks, Shield, ShieldCheck, Mail, AlertTriangle } from 'lucide-react';
+import { ArrowRight, Calendar, CalendarDays, ClipboardCheck, Clock, GitMerge, Home, Plane, Users, PartyPopper, Gift, FileText, Smartphone, ListChecks, Shield, ShieldCheck, Mail, AlertTriangle, HelpCircle } from 'lucide-react';
 import type { NavItem } from '@/app/page';
 
 const iconMap: Record<NavItemKey, { icon: React.ElementType, color: string }> = {
@@ -23,6 +23,7 @@ const iconMap: Record<NavItemKey, { icon: React.ElementType, color: string }> = 
     celebrations: { icon: Gift, color: 'bg-pink-500' },
     holidays: { icon: PartyPopper, color: 'bg-yellow-500' },
     reports: { icon: FileText, color: 'bg-gray-500' },
+    faq: { icon: HelpCircle, color: 'bg-cyan-500' },
     admin: { icon: Shield, color: 'bg-red-500' },
     permissions: { icon: ShieldCheck, color: 'bg-red-500' },
     'smtp-settings': { icon: Mail, color: 'bg-gray-500' },
@@ -52,11 +53,26 @@ type DashboardViewProps = {
   onNavigate: (view: NavItem) => void;
   permissions: RolePermissions;
   role: UserRole;
+  currentUser: Employee;
 };
 
 
-export default function DashboardView({ onNavigate, permissions, role }: DashboardViewProps) {
+export default function DashboardView({ onNavigate, permissions, role, currentUser }: DashboardViewProps) {
   const allowedViews = new Set(permissions[role] || []);
+  
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      setGreeting('Good Morning');
+    } else if (hour < 18) {
+      setGreeting('Good Afternoon');
+    } else {
+      setGreeting('Good Evening');
+    }
+  }, []);
+
 
   const availableLinks = QUICK_LINKS.filter(link => allowedViews.has(link.view));
 
@@ -64,11 +80,7 @@ export default function DashboardView({ onNavigate, permissions, role }: Dashboa
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl">Welcome to OnDuty</CardTitle>
-          <CardDescription className="text-base">
-            A modern, AI-powered solution for intelligent shift scheduling, team management, and operational efficiency. 
-            Use the quick links below to get started.
-          </CardDescription>
+          <CardTitle className="text-3xl">{greeting}, {currentUser.firstName}!</CardTitle>
         </CardHeader>
       </Card>
 
@@ -88,14 +100,12 @@ export default function DashboardView({ onNavigate, permissions, role }: Dashboa
                             onClick={() => onNavigate(view)}
                             className="group text-left p-4 border rounded-lg hover:bg-accent hover:border-primary transition-all flex flex-col justify-between h-full shadow-sm hover:shadow-md"
                         >
-                            <div>
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className={`p-2 rounded-md text-white ${color}`}>
-                                        <Icon className="h-6 w-6" />
-                                    </div>
-                                    <h3 className="text-lg font-semibold">{label}</h3>
+                            <div className="flex flex-col items-center text-center">
+                                <div className={`p-2 rounded-md text-white ${color} w-full h-32 flex items-center justify-center mb-4`}>
+                                    <Icon className="w-[90%] h-[90%]" />
                                 </div>
-                                <p className="text-sm text-muted-foreground">{description}</p>
+                                <h3 className="text-lg font-semibold">{label}</h3>
+                                <p className="text-sm text-muted-foreground mt-1">{description}</p>
                             </div>
                             <div className="flex items-center justify-end text-sm font-medium text-primary mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 Go <ArrowRight className="h-4 w-4 ml-1" />
