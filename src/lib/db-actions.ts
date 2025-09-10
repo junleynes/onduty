@@ -5,7 +5,7 @@
 import { getDb } from './db';
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord, RolePermissions, NavItemKey } from '@/types';
 import type { ShiftTemplate } from '@/components/shift-editor';
-import type { LeaveTypeOption } from './leave-type-editor';
+import type { LeaveTypeOption } from '@/components/leave-type-editor';
 
 function safeParseJSON(jsonString: string | null | undefined, defaultValue: any) {
   if (!jsonString) return defaultValue;
