@@ -111,25 +111,25 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   }, [currentDate, viewMode]);
   
   const displayedDays = useMemo(() => {
-    if (dateRange?.from && dateRange.to) {
+    if (dateRange?.from && dateRange.to && viewMode !== 'month') {
       return eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
     }
     return [];
-  }, [dateRange]);
+  }, [dateRange, viewMode]);
 
-  const weeksOfMonth = useMemo(() => {
+  const firstHalfDays = useMemo(() => {
     if (viewMode !== 'month') return [];
     const monthStart = startOfMonth(currentDate);
+    const day15 = addDays(monthStart, 14);
+    return eachDayOfInterval({ start: monthStart, end: day15 });
+  }, [currentDate, viewMode]);
+
+  const secondHalfDays = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    const day16 = addDays(startOfMonth(currentDate), 15);
     const monthEnd = endOfMonth(currentDate);
-    const firstDay = startOfWeek(monthStart, { weekStartsOn: 1 });
-    const lastDay = endOfWeek(monthEnd, { weekStartsOn: 1 });
-    
-    return eachWeekOfInterval(
-      { start: firstDay, end: lastDay },
-      { weekStartsOn: 1 }
-    ).map(weekStart =>
-      eachDayOfInterval({ start: weekStart, end: endOfWeek(weekStart, { weekStartsOn: 1 }) })
-    );
+    if (day16 > monthEnd) return [];
+    return eachDayOfInterval({ start: day16, end: monthEnd });
   }, [currentDate, viewMode]);
   
   const orderedEmployees = useMemo(() => {
@@ -553,12 +553,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 }
             }, 0);
             
-            const isMonthAndOutside = viewMode === 'month' && day.getMonth() !== currentDate.getMonth();
-
             return (
-                <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l",
-                    isMonthAndOutside && 'bg-muted/50'
-                )}>
+                <div key={day.toISOString()} className={cn("sticky top-0 z-10 col-start-auto p-2 text-center font-semibold bg-card border-b border-l")}>
                     <div className="text-lg whitespace-nowrap">{format(day, 'E M/d')}</div>
                     <div className="text-xs text-muted-foreground font-normal flex justify-center gap-3 mt-1">
                         <TooltipProvider>
@@ -615,9 +611,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
             return (
                 <div 
                     key={`note-${day.toISOString()}`}
-                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs flex flex-col items-center justify-center cursor-pointer hover:bg-accent",
-                      viewMode === 'month' && day.getMonth() !== currentDate.getMonth() && 'bg-muted/50'
-                    )}
+                    className={cn("group/cell col-start-auto p-1 border-b border-l min-h-[40px] bg-background/30 relative text-xs flex flex-col items-center justify-center cursor-pointer hover:bg-accent")}
                     onClick={() => handleNoteCellClick(day)}
                 >
                     {holiday && (
@@ -727,6 +721,19 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         })}
     </div>
   )};
+  
+  const renderGridComponent = (days: Date[], title?: string) => (
+    <div className="space-y-2">
+        {title && <h3 className="font-semibold text-lg px-4 pt-4">{title}</h3>}
+        <div className="overflow-auto">
+            <div className="grid min-w-max" style={{ gridTemplateColumns: `minmax(180px, 1.5fr) repeat(${days.length}, minmax(140px, 1fr))` }}>
+                {renderGridHeader(days)}
+                {renderNotesRow(days)}
+                {orderedEmployees.map((employee) => renderEmployeeRow(employee, days))}
+            </div>
+        </div>
+    </div>
+  );
 
   return (
     <Card className="h-full flex flex-col">
@@ -869,23 +876,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
       </CardHeader>
     
       <CardContent className="flex-1 p-0 overflow-auto">
-        <div className="relative h-full overflow-auto shadow-md rounded-lg">
+        <div className="relative h-full">
             {viewMode === 'month' ? (
-                <div className="space-y-4">
-                  {weeksOfMonth.map((week, index) => (
-                      <div key={index} className="grid" style={{ gridTemplateColumns: `minmax(180px, 1.5fr) repeat(7, minmax(140px, 1fr))` }}>
-                          {renderGridHeader(week)}
-                          {renderNotesRow(week)}
-                          {orderedEmployees.map((employee) => renderEmployeeRow(employee, week))}
-                      </div>
-                  ))}
+                <div className="space-y-6">
+                    {renderGridComponent(firstHalfDays, "Days 1-15")}
+                    {secondHalfDays.length > 0 && renderGridComponent(secondHalfDays, `Days 16-${getDate(endOfMonth(currentDate))}`)}
                 </div>
             ) : (
-                <div className="grid" style={{ gridTemplateColumns: `minmax(180px, 1.5fr) repeat(${displayedDays.length}, minmax(140px, 1fr))` }}>
-                  {renderGridHeader(displayedDays)}
-                  {renderNotesRow(displayedDays)}
-                  {orderedEmployees.map((employee) => renderEmployeeRow(employee, displayedDays))}
-                </div>
+                renderGridComponent(displayedDays)
             )}
         </div>
       </CardContent>
