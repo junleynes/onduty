@@ -71,8 +71,8 @@ export default function DashboardView({ onNavigate, permissions, role, currentUs
                     onClick={() => onNavigate(view)}
                     className="flex flex-col items-center gap-2 group"
                 >
-                    <div className={`flex items-center justify-center h-16 w-16 rounded-full transition-all group-hover:shadow-lg group-hover:scale-110 ${colors}`}>
-                        <Icon className="h-8 w-8" />
+                    <div className={`flex items-center justify-center h-24 w-24 rounded-full transition-all group-hover:shadow-lg group-hover:scale-110 ${colors}`}>
+                        <Icon className="h-12 w-12" />
                     </div>
                     <span className="text-sm font-medium text-muted-foreground">{label}</span>
                 </button>
