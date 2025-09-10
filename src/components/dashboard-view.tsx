@@ -5,23 +5,31 @@
 import React, { useEffect, useState } from 'react';
 import type { NavItemKey, RolePermissions, UserRole, Employee } from '@/types';
 import { Button } from './ui/button';
-import { CalendarDays, ClipboardCheck, Clock, Users } from 'lucide-react';
+import { CalendarDays, ClipboardCheck, Clock, Users, Plane, Gift, PartyPopper, Smartphone } from 'lucide-react';
 import type { NavItem } from '@/app/page';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { getBackgroundColor, getFullName, getInitials } from '@/lib/utils';
 
 const iconMap: Record<string, { icon: React.ElementType, color: string }> = {
+    'my-schedule': { icon: CalendarDays, color: 'bg-orange-100 text-orange-700' },
     'my-tasks': { icon: ClipboardCheck, color: 'bg-green-100 text-green-700' },
     'onduty': { icon: Clock, color: 'bg-blue-100 text-blue-700' },
     'team': { icon: Users, color: 'bg-purple-100 text-purple-700' },
-    'my-schedule': { icon: CalendarDays, color: 'bg-orange-100 text-orange-700' },
+    'time-off': { icon: Plane, color: 'bg-cyan-100 text-cyan-700' },
+    'celebrations': { icon: Gift, color: 'bg-pink-100 text-pink-700' },
+    'holidays': { icon: PartyPopper, color: 'bg-yellow-100 text-yellow-700' },
+    'allowance': { icon: Smartphone, color: 'bg-teal-100 text-teal-700' },
 };
 
 const QUICK_LINKS: { view: NavItemKey; label: string; }[] = [
-    { view: 'my-tasks', label: 'Quick Tasks' },
-    { view: 'onduty', label: 'Time Clock' },
-    { view: 'team', label: 'Directory' },
-    { view: 'my-schedule', label: 'Schedule' },
+    { view: 'my-schedule', label: 'My Schedule' },
+    { view: 'my-tasks', label: 'My Tasks' },
+    { view: 'onduty', label: 'On Duty' },
+    { view: 'team', label: 'Team' },
+    { view: 'time-off', label: 'Time Off' },
+    { view: 'celebrations', label: 'Celebrations' },
+    { view: 'holidays', label: 'Holidays' },
+    { view: 'allowance', label: 'Mobile Load' },
 ];
 
 type DashboardViewProps = {
@@ -61,7 +69,7 @@ export default function DashboardView({ onNavigate, permissions, role, currentUs
         {greeting}, {currentUser.firstName}! 👋
       </h1>
 
-      <div className="flex items-center justify-center gap-4 sm:gap-8 w-full max-w-md">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-3xl">
         {availableLinks.map(({ view, label }) => {
             const Icon = iconMap[view]?.icon || ClipboardCheck;
             const colors = iconMap[view]?.color || 'bg-gray-100 text-gray-700';
@@ -69,12 +77,12 @@ export default function DashboardView({ onNavigate, permissions, role, currentUs
                 <button 
                     key={view} 
                     onClick={() => onNavigate(view)}
-                    className="flex flex-col items-center gap-2 group"
+                    className="flex flex-col items-center justify-center gap-2 group p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 >
-                    <div className={`flex items-center justify-center h-24 w-24 rounded-full transition-all group-hover:shadow-lg group-hover:scale-110 ${colors}`}>
-                        <Icon className="h-12 w-12" />
+                    <div className={`flex items-center justify-center h-20 w-20 rounded-full transition-all group-hover:scale-110 ${colors}`}>
+                        <Icon className="h-10 w-10" />
                     </div>
-                    <span className="text-sm font-medium text-muted-foreground">{label}</span>
+                    <span className="text-sm font-medium text-foreground mt-2">{label}</span>
                 </button>
             )
         })}
