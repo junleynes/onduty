@@ -5,13 +5,13 @@
 import React, { useEffect, useState } from 'react';
 import type { NavItemKey, RolePermissions, UserRole, Employee } from '@/types';
 import { Button } from './ui/button';
-import { CalendarDays, ClipboardCheck, Clock, Users, Plane, Gift, PartyPopper, Smartphone } from 'lucide-react';
+import { CalendarDays, ClipboardCheck, Clock, Users, Plane, Gift, PartyPopper, Smartphone, Calendar } from 'lucide-react';
 import type { NavItem } from '@/app/page';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { getBackgroundColor, getFullName, getInitials } from '@/lib/utils';
 
 const iconMap: Record<string, { icon: React.ElementType, color: string }> = {
-    'my-schedule': { icon: CalendarDays, color: 'bg-orange-100 text-orange-700' },
+    'my-schedule': { icon: Calendar, color: 'bg-orange-100 text-orange-700' },
     'my-tasks': { icon: ClipboardCheck, color: 'bg-green-100 text-green-700' },
     'onduty': { icon: Clock, color: 'bg-blue-100 text-blue-700' },
     'team': { icon: Users, color: 'bg-purple-100 text-purple-700' },
@@ -57,7 +57,7 @@ export default function DashboardView({ onNavigate, permissions, role, currentUs
   const availableLinks = QUICK_LINKS.filter(link => allowedViews.has(link.view));
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center space-y-8 p-4">
+    <div className="flex flex-col items-center justify-center h-full text-center space-y-8 bg-card p-8 rounded-lg shadow-sm">
       <Avatar className="h-24 w-24 border-4 border-primary shadow-lg">
         <AvatarImage src={currentUser.avatar} data-ai-hint="profile avatar" />
         <AvatarFallback style={{ backgroundColor: getBackgroundColor(getFullName(currentUser)) }} className="text-4xl font-bold">
@@ -77,7 +77,7 @@ export default function DashboardView({ onNavigate, permissions, role, currentUs
                 <button 
                     key={view} 
                     onClick={() => onNavigate(view)}
-                    className="flex flex-col items-center justify-center gap-2 group p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                    className="flex flex-col items-center justify-center gap-2 group p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow bg-background"
                 >
                     <div className={`flex items-center justify-center h-20 w-20 rounded-full transition-all group-hover:scale-110 ${colors}`}>
                         <Icon className="h-10 w-10" />
