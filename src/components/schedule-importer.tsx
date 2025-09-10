@@ -292,7 +292,10 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
           });
 
           if (importedShifts.length === 0 && importedLeave.length === 0) {
-            throw new Error("No shifts or leave could be parsed from the file. Please check the file format, especially employee names and date headers.");
+            toast({ title: 'Import Warning', description: 'No valid shifts or leave could be parsed. Please check employee names, date headers (yyyy-mm-dd), and shift formats (e.g., 9am-5pm).', variant: 'destructive', duration: 10000 });
+            setIsImporting(false);
+            setFile(null);
+            return;
           }
 
           onImport({ shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKey });
