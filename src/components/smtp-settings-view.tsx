@@ -12,6 +12,7 @@ import { Input } from './ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { SmtpSettings } from '@/types';
 import { Checkbox } from './ui/checkbox';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 
 const smtpSchema = z.object({
   host: z.string().min(1, 'Host is required'),
@@ -22,6 +23,14 @@ const smtpSchema = z.object({
   fromEmail: z.string().email('Invalid email address'),
   fromName: z.string().min(1, 'From name is required'),
 });
+
+const smtpTemplates = [
+    { name: 'Custom', host: '', port: 587, secure: true },
+    { name: 'Gmail', host: 'smtp.gmail.com', port: 465, secure: true },
+    { name: 'Outlook/Hotmail', host: 'smtp-mail.outlook.com', port: 587, secure: false }, // uses STARTTLS which is handled by nodemailer's `secure: false` on port 587
+    { name: 'Yahoo', host: 'smtp.mail.yahoo.com', port: 465, secure: true },
+    { name: 'iCloud', host: 'smtp.mail.me.com', port: 587, secure: false }, // uses STARTTLS
+];
 
 type SmtpSettingsViewProps = {
   settings: SmtpSettings;
@@ -43,6 +52,15 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
     onSave(values);
     toast({ title: 'SMTP Settings Saved' });
   };
+  
+  const handleTemplateChange = (templateName: string) => {
+    const template = smtpTemplates.find(t => t.name === templateName);
+    if (template) {
+        form.setValue('host', template.host);
+        form.setValue('port', template.port);
+        form.setValue('secure', template.secure);
+    }
+  }
 
   return (
     <Card>
@@ -55,6 +73,21 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+             <div className="space-y-2">
+                <Label>Template</Label>
+                 <Select onValueChange={handleTemplateChange}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {smtpTemplates.map(template => (
+                            <SelectItem key={template.name} value={template.name}>
+                                {template.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
              <div className="grid grid-cols-[3fr_1fr] gap-4">
               <FormField
                 control={form.control}
