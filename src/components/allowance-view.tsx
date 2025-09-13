@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance, SmtpSettings } from '@/types';
-import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth } from 'date-fns';
+import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth, isToday } from 'date-fns';
 import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload, Send, Loader2 } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as ExcelJS from 'exceljs';
@@ -171,9 +171,9 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
   
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
   
-  const getEmployeeAllowance = (employeeId: string): CommunicationAllowance | undefined => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+  const getEmployeeAllowance = (employeeId: string, date: Date): CommunicationAllowance | undefined => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
     return allowances.find(a => a.employeeId === employeeId && a.year === year && a.month === month);
   }
 
@@ -185,8 +185,8 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         let bValue: any;
 
         if (sortConfig.key === 'balance' || sortConfig.key === 'excess') {
-            const aAllowance = getEmployeeAllowance(a.id);
-            const bAllowance = getEmployeeAllowance(b.id);
+            const aAllowance = getEmployeeAllowance(a.id, currentDate);
+            const bAllowance = getEmployeeAllowance(b.id, currentDate);
             
             if (sortConfig.key === 'balance') {
                 aValue = aAllowance?.balance ?? -1;
@@ -218,7 +218,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
     }
     return allMembersInGroup.filter(employee => {
         if (employee.id === currentUser.id) return true;
-        const allowance = getEmployeeAllowance(employee.id);
+        const allowance = getEmployeeAllowance(employee.id, currentDate);
         return allowance && allowance.balance !== undefined && allowance.balance !== null;
     });
   }, [employees, currentUser, isManager, allowances, currentDate, sortConfig]);
@@ -229,7 +229,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
 
     membersInGroup.forEach(employee => {
         const allocation = employee.loadAllocation || 0;
-        const allowance = getEmployeeAllowance(employee.id);
+        const allowance = getEmployeeAllowance(employee.id, currentDate);
         const balance = allowance?.balance;
         const limit = allocation * (loadLimitPercentage / 100);
         
@@ -243,13 +243,13 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
     });
 
     return { willReceiveCount, willNotReceiveCount };
-  }, [membersInGroup, getEmployeeAllowance, loadLimitPercentage]);
+  }, [membersInGroup, allowances, currentDate, loadLimitPercentage]);
 
 
-  const handleOpenBalanceEditor = (employeeId: string) => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const existingAllowance = getEmployeeAllowance(employeeId);
+  const handleOpenBalanceEditor = (employeeId: string, date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const existingAllowance = getEmployeeAllowance(employeeId, date);
     setEditingAllowance(existingAllowance || { employeeId, year, month });
     setIsBalanceEditorOpen(true);
   }
@@ -404,7 +404,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         // Add Data
         membersInGroup.forEach(employee => {
             const allocation = employee.loadAllocation || 0;
-            const allowance = getEmployeeAllowance(employee.id);
+            const allowance = getEmployeeAllowance(employee.id, currentDate);
             const balance = allowance?.balance;
 
             worksheet.addRow({
@@ -608,7 +608,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                 <TableBody>
                     {membersInGroup.map((employee) => {
                     const allocation = employee.loadAllocation || 0;
-                    const allowance = getEmployeeAllowance(employee.id);
+                    const allowance = getEmployeeAllowance(employee.id, currentDate);
                     const balance = allowance?.balance;
                     const limit = allocation * (loadLimitPercentage / 100);
                     const excess = balance !== undefined && balance !== null && balance > allocation ? balance - allocation : 0;
@@ -616,12 +616,19 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                     const willReceive = (balance !== undefined && balance !== null) ? balance <= limit : undefined;
                     
                     const isCurrentUser = employee.id === currentUser.id;
-                    const isCurrentMonth = isSameMonth(currentDate, new Date());
                     const today = new Date();
-                    const dayOfMonth = getDate(today);
-                    const isWithinEditingWindow = dayOfMonth >= editableStartDay && dayOfMonth <= editableEndDay;
+                    
+                    // User editing logic for NEXT month
+                    const isCurrentMonthView = isSameMonth(currentDate, today);
+                    const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
+                    const canUserEditNextMonth = !isManager && isCurrentUser && isCurrentMonthView && isEditingWindowActive;
 
-                    const canEdit = isManager || (isCurrentUser && isCurrentMonth && isWithinEditingWindow);
+                    // Manager editing logic for CURRENT month
+                    const canManagerEditCurrentMonth = isManager;
+                    
+                    const canEdit = canManagerEditCurrentMonth || canUserEditNextMonth;
+                    const editDate = canUserEditNextMonth ? addMonths(currentDate, 1) : currentDate;
+
 
                     return (
                         <TableRow key={employee.id}>
@@ -631,7 +638,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                             <div className="flex items-center gap-2">
                                 <span>{(balance !== undefined && balance !== null) ? `${currency}${balance.toFixed(2)}` : 'N/A'}</span>
                                 {canEdit && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id)}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id, editDate)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
                                 )}
@@ -671,7 +678,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
             <DialogHeader>
                 <DialogTitle>Update Load Balance</DialogTitle>
                 <DialogDescription>
-                    Enter the details for your current load balance for {format(currentDate, 'MMMM yyyy')}.
+                    Enter the details for your current load balance for {editingAllowance ? format(new Date(editingAllowance.year!, editingAllowance.month!), 'MMMM yyyy') : ''}.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -838,3 +845,6 @@ function EmailDialog({
 
     
 
+
+
+    
