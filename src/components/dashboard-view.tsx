@@ -72,7 +72,6 @@ export default function DashboardView({ onNavigate, permissions, role, currentUs
         <h1 className="text-3xl font-bold tracking-tight mt-2">
             {greeting}, {currentUser.firstName}! 👋
         </h1>
-        <p className="text-muted-foreground mt-1">{currentUser.position}</p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-3xl mx-auto mt-8">
             {availableLinks.map(({ view, label }) => {
