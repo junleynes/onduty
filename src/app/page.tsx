@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -357,17 +356,10 @@ function AppContent() {
     setIsEditorOpen(true);
   };
 
-  const handleEditMember = (employee: Employee, context: 'admin' | 'manager') => {
+  const handleEditMember = (employee: Employee, isPasswordReset = false) => {
     setEditingEmployee(employee);
-    setIsPasswordResetMode(false);
-    setEditorContext(context);
-    setIsEditorOpen(true);
-  };
-  
-  const handleResetPassword = (employee: Employee) => {
-    setEditingEmployee(employee);
-    setIsPasswordResetMode(true);
-    setEditorContext('manager');
+    setIsPasswordResetMode(isPasswordReset);
+    setEditorContext(currentUser?.role === 'admin' ? 'admin' : 'manager');
     setIsEditorOpen(true);
   };
 
@@ -649,7 +641,7 @@ function AppContent() {
       }
       case 'team': {
         const teamEmployees = employees.filter(emp => emp.role !== 'admin' && emp.group === currentUser.group);
-        return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={(emp) => handleEditMember(emp, 'manager')} />;
+        return <TeamView employees={teamEmployees} currentUser={currentUser} onEditMember={handleEditMember} />;
       }
       case 'onduty':
         return <OndutyView employees={membersOfMyGroup} shifts={shifts} currentUser={currentUser} />;
@@ -712,11 +704,12 @@ function AppContent() {
                 setUsers={setEmployees}
                 groups={groups}
                 onAddMember={() => handleAddMember('admin')}
-                onEditMember={(emp) => handleEditMember(emp, 'admin')}
+                onEditMember={handleEditMember}
                 onDeleteMember={handleDeleteMember}
                 onBatchDelete={handleBatchDeleteMembers}
                 onImportMembers={() => setIsImporterOpen(true)}
                 onManageGroups={() => setIsGroupEditorOpen(true)}
+                smtpSettings={smtpSettings}
             />
         );
        case 'permissions':

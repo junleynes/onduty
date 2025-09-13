@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { format, differenceInCalendarDays } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
 
 
 type Attachment = {
@@ -315,5 +316,119 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
     } catch (error: any) {
         console.error('Failed to generate PDF:', error);
         return { success: false, error: error.message };
+    }
+}
+
+
+export async function sendPasswordResetLink(email: string, origin: string, smtpSettings: SmtpSettings): Promise<{ success: boolean; error?: string }> {
+    const db = getDb();
+    try {
+        const employee = db.prepare('SELECT * FROM employees WHERE email = ?').get(email) as Employee | undefined;
+        if (!employee) {
+            // Don't reveal if the user exists or not for security reasons.
+            // We'll just return success as if an email was sent.
+            return { success: true };
+        }
+
+        const token = uuidv4();
+        const expiresAt = new Date(Date.now() + 3600000); // 1 hour expiry
+
+        db.prepare('INSERT INTO password_reset_tokens (token, employeeId, expiresAt) VALUES (?, ?, ?)')
+          .run(token, employee.id, expiresAt.toISOString());
+
+        const resetLink = `${origin}/reset-password?token=${token}`;
+
+        const subject = 'Password Reset Request for OnDuty';
+        const htmlBody = `
+            <p>Hello ${employee.firstName},</p>
+            <p>You requested a password reset. Please click the link below to set a new password:</p>
+            <p><a href="${resetLink}">Reset Password</a></p>
+            <p>If you did not request this, please ignore this email. This link is valid for one hour.</p>
+        `;
+
+        return await sendEmail({ to: email, subject, htmlBody }, smtpSettings);
+    } catch (error) {
+        console.error('Password reset request failed:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function sendActivationLink(employeeId: string, origin: string, smtpSettings: SmtpSettings): Promise<{ success: boolean; error?: string }> {
+    const db = getDb();
+    try {
+        const employee = db.prepare('SELECT * FROM employees WHERE id = ?').get(employeeId) as Employee | undefined;
+        if (!employee) {
+            return { success: false, error: 'Employee not found.' };
+        }
+
+        const token = uuidv4();
+        const expiresAt = new Date(Date.now() + 24 * 3600000); // 24 hours expiry for activation
+
+        db.prepare('INSERT INTO password_reset_tokens (token, employeeId, expiresAt) VALUES (?, ?, ?)')
+          .run(token, employee.id, expiresAt.toISOString());
+
+        const activationLink = `${origin}/reset-password?token=${token}`; // Re-use the reset page for activation
+
+        const subject = 'Activate Your OnDuty Account';
+        const htmlBody = `
+            <p>Hello ${employee.firstName},</p>
+            <p>Welcome to OnDuty! To activate your account and set your password, please click the link below:</p>
+            <p><a href="${activationLink}">Activate Account</a></p>
+            <p>This link is valid for 24 hours.</p>
+        `;
+
+        return await sendEmail({ to: employee.email, subject, htmlBody }, smtpSettings);
+
+    } catch (error) {
+        console.error('Account activation failed:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<{ success: boolean; error?: string }> {
+    const db = getDb();
+    try {
+        const tokenRecord = db.prepare('SELECT * FROM password_reset_tokens WHERE token = ?').get(token) as { expiresAt: string } | undefined;
+
+        if (!tokenRecord) {
+            return { success: false, error: 'Invalid or expired token.' };
+        }
+        
+        if (new Date(tokenRecord.expiresAt) < new Date()) {
+             db.prepare('DELETE FROM password_reset_tokens WHERE token = ?').run(token);
+             return { success: false, error: 'Invalid or expired token.' };
+        }
+        
+        return { success: true };
+
+    } catch (error) {
+        console.error('Token verification failed:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+
+export async function resetPasswordWithToken(token: string, newPassword: string):Promise<{ success: boolean; error?: string }> {
+    const db = getDb();
+    try {
+        const tokenRecord = db.prepare('SELECT * FROM password_reset_tokens WHERE token = ?').get(token) as { employeeId: string, expiresAt: string } | undefined;
+        
+        if (!tokenRecord || new Date(tokenRecord.expiresAt) < new Date()) {
+             if (tokenRecord) {
+                db.prepare('DELETE FROM password_reset_tokens WHERE token = ?').run(token);
+             }
+             return { success: false, error: 'Invalid or expired token.' };
+        }
+
+        // Update the password
+        db.prepare('UPDATE employees SET password = ? WHERE id = ?').run(newPassword, tokenRecord.employeeId);
+        
+        // Invalidate the token
+        db.prepare('DELETE FROM password_reset_tokens WHERE token = ?').run(token);
+
+        return { success: true };
+    } catch(error) {
+         console.error('Password reset failed:', error);
+        return { success: false, error: (error as Error).message };
     }
 }

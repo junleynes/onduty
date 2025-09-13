@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -55,9 +54,9 @@ const employeeSchema = z.object({
   gender: z.enum(['Male', 'Female']).optional(),
   employeeClassification: z.enum(['Rank-and-File', 'Confidential', 'Managerial']).optional(),
 }).refine(data => {
-    // If it's a new user (no ID), password is required and must be at least 6 chars
+    // If it's a new user (no ID), password can be blank (to send activation link)
     if (!data.id) {
-      return data.password && data.password.length >= 6;
+      return true;
     }
     // If it's an existing user, password is optional. But if provided, it must be at least 6 chars.
     if (data.password && data.password.length > 0) {
@@ -183,8 +182,8 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
 
   const isSimplifiedView = context === 'admin' && !isPasswordResetMode;
 
-  const title = isPasswordResetMode ? 'Reset Your Password' : (isSimplifiedView ? 'Edit User' : (employee?.id ? 'Edit Team Member' : 'Add Team Member'));
-  const description = isPasswordResetMode ? 'Enter a new password for your account.' : (isSimplifiedView ? "Update the user's core credentials and role." : (employee?.id ? "Update the details for this team member." : "Fill in the details for the new team member."));
+  const title = isPasswordResetMode ? 'Reset User Password' : (isSimplifiedView ? 'Edit User' : (employee?.id ? 'Edit Team Member' : 'Add Team Member'));
+  const description = isPasswordResetMode ? `Enter a new password for ${employee?.firstName}.` : (isSimplifiedView ? "Update the user's core credentials and role." : (employee?.id ? "Update the details for this team member." : "Fill in the details for the new team member."));
 
   const availableManagers = useMemo(() => {
     return employees.filter(e => 
@@ -282,7 +281,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                         <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                            <Input type="password" {...field} placeholder={!isNewEmployee ? 'Leave blank to keep current password' : 'Enter new password'} />
+                            <Input type="password" {...field} placeholder={isNewEmployee ? 'Leave blank to send activation link' : 'Leave blank to keep current password'} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>

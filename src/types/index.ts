@@ -1,5 +1,4 @@
 
-
 export type UserRole = 'admin' | 'manager' | 'member';
 
 export type AppVisibility = {
@@ -18,7 +17,7 @@ export type Employee = {
   middleInitial?: string;
   email: string;
   phone: string;
-  password?: string;
+  password?: string | null;
   birthDate?: Date;
   startDate?: Date;
   lastPromotionDate?: Date;
@@ -154,7 +153,7 @@ export type NavItemKey =
   | 'team' | 'org-chart' | 'celebrations' | 'holidays'
   | 'faq'
   | 'reports'
-  | 'report-work-schedule' | 'report-attendance' | 'report-user-summary' | 'report-tardy' | 'report-wfh' | 'report-work-extension' | 'report-overtime'
+  | 'report-work-schedule' | 'report-attendance' | 'report-user-summary' | 'report-tardy' | 'report-wfh' | 'report-work-extension' | 'report-overtime' | 'report-alaf'
   | 'admin' | 'smtp-settings' | 'permissions' | 'danger-zone';
 
 export type RolePermissions = {

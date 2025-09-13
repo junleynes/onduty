@@ -4,16 +4,17 @@
 import React, { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Employee, UserRole } from '@/types';
+import type { Employee, SmtpSettings, UserRole } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users, EyeOff } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from './ui/dropdown-menu';
+import { MoreHorizontal, Pencil, PlusCircle, Trash2, Upload, Users, EyeOff, KeyRound, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from './ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { sendActivationLink } from '@/app/actions';
 
 type AdminPanelProps = {
   users: Employee[];
@@ -25,11 +26,13 @@ type AdminPanelProps = {
   onBatchDelete: (employeeIds: string[]) => void;
   onImportMembers: () => void;
   onManageGroups: () => void;
+  smtpSettings: SmtpSettings;
 };
 
-export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups }: AdminPanelProps) {
+export default function AdminPanel({ users, setUsers, groups, onAddMember, onEditMember, onDeleteMember, onBatchDelete, onImportMembers, onManageGroups, smtpSettings }: AdminPanelProps) {
   const { toast } = useToast();
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [isSending, startSendingTransition] = useTransition();
   
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     setUsers(users.map(user => 
@@ -60,6 +63,18 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
   const handleBatchDelete = () => {
     onBatchDelete(selectedRowIds);
     setSelectedRowIds([]);
+  }
+
+  const handleSendActivation = (employeeId: string) => {
+    startSendingTransition(async () => {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const result = await sendActivationLink(employeeId, origin, smtpSettings);
+      if (result.success) {
+        toast({ title: 'Activation Link Sent', description: 'The user will receive an email to set their password.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Failed to Send Link', description: result.error });
+      }
+    });
   }
 
   return (
@@ -189,6 +204,15 @@ export default function AdminPanel({ users, setUsers, groups, onAddMember, onEdi
                                 <Pencil className="mr-2 h-4 w-4" />
                                 <span>Edit</span>
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onEditMember(user, true)}>
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                <span>Reset Password</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendActivation(user.id)} disabled={isSending}>
+                                <Mail className="mr-2 h-4 w-4" />
+                                <span>Send Activation Link</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => onDeleteMember(user.id)}>
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 <span>Delete</span>

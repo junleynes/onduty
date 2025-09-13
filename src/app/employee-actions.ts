@@ -35,9 +35,9 @@ const employeeSchema = z.object({
   gender: z.enum(['Male', 'Female']).optional().nullable(),
   employeeClassification: z.enum(['Rank-and-File', 'Confidential', 'Managerial']).optional().nullable(),
 }).refine(data => {
-    // If it's a new user (no ID), password is required and must be at least 6 chars
+    // If it's a new user (no ID), password can be blank (to send activation link)
     if (!data.id) {
-      return data.password && data.password.length >= 6;
+      return true;
     }
     // If it's an existing user, password is optional. But if provided, it must be at least 6 chars.
     if (data.password && data.password.length > 0) {
@@ -88,7 +88,7 @@ export async function addEmployee(employeeData: Partial<Employee>): Promise<{ su
             phone: data.phone || '',
             position: data.position || '',
             ...data,
-            password: data.password || 'password', // Default password
+            password: data.password || null, // Can be null if activation link is used
             avatar: data.avatar || null,
             signature: data.signature || null,
         };
