@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,6 +14,9 @@ import type { SmtpSettings } from '@/types';
 import { Checkbox } from './ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { Label } from './ui/label';
+import { Separator } from './ui/separator';
+import { sendEmail } from '@/app/actions';
+import { Loader2, Mail } from 'lucide-react';
 
 const smtpSchema = z.object({
   host: z.string().min(1, 'Host is required'),
@@ -40,6 +43,9 @@ type SmtpSettingsViewProps = {
 
 export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewProps) {
   const { toast } = useToast();
+  const [isSending, startSendTransition] = useTransition();
+  const [testEmail, setTestEmail] = useState('');
+  
   const form = useForm<z.infer<typeof smtpSchema>>({
     resolver: zodResolver(smtpSchema),
     defaultValues: settings,
@@ -61,7 +67,29 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
         form.setValue('port', template.port);
         form.setValue('secure', template.secure);
     }
-  }
+  };
+
+  const handleSendTestEmail = () => {
+    if (!testEmail) {
+        toast({ variant: 'destructive', title: 'Recipient needed', description: 'Please enter an email address to send the test to.' });
+        return;
+    }
+    
+    startSendTransition(async () => {
+        const currentSettings = form.getValues();
+        const { success, error } = await sendEmail({
+            to: testEmail,
+            subject: 'OnDuty SMTP Test Email',
+            htmlBody: `<p>This is a test email from the OnDuty application. If you received this, your SMTP settings are working correctly.</p>`
+        }, currentSettings);
+
+        if (success) {
+            toast({ title: 'Test Email Sent!', description: `Successfully sent an email to ${testEmail}.` });
+        } else {
+            toast({ variant: 'destructive', title: 'Test Failed', description: error || 'Could not send test email.' });
+        }
+    });
+  };
 
   return (
     <Card>
@@ -186,6 +214,23 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
           </CardFooter>
         </form>
       </Form>
+      <Separator />
+       <CardHeader>
+            <CardTitle>Test Settings</CardTitle>
+            <CardDescription>Send a test email to verify your configuration is working correctly. Uses the settings in the form above.</CardDescription>
+       </CardHeader>
+       <CardContent className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="testEmail">Recipient Email</Label>
+                <Input id="testEmail" type="email" placeholder="recipient@example.com" value={testEmail} onChange={e => setTestEmail(e.target.value)} />
+            </div>
+       </CardContent>
+       <CardFooter>
+            <Button variant="outline" onClick={handleSendTestEmail} disabled={isSending}>
+                {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                Send Test Email
+            </Button>
+       </CardFooter>
     </Card>
   );
 }
