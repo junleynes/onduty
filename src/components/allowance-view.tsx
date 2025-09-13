@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance, SmtpSettings } from '@/types';
-import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth, isToday } from 'date-fns';
+import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth, isToday, isAfter, startOfDay } from 'date-fns';
 import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload, Send, Loader2 } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as ExcelJS from 'exceljs';
@@ -453,6 +453,16 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
     )
   }
 
+  const isNextMonthButtonDisabled = () => {
+    if (isManager) return false; // Managers can always navigate
+    
+    const nextMonth = startOfMonth(addMonths(currentDate, 1));
+    const oneMonthFromNow = startOfMonth(addMonths(new Date(), 1));
+
+    // Disable if the next month to be viewed is beyond one month from the real current date.
+    return isAfter(nextMonth, oneMonthFromNow);
+  };
+
 
   return (
     <>
@@ -499,7 +509,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                         <h2 className="text-xl font-bold text-center">
                             {format(currentDate, 'MMMM yyyy')}
                         </h2>
-                        <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={!isManager && isFuture(startOfMonth(addMonths(currentDate, 1)))}>
+                        <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={isNextMonthButtonDisabled()}>
                         <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
@@ -619,17 +629,15 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                     const today = new Date();
                     
                     // User editing logic for NEXT month
-                    const isCurrentMonthView = isSameMonth(currentDate, today);
+                    const isNextMonthView = startOfMonth(currentDate).getTime() === startOfMonth(addMonths(today, 1)).getTime();
                     const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
-                    const canUserEditNextMonth = !isManager && isCurrentUser && isCurrentMonthView && isEditingWindowActive;
+                    const canUserEditNextMonth = !isManager && isCurrentUser && isNextMonthView && isEditingWindowActive;
 
-                    // Manager editing logic for CURRENT month
-                    const canManagerEditCurrentMonth = isManager;
+                    // Manager editing logic for any month
+                    const canManagerEdit = isManager;
                     
-                    const canEdit = canManagerEditCurrentMonth || canUserEditNextMonth;
-                    const editDate = canUserEditNextMonth ? addMonths(currentDate, 1) : currentDate;
-
-
+                    const canEdit = canManagerEdit || canUserEditNextMonth;
+                    
                     return (
                         <TableRow key={employee.id}>
                         <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
@@ -638,7 +646,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                             <div className="flex items-center gap-2">
                                 <span>{(balance !== undefined && balance !== null) ? `${currency}${balance.toFixed(2)}` : 'N/A'}</span>
                                 {canEdit && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id, editDate)}>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id, currentDate)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
                                 )}
