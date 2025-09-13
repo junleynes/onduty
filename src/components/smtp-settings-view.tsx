@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { SmtpSettings } from '@/types';
 import { Checkbox } from './ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { Label } from './ui/label';
 
 const smtpSchema = z.object({
   host: z.string().min(1, 'Host is required'),
