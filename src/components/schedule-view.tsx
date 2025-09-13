@@ -83,7 +83,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
         // If no order exists for the new month, reset to default (null will trigger alphabetical sort)
         setViewEmployeeOrder(null);
     }
-  }, [currentDate.getMonth(), currentDate.getFullYear(), monthlyEmployeeOrder]);
+  }, [currentDate, monthlyEmployeeOrder]);
 
   const [isLeaveEditorOpen, setIsLeaveEditorOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<Partial<Leave> | null>(null);
@@ -663,14 +663,16 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     <div 
         className="contents" 
         key={employee.id} 
-        draggable={!isReadOnly && employee.id !== 'unassigned'}
-        onDragStart={(e) => handleEmployeeDragStart(e, employee.id)}
         onDragOver={handleEmployeeDragOver}
         onDrop={(e) => handleEmployeeDrop(e, employee.id)}
         >
         {/* Employee Cell */}
         <div className={cn("sticky left-0 z-20 py-1 px-2 border-b border-r flex items-center gap-3 min-h-[52px] bg-card group")}>
-            {!isReadOnly && employee.id !== 'unassigned' && <GripVertical className="h-5 w-5 text-muted-foreground cursor-grab group-hover:opacity-100 opacity-0 transition-opacity" />}
+            {!isReadOnly && employee.id !== 'unassigned' && (
+              <div draggable onDragStart={(e) => handleEmployeeDragStart(e, employee.id)} className="cursor-grab">
+                <GripVertical className="h-5 w-5 text-muted-foreground group-hover:opacity-100 opacity-0 transition-opacity" />
+              </div>
+            )}
             <div className="flex items-center gap-3">
                  {employee.id !== 'unassigned' ? (
                     <Avatar className="h-9 w-9">

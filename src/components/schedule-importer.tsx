@@ -22,6 +22,8 @@ import type { ShiftTemplate } from './shift-editor';
 import type { LeaveTypeOption } from './leave-type-editor';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
+import { findEmployeeByName } from '@/lib/utils';
+
 
 type ScheduleImporterProps = {
   isOpen: boolean;
@@ -38,67 +40,30 @@ type ScheduleImporterProps = {
   leaveTypes: LeaveTypeOption[];
 };
 
-const normalizeName = (name: string): string => {
-  if (!name) return '';
-  return name.trim().toLowerCase().replace(/,/g, '').replace(/\s+/g, ' ');
+const convertTo24Hour = (timeStr: string): string => {
+    if (!timeStr || typeof timeStr !== 'string') return '';
+    let time = timeStr.trim().toLowerCase();
+    
+    // Check for am/pm
+    const isPm = time.includes('pm') || time.includes('p');
+    const isAm = time.includes('am') || time.includes('a');
+    
+    // Remove am/pm for easier parsing
+    time = time.replace(/am|pm|a|p/g, '').trim();
+    
+    let [hours, minutes] = time.split(':').map(Number);
+    if (isNaN(hours)) hours = 0;
+    if (isNaN(minutes)) minutes = 0;
+
+    if (isPm && hours < 12) {
+        hours += 12;
+    }
+    if (isAm && hours === 12) { // Handle 12am (midnight)
+        hours = 0;
+    }
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
-
-const findEmployeeByName = (name: string, allEmployees: Employee[]): Employee | null => {
-  if (!name || typeof name !== 'string') return null;
-
-  const normalizedInput = normalizeName(name);
-
-  // Exact match first
-  for (const emp of allEmployees) {
-    const fullName = normalizeName(`${emp.firstName} ${emp.lastName}`);
-    const fullNameWithMI = normalizeName(`${emp.firstName} ${emp.middleInitial || ''} ${emp.lastName}`);
-    if (fullName === normalizedInput || fullNameWithMI === normalizedInput) {
-      return emp;
-    }
-  }
-
-  // Handle "Lastname, Firstname M.I. Suffix"
-  if (name.includes(',')) {
-    const parts = name.split(',').map(p => p.trim());
-    const lastNamePart = normalizeName(parts[0]);
-    const firstNamePart = normalizeName(parts[1] || '');
-
-    for (const emp of allEmployees) {
-      const normalizedEmpLastName = normalizeName(emp.lastName);
-      const normalizedEmpFirstName = normalizeName(emp.firstName);
-      if (normalizedEmpLastName === lastNamePart && firstNamePart.startsWith(normalizedEmpFirstName)) {
-        return emp;
-      }
-    }
-  }
-
-  return null;
-};
-
-const convertTo24Hour = (time: string): string => {
-    if (!time || typeof time !== 'string') return '';
-    let tempTime = time.toLowerCase().replace(/\s/g, '');
-    
-    const isPm = tempTime.includes('pm') || tempTime.includes('p');
-    const isAm = tempTime.includes('am') || tempTime.includes('a');
-    
-    tempTime = tempTime.replace(/pm|p|am|a/g, '');
-    
-    let [h, m] = tempTime.split(':');
-    if (!m) m = '00';
-    let hour = parseInt(h, 10);
-
-    if (isNaN(hour)) return '';
-
-    if (isPm && hour < 12) {
-        hour += 12;
-    }
-    if (isAm && hour === 12) { // Midnight case: 12am is 00:00
-        hour = 0;
-    }
-    
-    return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
 
 export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shiftTemplates, leaveTypes }: ScheduleImporterProps) {
   const [file, setFile] = useState<File | null>(null);
@@ -149,7 +114,9 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
           }
           
           if (scheduleBlocks.length === 0) {
-              throw new Error("Could not find any schedule blocks in the file.");
+              toast({ title: 'Import Warning', description: 'Could not find any schedule blocks in the file.', variant: 'destructive', duration: 8000 });
+              setIsImporting(false);
+              return;
           }
           
           const validLeaveTypes = new Set(leaveTypes.map(lt => lt.type.toUpperCase()));
@@ -165,11 +132,10 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
               for(let i = 1; i < headerRow.length; i++) {
                   const dateStr = headerRow[i]?.trim();
                   if (dateStr) {
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-                          const date = new Date(`${dateStr}T00:00:00Z`); // Use UTC to avoid timezone issues
-                          if (!isNaN(date.getTime())) {
-                              dates.push({ colIndex: i, date });
-                          }
+                      // Use UTC to avoid timezone issues, especially for YYYY-MM-DD
+                      const date = new Date(dateStr + 'T00:00:00Z');
+                      if (!isNaN(date.getTime())) {
+                          dates.push({ colIndex: i, date });
                       }
                   }
               }
@@ -266,7 +232,9 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                           return;
                       }
                       
-                      const timeMatch = cellValue.match(/(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i);
+                      const timeRegex = /(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i;
+                      const timeMatch = cellValue.match(timeRegex);
+
                       if (timeMatch) {
                           const startTime = convertTo24Hour(timeMatch[1]);
                           const endTime = convertTo24Hour(timeMatch[2]);
