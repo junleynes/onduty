@@ -482,317 +482,316 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
 
   return (
     <>
-    <div className="space-y-4">
-        <div className="space-y-1">
-            <h2 className="text-2xl font-bold tracking-tight">Communication Allowance</h2>
-            <p className="text-muted-foreground">Monitor monthly communication allowances for your team.</p>
-        </div>
-        <Card>
+      <div className="space-y-4">
+          <div className="space-y-1">
+              <h2 className="text-2xl font-bold tracking-tight">Communication Allowance</h2>
+              <p className="text-muted-foreground">Monitor monthly communication allowances for your team.</p>
+          </div>
+          <Card>
+              <CardHeader>
+                  <CardTitle>Monthly Status</CardTitle>
+                  <CardDescription>Overview for {format(currentDate, 'MMMM yyyy')}.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-4 p-4 border rounded-lg">
+                          <CheckCircle className="h-8 w-8 text-green-500" />
+                          <div>
+                              <p className="text-muted-foreground">Will Receive Load</p>
+                              <p className="text-2xl font-bold">{monthlyStatus.willReceiveCount}</p>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-4 p-4 border rounded-lg">
+                          <XCircle className="h-8 w-8 text-red-500" />
+                          <div>
+                              <p className="text-muted-foreground">Will Not Receive</p>
+                              <p className="text-2xl font-bold">{monthlyStatus.willNotReceiveCount}</p>
+                          </div>
+                      </div>
+                  </div>
+              </CardContent>
+          </Card>
+          <Card>
             <CardHeader>
-                <CardTitle>Monthly Status</CardTitle>
-                <CardDescription>Overview for {format(currentDate, 'MMMM yyyy')}.</CardDescription>
+              <CardTitle>Allowance Details</CardTitle>
             </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-4 p-4 border rounded-lg">
-                        <CheckCircle className="h-8 w-8 text-green-500" />
-                        <div>
-                            <p className="text-muted-foreground">Will Receive Load</p>
-                            <p className="text-2xl font-bold">{monthlyStatus.willReceiveCount}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4 p-4 border rounded-lg">
-                        <XCircle className="h-8 w-8 text-red-500" />
-                         <div>
-                            <p className="text-muted-foreground">Will Not Receive</p>
-                            <p className="text-2xl font-bold">{monthlyStatus.willNotReceiveCount}</p>
-                        </div>
-                    </div>
-                </div>
+            <CardContent className="space-y-4">
+              <div>
+                  <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-4">
+                          <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')}>
+                          <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <h2 className="text-xl font-bold text-center">
+                              {format(currentDate, 'MMMM yyyy')}
+                          </h2>
+                          <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={isNextMonthButtonDisabled()}>
+                          <ChevronRight className="h-4 w-4" />
+                          </Button>
+                      </div>
+                      {isManager && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                              <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                      <Button variant="destructive">
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Clear Balances
+                                      </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                          This action will permanently delete all balance records for {format(currentDate, 'MMMM yyyy')}. This cannot be undone.
+                                      </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={handleClearBalances}>Continue</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
+                              <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Import Balances
+                              </Button>
+                              <Button variant="outline" onClick={() => setIsSummaryOpen(true)}>
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Show Summary
+                              </Button>
+                              <Button variant="outline" onClick={() => setIsEmailDialogOpen(true)}>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Send Email
+                              </Button>
+                              <Button variant="outline" onClick={handleDownloadReport}>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download Report
+                              </Button>
+                              <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                                  <DialogTrigger asChild>
+                                      <Button variant="outline" size="icon">
+                                          <Settings className="h-4 w-4" />
+                                      </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-[425px]">
+                                      <DialogHeader>
+                                      <DialogTitle>Global Settings</DialogTitle>
+                                      <DialogDescription>
+                                          Set the global load limit, member editing window, and currency.
+                                      </DialogDescription>
+                                      </DialogHeader>
+                                      <div className="grid gap-4 py-4">
+                                          <div className="grid grid-cols-4 items-center gap-4">
+                                              <Label htmlFor="loadLimit" className="text-right col-span-2">
+                                              Global Load Limit (%)
+                                              </Label>
+                                              <Input
+                                                  id="loadLimit"
+                                                  type="number"
+                                                  value={loadLimitPercentage}
+                                                  onChange={handleLimitChange}
+                                                  className="col-span-2"
+                                              />
+                                          </div>
+                                          <div className="grid grid-cols-4 items-center gap-4">
+                                              <Label className="text-right col-span-2">
+                                                  Editing Window (Day)
+                                              </Label>
+                                              <div className="col-span-2 grid grid-cols-2 gap-2">
+                                              <Input
+                                                  id="startDay"
+                                                  type="number"
+                                                  min="1"
+                                                  max="31"
+                                                  placeholder="Start"
+                                                  value={editableStartDay}
+                                                  onChange={handleStartDayChange}
+                                              />
+                                              <Input
+                                                  id="endDay"
+                                                  type="number"
+                                                  min="1"
+                                                  max="31"
+                                                  placeholder="End"
+                                                  value={editableEndDay}
+                                                  onChange={handleEndDayChange}
+                                              />
+                                              </div>
+                                          </div>
+                                          <div className="grid grid-cols-4 items-center gap-4">
+                                              <Label htmlFor="currency" className="text-right col-span-2">
+                                              Currency Symbol
+                                              </Label>
+                                              <Input
+                                                  id="currency"
+                                                  type="text"
+                                                  value={currency}
+                                                  onChange={(e) => setCurrency(e.target.value)}
+                                                  className="col-span-2"
+                                              />
+                                          </div>
+                                      </div>
+                                      <DialogFooter>
+                                          <Button onClick={handleSaveSettings}>Save changes</Button>
+                                      </DialogFooter>
+                                  </DialogContent>
+                              </Dialog>
+                          </div>
+                      )}
+                  </div>
+                  <Table className="mt-4">
+                  <TableHeader>
+                      <TableRow>
+                          <SortableHeader tKey="lastName">Recipient</SortableHeader>
+                          <SortableHeader tKey="loadAllocation">Load Allocation</SortableHeader>
+                          <SortableHeader tKey="balance">Load Balance</SortableHeader>
+                          <TableHead>Balance as of</TableHead>
+                          <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
+                          <SortableHeader tKey="excess">Excess in Allocation</SortableHeader>
+                          <TableHead>Receives Load?</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                      {membersInGroup.map((employee) => {
+                      const allocation = employee.loadAllocation || 0;
+                      const allowance = getEmployeeAllowance(employee.id, currentDate);
+                      const balance = allowance?.balance;
+                      const limit = allocation * (loadLimitPercentage / 100);
+                      const excess = balance !== undefined && balance !== null && balance > allocation ? balance - allocation : 0;
+                      
+                      const willReceive = (balance !== undefined && balance !== null) ? balance <= limit : undefined;
+                      
+                      const isCurrentUser = employee.id === currentUser.id;
+                      const today = new Date();
+                      
+                      const isNextMonthView = isAfter(startOfMonth(currentDate), startOfMonth(today));
+                      const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
+                      
+                      const canUserEdit = !isManager && isCurrentUser && isNextMonthView && isEditingWindowActive;
+
+                      const canManagerEdit = isManager;
+                      
+                      const canEdit = canManagerEdit || canUserEdit;
+                      
+                      return (
+                          <TableRow key={employee.id}>
+                          <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
+                          <TableCell>{currency}{allocation.toFixed(2)}</TableCell>
+                          <TableCell>
+                              <span>{(balance !== undefined && balance !== null) ? `${currency}${balance.toFixed(2)}` : 'N/A'}</span>
+                          </TableCell>
+                          <TableCell>
+                              {allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'MMM d, yyyy') : 'N/A'}
+                          </TableCell>
+                          <TableCell>{currency}{limit.toFixed(2)}</TableCell>
+                          <TableCell>{excess > 0 ? `${currency}${excess.toFixed(2)}` : ''}</TableCell>
+                          <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
+                              {willReceive === undefined ? 'N/A' : (willReceive ? 'Yes' : 'No')}
+                          </TableCell>
+                          <TableCell className="text-right">
+                              {canEdit && (
+                                  <Button size="sm" variant="outline" onClick={() => handleOpenBalanceEditor(employee.id, currentDate)}>
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      Update
+                                  </Button>
+                              )}
+                          </TableCell>
+                          </TableRow>
+                      );
+                      })}
+                  </TableBody>
+                  </Table>
+              </div>
             </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Allowance Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')}>
-                        <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <h2 className="text-xl font-bold text-center">
-                            {format(currentDate, 'MMMM yyyy')}
-                        </h2>
-                        <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={isNextMonthButtonDisabled()}>
-                        <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    {isManager && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive">
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Clear Balances
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action will permanently delete all balance records for {format(currentDate, 'MMMM yyyy')}. This cannot be undone.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleClearBalances}>Continue</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                             <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
-                                <Upload className="h-4 w-4 mr-2" />
-                                Import Balances
-                            </Button>
-                             <Button variant="outline" onClick={() => setIsSummaryOpen(true)}>
-                                <FileText className="h-4 w-4 mr-2" />
-                                Show Summary
-                            </Button>
-                            <Button variant="outline" onClick={() => setIsEmailDialogOpen(true)}>
-                                <Send className="h-4 w-4 mr-2" />
-                                Send Email
-                            </Button>
-                            <Button variant="outline" onClick={handleDownloadReport}>
-                                <Download className="h-4 w-4 mr-2" />
-                                Download Report
-                            </Button>
-                            <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="outline" size="icon">
-                                        <Settings className="h-4 w-4" />
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px]">
-                                    <DialogHeader>
-                                    <DialogTitle>Global Settings</DialogTitle>
-                                    <DialogDescription>
-                                        Set the global load limit, member editing window, and currency.
-                                    </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="grid gap-4 py-4">
-                                        <div className="grid grid-cols-4 items-center gap-4">
-                                            <Label htmlFor="loadLimit" className="text-right col-span-2">
-                                            Global Load Limit (%)
-                                            </Label>
-                                            <Input
-                                                id="loadLimit"
-                                                type="number"
-                                                value={loadLimitPercentage}
-                                                onChange={handleLimitChange}
-                                                className="col-span-2"
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-4 items-center gap-4">
-                                            <Label className="text-right col-span-2">
-                                                Editing Window (Day)
-                                            </Label>
-                                            <div className="col-span-2 grid grid-cols-2 gap-2">
-                                            <Input
-                                                id="startDay"
-                                                type="number"
-                                                min="1"
-                                                max="31"
-                                                placeholder="Start"
-                                                value={editableStartDay}
-                                                onChange={handleStartDayChange}
-                                            />
-                                            <Input
-                                                id="endDay"
-                                                type="number"
-                                                min="1"
-                                                max="31"
-                                                placeholder="End"
-                                                value={editableEndDay}
-                                                onChange={handleEndDayChange}
-                                            />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-4 items-center gap-4">
-                                            <Label htmlFor="currency" className="text-right col-span-2">
-                                            Currency Symbol
-                                            </Label>
-                                            <Input
-                                                id="currency"
-                                                type="text"
-                                                value={currency}
-                                                onChange={(e) => setCurrency(e.target.value)}
-                                                className="col-span-2"
-                                            />
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button onClick={handleSaveSettings}>Save changes</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                    )}
-                </div>
-                <Table className="mt-4">
-                <TableHeader>
-                    <TableRow>
-                        <SortableHeader tKey="lastName">Recipient</SortableHeader>
-                        <SortableHeader tKey="loadAllocation">Load Allocation</SortableHeader>
-                        <SortableHeader tKey="balance">Load Balance</SortableHeader>
-                        <TableHead>Balance as of</TableHead>
-                        <TableHead>Limit ({loadLimitPercentage}%)</TableHead>
-                        <SortableHeader tKey="excess">Excess in Allocation</SortableHeader>
-                        <TableHead>Receives Load?</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {membersInGroup.map((employee) => {
-                    const allocation = employee.loadAllocation || 0;
-                    const allowance = getEmployeeAllowance(employee.id, currentDate);
-                    const balance = allowance?.balance;
-                    const limit = allocation * (loadLimitPercentage / 100);
-                    const excess = balance !== undefined && balance !== null && balance > allocation ? balance - allocation : 0;
-                    
-                    const willReceive = (balance !== undefined && balance !== null) ? balance <= limit : undefined;
-                    
-                    const isCurrentUser = employee.id === currentUser.id;
-                    const today = new Date();
-                    
-                    const isNextMonthView = isAfter(startOfMonth(currentDate), startOfMonth(today));
-                    const isCurrentMonthView = isSameMonth(currentDate, today);
-                    const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
-                    
-                    // A regular user can edit the *next* month's balance, but only during the current month's editing window.
-                    const canUserEdit = !isManager && isCurrentUser && isNextMonthView && isEditingWindowActive;
+          </Card>
+      </div>
+      
+      {isClient && isEmailDialogOpen && (
+          <EmailDialog
+              isOpen={isEmailDialogOpen}
+              setIsOpen={setIsEmailDialogOpen}
+              smtpSettings={smtpSettings}
+              generateExcelData={generateExcelData}
+              fileName={`${currentUser.group} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`}
+          />
+      )}
 
-                    // A manager can edit any balance at any time.
-                    const canManagerEdit = isManager;
-                    
-                    const canEdit = canManagerEdit || canUserEdit;
-                    
-                    return (
-                        <TableRow key={employee.id}>
-                        <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
-                        <TableCell>{currency}{allocation.toFixed(2)}</TableCell>
-                        <TableCell>
-                            <div className="flex items-center gap-2">
-                                <span>{(balance !== undefined && balance !== null) ? `${currency}${balance.toFixed(2)}` : 'N/A'}</span>
-                                {canEdit && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenBalanceEditor(employee.id, currentDate)}>
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                )}
-                            </div>
-                        </TableCell>
-                        <TableCell>
-                            {allowance?.asOfDate ? format(new Date(allowance.asOfDate), 'MMM d, yyyy') : 'N/A'}
-                        </TableCell>
-                        <TableCell>{currency}{limit.toFixed(2)}</TableCell>
-                        <TableCell>{excess > 0 ? `${currency}${excess.toFixed(2)}` : ''}</TableCell>
-                        <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
-                            {willReceive === undefined ? 'N/A' : (willReceive ? 'Yes' : 'No')}
-                        </TableCell>
-                        </TableRow>
-                    );
-                    })}
-                </TableBody>
-                </Table>
-            </div>
-          </CardContent>
-        </Card>
-    </div>
-    
-    {isClient && isEmailDialogOpen && (
-        <EmailDialog
-            isOpen={isEmailDialogOpen}
-            setIsOpen={setIsEmailDialogOpen}
-            smtpSettings={smtpSettings}
-            generateExcelData={generateExcelData}
-            fileName={`${currentUser.group} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`}
-        />
-    )}
+      <Dialog open={isBalanceEditorOpen} onOpenChange={setIsBalanceEditorOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Update Load Balance</DialogTitle>
+                  <DialogDescription>
+                      Enter the details for your current load balance for {editingAllowance ? format(new Date(editingAllowance.year!, editingAllowance.month!), 'MMMM yyyy') : ''}.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="balance">Load Balance</Label>
+                      <Input 
+                          id="balance"
+                          type="number"
+                          step="0.01"
+                          value={editingAllowance?.balance ?? ''}
+                          onChange={(e) => setEditingAllowance(prev => ({ ...prev, balance: parseFloat(e.target.value) }))}
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label>Load balance as of</Label>
+                      <DatePicker 
+                          date={editingAllowance?.asOfDate ? new Date(editingAllowance.asOfDate) : undefined}
+                          onDateChange={(date) => setEditingAllowance(prev => ({...prev, asOfDate: date}))}
+                      />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="screenshot">Screenshot (optional)</Label>
+                      <Input 
+                          id="screenshot"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                      setEditingAllowance(prev => ({...prev, screenshot: reader.result as string}));
+                                  };
+                                  reader.readAsDataURL(file);
+                              }
+                          }}
+                      />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button variant="ghost" onClick={() => setIsBalanceEditorOpen(false)}>Cancel</Button>
+                  <Button onClick={handleSaveBalance}>Save</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
-    <Dialog open={isBalanceEditorOpen} onOpenChange={setIsBalanceEditorOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Update Load Balance</DialogTitle>
-                <DialogDescription>
-                    Enter the details for your current load balance for {editingAllowance ? format(new Date(editingAllowance.year!, editingAllowance.month!), 'MMMM yyyy') : ''}.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                    <Label htmlFor="balance">Load Balance</Label>
-                    <Input 
-                        id="balance"
-                        type="number"
-                        step="0.01"
-                        value={editingAllowance?.balance ?? ''}
-                        onChange={(e) => setEditingAllowance(prev => ({ ...prev, balance: parseFloat(e.target.value) }))}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label>Load balance as of</Label>
-                    <DatePicker 
-                        date={editingAllowance?.asOfDate ? new Date(editingAllowance.asOfDate) : undefined}
-                        onDateChange={(date) => setEditingAllowance(prev => ({...prev, asOfDate: date}))}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="screenshot">Screenshot (optional)</Label>
-                    <Input 
-                        id="screenshot"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                    setEditingAllowance(prev => ({...prev, screenshot: reader.result as string}));
-                                };
-                                reader.readAsDataURL(file);
-                            }
-                        }}
-                    />
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsBalanceEditorOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveBalance}>Save</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-
-    <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
-        <DialogContent className="max-w-4xl">
-            <DialogHeader>
-                <DialogTitle>Summary</DialogTitle>
-                <DialogDescription>
-                    An overview of yearly reports and group allocations.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[70vh] overflow-y-auto p-1">
-                 <Dashboard membersInGroup={membersInGroup} allowances={allowances} currentDate={currentDate} loadLimitPercentage={loadLimitPercentage} currency={currency} />
-            </div>
-            <DialogFooter>
-                 <Button onClick={() => setIsSummaryOpen(false)}>Close</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-    
-    <AllowanceImporter 
-        isOpen={isImporterOpen}
-        setIsOpen={setIsImporterOpen}
-        onImport={handleImport}
-        employees={employees}
-    />
+      <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
+          <DialogContent className="max-w-4xl">
+              <DialogHeader>
+                  <DialogTitle>Summary</DialogTitle>
+                  <DialogDescription>
+                      An overview of yearly reports and group allocations.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[70vh] overflow-y-auto p-1">
+                  <Dashboard membersInGroup={membersInGroup} allowances={allowances} currentDate={currentDate} loadLimitPercentage={loadLimitPercentage} currency={currency} />
+              </div>
+              <DialogFooter>
+                  <Button onClick={() => setIsSummaryOpen(false)}>Close</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+      
+      <AllowanceImporter 
+          isOpen={isImporterOpen}
+          setIsOpen={setIsImporterOpen}
+          onImport={handleImport}
+          employees={employees}
+      />
     </>
   );
 }
@@ -902,6 +901,8 @@ function EmailDialog({
 
 
     
+
+
 
 
 
