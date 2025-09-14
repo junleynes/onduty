@@ -192,7 +192,7 @@ export async function saveAllData({
   leaveTypes: LeaveTypeOption[];
   permissions: RolePermissions;
   monthlyEmployeeOrder: Record<string, string[]>;
-}) {
+}): Promise<{ success: boolean; error?: string }> {
   const db = getDb();
   const saveTransaction = db.transaction(() => {
     
