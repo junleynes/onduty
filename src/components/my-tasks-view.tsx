@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format, isToday, isFuture, isPast, startOfDay } from 'date-fns';
-import { ClipboardCheck, CalendarClock, CalendarX, CalendarCheck } from 'lucide-react';
+import { ClipboardCheck, CalendarClock, CalendarX, CalendarCheck, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from './ui/badge';
 
 type MyTasksViewProps = {
   tasks: Task[];
@@ -33,11 +34,16 @@ const TaskItem = ({ task, shift, onToggle }: { task: Task; shift?: Shift; onTogg
                     {task.title}
                 </label>
                 <p className={cn("text-muted-foreground text-sm", isCompleted && 'line-through')}>{task.description}</p>
-                {shift && (
-                    <p className="text-muted-foreground text-xs">
-                        For shift on {format(new Date(shift.date), 'MMM d, yyyy')} ({shift.startTime} - {shift.endTime})
-                    </p>
-                )}
+                
+                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    {task.scope === 'global' && <Badge variant="secondary"><Globe className="h-3 w-3 mr-1"/>Global</Badge>}
+                    {shift && (
+                        <span className="text-muted-foreground text-xs">
+                            For shift on {format(new Date(shift.date), 'MMM d, yyyy')} ({shift.startTime} - {shift.endTime})
+                        </span>
+                    )}
+                 </div>
+
                  {task.completedAt && (
                     <p className="text-muted-foreground text-xs">
                         Completed on {format(new Date(task.completedAt), 'MMM d, yyyy @ p')}
@@ -108,6 +114,10 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
   const myShiftIds = new Set(shifts.filter(s => s.employeeId === currentUser.id).map(s => s.id));
   
   const myTasks = tasks.filter(task => {
+    // Include global tasks
+    if (task.scope === 'global') {
+        return true;
+    }
     // Include shift tasks assigned to the user's shifts
     if (task.scope === 'shift' && task.shiftId && myShiftIds.has(task.shiftId)) {
         return true;

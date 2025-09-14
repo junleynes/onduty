@@ -6,7 +6,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { Task, Employee } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, Pencil, X, Check, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, X, Check, ChevronsUpDown, User, Globe } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Checkbox } from './ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -31,12 +31,13 @@ type TaskManagerViewProps = {
   employees: Employee[];
 };
 
-const TaskItem = ({ task, onToggle, onEdit, onDelete, canModify }: { 
+const TaskItem = ({ task, onToggle, onEdit, onDelete, canModify, assignee }: { 
     task: Task; 
     onToggle: (id: string, checked: boolean) => void;
     onEdit: (task: Task) => void;
     onDelete: (id: string) => void;
     canModify: boolean;
+    assignee?: Employee | null;
 }) => {
     const { toast } = useToast();
     const isCompleted = task.status === 'completed';
@@ -60,7 +61,12 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete, canModify }: {
                 <p className={cn("text-muted-foreground text-sm", isCompleted && 'line-through')}>{task.description}</p>
                 
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    {task.scope === 'global' && <Badge variant="secondary">Global</Badge>}
+                    {task.scope === 'global' ? (
+                        <Badge variant="secondary"><Globe className="h-3 w-3 mr-1"/>Global</Badge>
+                    ) : assignee ? (
+                         <Badge variant="outline"><User className="h-3 w-3 mr-1"/>{getFullName(assignee)}</Badge>
+                    ) : null}
+
                     {task.dueDate && (
                         <span className={cn(isOverdue && 'text-destructive font-semibold')}>
                             Due: {format(new Date(task.dueDate), 'MMM d, yyyy')}
@@ -91,16 +97,13 @@ export default function TaskManagerView({ tasks, setTasks, currentUser, employee
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const { toast } = useToast();
+  const employeeMap = useMemo(() => new Map(employees.map(e => [e.id, e])), [employees]);
 
-  const myPersonalTasks = useMemo(() => 
-    tasks.filter(t => t.scope === 'personal' && t.assigneeId === currentUser.id),
+  const managedTasks = useMemo(() => 
+    tasks.filter(t => t.scope === 'global' || t.createdBy === currentUser.id),
     [tasks, currentUser.id]
   );
   
-  const globalTasks = useMemo(() =>
-    tasks.filter(t => t.scope === 'global'),
-    [tasks]
-  );
 
   const handleTaskToggle = (taskId: string, isChecked: boolean) => {
     setTasks(currentTasks => currentTasks.map(task => 
@@ -168,57 +171,33 @@ export default function TaskManagerView({ tasks, setTasks, currentUser, employee
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
             <CardTitle>Task Manager</CardTitle>
-            <CardDescription>Manage your personal and global tasks.</CardDescription>
+            <CardDescription>Manage global tasks and personal tasks you have assigned.</CardDescription>
         </div>
         <Button onClick={() => handleOpenEditor()}>
             <PlusCircle className="h-4 w-4 mr-2" />
             New Task
         </Button>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-            <h3 className="text-lg font-semibold mb-2">My Personal Tasks</h3>
-            {myPersonalTasks.length > 0 ? (
-                <ul className="space-y-3">
-                    {myPersonalTasks.map(task => (
-                        <TaskItem 
-                            key={task.id} 
-                            task={task} 
-                            onToggle={handleTaskToggle}
-                            onEdit={() => handleOpenEditor(task)}
-                            onDelete={handleDeleteTask}
-                            canModify={true}
-                        />
-                    ))}
-                </ul>
-            ) : (
-                <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                    <p>You have no personal tasks. Click "New Task" to create one.</p>
-                </div>
-            )}
-        </div>
-        <div>
-            <h3 className="text-lg font-semibold mb-2">Global Tasks</h3>
-             {globalTasks.length > 0 ? (
-                <ul className="space-y-3">
-                    {globalTasks.map(task => (
-                        <TaskItem 
-                            key={task.id} 
-                            task={task} 
-                            onToggle={handleTaskToggle}
-                            onEdit={() => handleOpenEditor(task)}
-                            onDelete={handleDeleteTask}
-                            canModify={task.createdBy === currentUser.id || canCreateGlobal}
-                        />
-                    ))}
-                </ul>
-            ) : (
-                <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                    <p>There are no global tasks assigned.</p>
-                    {canCreateGlobal && <p className="text-sm">Managers and admins can create tasks for everyone.</p>}
-                </div>
-            )}
-        </div>
+      <CardContent>
+        {managedTasks.length > 0 ? (
+            <ul className="space-y-3">
+                {managedTasks.map(task => (
+                    <TaskItem 
+                        key={task.id} 
+                        task={task} 
+                        assignee={task.assigneeId ? employeeMap.get(task.assigneeId) : null}
+                        onToggle={handleTaskToggle}
+                        onEdit={() => handleOpenEditor(task)}
+                        onDelete={handleDeleteTask}
+                        canModify={task.createdBy === currentUser.id || (task.scope === 'global' && canCreateGlobal)}
+                    />
+                ))}
+            </ul>
+        ) : (
+            <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                <p>No managed tasks found. Click "New Task" to create one.</p>
+            </div>
+        )}
       </CardContent>
     </Card>
 
@@ -333,7 +312,7 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
                             <Label>Assign To</Label>
                              <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-start">
+                                    <Button variant="outline" className="w-full justify-start h-auto min-h-10">
                                         <div className="flex gap-1 flex-wrap">
                                             {selectedAssigneeIds.length > 0 ? selectedAssigneeIds.map(id => {
                                                 const emp = employees.find(e => e.id === id);
