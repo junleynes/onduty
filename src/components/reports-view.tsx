@@ -31,6 +31,7 @@ import { Checkbox } from './ui/checkbox';
 import { OvertimeTemplateUploader } from './overtime-template-uploader';
 import { AlafTemplateUploader } from './alaf-template-uploader';
 import { sendEmail } from '@/app/actions';
+import { Textarea } from './ui/textarea';
 
 
 type ReportsViewProps = {
@@ -1976,7 +1977,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 <EmailDialog
                     isOpen={isEmailDialogOpen}
                     setIsOpen={setIsEmailDialogOpen}
-                    subject={reportTitle}
+                    defaultSubject={reportTitle}
                     smtpSettings={smtpSettings}
                     generateExcelData={emailGenerator!}
                     fileName={`${reportTitle}.xlsx`}
@@ -1990,7 +1991,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 type EmailDialogProps = {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
-    subject: string;
+    defaultSubject: string;
     smtpSettings: SmtpSettings;
     generateExcelData: () => Promise<Buffer | null>;
     fileName: string;
@@ -1999,17 +2000,25 @@ type EmailDialogProps = {
 function EmailDialog({ 
     isOpen, 
     setIsOpen, 
-    subject, 
+    defaultSubject, 
     smtpSettings,
     generateExcelData,
     fileName,
 }: EmailDialogProps) {
     const [to, setTo] = React.useState('');
+    const [subject, setSubject] = React.useState(defaultSubject);
+    const [body, setBody] = React.useState('Please find the report attached.');
     const [isSending, startTransition] = React.useTransition();
     const { toast } = useToast();
-    
-    const htmlBody = `<p>Please find the report attached.</p>`;
 
+    React.useEffect(() => {
+        if (isOpen) {
+            setSubject(defaultSubject);
+            setBody('Please find the report attached.');
+            setTo('');
+        }
+    }, [isOpen, defaultSubject]);
+    
     const handleSend = async () => {
         if (!to) {
             toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
@@ -2033,7 +2042,7 @@ function EmailDialog({
                 }];
                 
                 toast({ title: 'Sending email...', description: `Sending report to ${to}.`});
-                const result = await sendEmail({ to, subject, htmlBody, attachments }, smtpSettings);
+                const result = await sendEmail({ to, subject, htmlBody: body.replace(/\n/g, '<br>') }, smtpSettings);
 
                 if (result?.success) {
                     toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
@@ -2061,11 +2070,11 @@ function EmailDialog({
                     </div>
                      <div className="space-y-2">
                         <Label>Subject</Label>
-                        <Input value={subject} readOnly disabled />
+                        <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                         <Label>Body</Label>
-                        <div className="h-24 rounded-md border p-2 text-sm" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
                     </div>
                 </div>
                 <DialogFooter>
@@ -2079,5 +2088,6 @@ function EmailDialog({
         </Dialog>
     );
 }
+
 
 
