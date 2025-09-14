@@ -234,7 +234,7 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
     const [scope, setScope] = useState<'personal' | 'global'>('personal');
     const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
     
-    const canCreateGlobal = currentUser.role === 'manager' || currentUser.role === 'admin';
+    const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
     const isEditing = !!task?.id;
     
     const employeesInGroup = useMemo(() => 
@@ -246,6 +246,7 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
             setTitle(task?.title || '');
             setDescription(task?.description || '');
             setDueDate(task?.dueDate ? new Date(task.dueDate) : undefined);
+            
             const initialScope = task?.scope || 'personal';
             setScope(initialScope);
             
@@ -258,7 +259,7 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
     }, [task, isOpen, currentUser.id, isEditing]);
 
     const handleSave = () => {
-        const finalScope = canCreateGlobal ? scope : 'personal';
+        const finalScope = isManager ? scope : 'personal';
         const taskData = {
             id: task?.id,
             title,
@@ -267,7 +268,10 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
             scope: finalScope,
             status: task?.id ? task.status : 'pending', // Preserve status on edit
         };
-        onSave(taskData, finalScope === 'global' ? null : selectedAssigneeIds);
+        
+        const assignees = finalScope === 'global' ? null : (isManager ? selectedAssigneeIds : [currentUser.id]);
+
+        onSave(taskData, assignees);
     }
     
     const handleAssigneeToggle = (employeeId: string) => {
@@ -298,7 +302,7 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
                         <Label>Due Date</Label>
                         <DatePicker date={dueDate} onDateChange={setDueDate} />
                     </div>
-                    {canCreateGlobal && (
+                    {isManager && (
                         <div className="space-y-2">
                             <Label>Scope</Label>
                             <Select value={scope} onValueChange={(v) => setScope(v as 'personal' | 'global')} disabled={isEditing}>
@@ -315,45 +319,49 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
                     {scope === 'personal' && (
                          <div className="space-y-2">
                             <Label>Assign To</Label>
-                             <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className="w-full justify-start h-auto min-h-10">
-                                        <div className="flex gap-1 flex-wrap">
-                                            {selectedAssigneeIds.length > 0 ? selectedAssigneeIds.map(id => {
-                                                const emp = employees.find(e => e.id === id);
-                                                return <Badge key={id} variant="secondary">{emp ? getFullName(emp) : 'Unknown'}</Badge>;
-                                            }) : <span className="text-muted-foreground">Select employees...</span>}
-                                        </div>
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0">
-                                     <Command>
-                                        <CommandInput placeholder="Search employees..." />
-                                        <CommandList>
-                                            <CommandEmpty>No employees found.</CommandEmpty>
-                                            <CommandGroup>
-                                                <CommandItem
-                                                    onSelect={() => handleAssigneeToggle(currentUser.id)}
-                                                    disabled={isEditing}
-                                                >
-                                                    <Check className={cn("mr-2 h-4 w-4", selectedAssigneeIds.includes(currentUser.id) ? "opacity-100" : "opacity-0")} />
-                                                    {getFullName(currentUser)} (Me)
-                                                </CommandItem>
-                                                {employeesInGroup.map(employee => (
+                            {isManager ? (
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className="w-full justify-start h-auto min-h-10">
+                                            <div className="flex gap-1 flex-wrap">
+                                                {selectedAssigneeIds.length > 0 ? selectedAssigneeIds.map(id => {
+                                                    const emp = employees.find(e => e.id === id);
+                                                    return <Badge key={id} variant="secondary">{emp ? getFullName(emp) : 'Unknown'}</Badge>;
+                                                }) : <span className="text-muted-foreground">Select employees...</span>}
+                                            </div>
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-full p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search employees..." />
+                                            <CommandList>
+                                                <CommandEmpty>No employees found.</CommandEmpty>
+                                                <CommandGroup>
                                                     <CommandItem
-                                                        key={employee.id}
-                                                        onSelect={() => handleAssigneeToggle(employee.id)}
+                                                        onSelect={() => handleAssigneeToggle(currentUser.id)}
                                                         disabled={isEditing}
                                                     >
-                                                        <Check className={cn("mr-2 h-4 w-4", selectedAssigneeIds.includes(employee.id) ? "opacity-100" : "opacity-0")} />
-                                                        {getFullName(employee)}
+                                                        <Check className={cn("mr-2 h-4 w-4", selectedAssigneeIds.includes(currentUser.id) ? "opacity-100" : "opacity-0")} />
+                                                        {getFullName(currentUser)} (Me)
                                                     </CommandItem>
-                                                ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                                                    {employeesInGroup.map(employee => (
+                                                        <CommandItem
+                                                            key={employee.id}
+                                                            onSelect={() => handleAssigneeToggle(employee.id)}
+                                                            disabled={isEditing}
+                                                        >
+                                                            <Check className={cn("mr-2 h-4 w-4", selectedAssigneeIds.includes(employee.id) ? "opacity-100" : "opacity-0")} />
+                                                            {getFullName(employee)}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            ) : (
+                                <Input value="Myself" disabled readOnly />
+                            )}
                          </div>
                     )}
                 </div>
@@ -365,3 +373,4 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
         </Dialog>
     )
 }
+
