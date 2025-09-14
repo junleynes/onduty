@@ -368,9 +368,9 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     leave: Leave[],
     employeeOrder: string[],
     overwrittenCells: { employeeId: string, date: Date }[],
-    monthKey: string
+    monthKeys: string[]
   }) => {
-    const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKey } = importedData;
+    const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKeys } = importedData;
   
     const cellsToOverwrite = new Set(
       overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
@@ -394,15 +394,18 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     setShifts([...remainingShifts, ...shiftsWithStatus]);
     setLeave([...remainingLeave, ...importedLeave]);
     
-    // Set the employee order for the imported month
-    setMonthlyEmployeeOrder(prev => ({
-        ...prev,
-        [monthKey]: employeeOrder
-    }));
+    // Set the employee order for all imported months
+    setMonthlyEmployeeOrder(prev => {
+        const newOrder = { ...prev };
+        monthKeys.forEach(key => {
+            newOrder[key] = employeeOrder;
+        });
+        return newOrder;
+    });
 
-    // Immediately apply the new order to the view if we are in that month
+    // Immediately apply the new order to the view if we are in one of the imported months
     const currentMonthKey = format(currentDate, 'yyyy-MM');
-    if (currentMonthKey === monthKey) {
+    if (monthKeys.includes(currentMonthKey)) {
       setViewEmployeeOrder(employeeOrder);
     }
   };

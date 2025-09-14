@@ -33,7 +33,7 @@ type ScheduleImporterProps = {
     leave: Leave[],
     employeeOrder: string[],
     overwrittenCells: { employeeId: string, date: Date }[],
-    monthKey: string,
+    monthKeys: string[],
   }) => void;
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
@@ -93,7 +93,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
           const importedLeave: Leave[] = [];
           const employeeOrder: string[] = [];
           const overwrittenCells: { employeeId: string, date: Date }[] = [];
-          let monthKey = '';
+          const monthKeySet = new Set<string>();
           
           const scheduleBlocks: string[][][] = [];
           let currentBlock: string[][] = [];
@@ -136,6 +136,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       const date = new Date(dateStr + 'T00:00:00Z');
                       if (!isNaN(date.getTime())) {
                           dates.push({ colIndex: i, date });
+                          monthKeySet.add(format(date, 'yyyy-MM')); // Collect all unique months
                       }
                   }
               }
@@ -144,12 +145,6 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                   console.warn(`No valid dates found in header of block ${blockIndex + 1}. Skipping.`);
                   return;
               }
-
-              // Determine the month key from the first valid date in the import
-              if (!monthKey && dates.length > 0) {
-                  monthKey = format(dates[0].date, 'yyyy-MM');
-              }
-
 
               for (let rowIndex = 1; rowIndex < block.length; rowIndex++) {
                   const employeeRow = block[rowIndex];
@@ -266,7 +261,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
             return;
           }
 
-          onImport({ shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKey });
+          onImport({ shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKeys: Array.from(monthKeySet) });
           toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
           setIsOpen(false);
 
