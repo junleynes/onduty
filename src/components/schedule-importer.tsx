@@ -33,6 +33,7 @@ type ScheduleImporterProps = {
     leave: Leave[],
     monthlyOrders: Record<string, string[]>,
     overwrittenCells: { employeeId: string, date: Date }[],
+    monthKeys: string[],
   }) => void;
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
@@ -92,6 +93,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
           const importedLeave: Leave[] = [];
           const monthlyOrders: Record<string, string[]> = {};
           const overwrittenCells: { employeeId: string, date: Date }[] = [];
+          const allMonthKeys = new Set<string>();
           
           const scheduleBlocks: string[][][] = [];
           let currentBlock: string[][] = [];
@@ -136,7 +138,9 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       const date = new Date(dateStr + 'T00:00:00Z');
                       if (!isNaN(date.getTime())) {
                           dates.push({ colIndex: i, date });
-                          blockMonthKeySet.add(format(date, 'yyyy-MM'));
+                          const monthKey = format(date, 'yyyy-MM');
+                          blockMonthKeySet.add(monthKey);
+                          allMonthKeys.add(monthKey);
                       }
                   }
               }
@@ -265,7 +269,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
             return;
           }
 
-          onImport({ shifts: importedShifts, leave: importedLeave, monthlyOrders, overwrittenCells });
+          onImport({ shifts: importedShifts, leave: importedLeave, monthlyOrders, overwrittenCells, monthKeys: Array.from(allMonthKeys) });
           toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
           setIsOpen(false);
 

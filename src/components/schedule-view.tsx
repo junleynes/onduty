@@ -364,24 +364,22 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   };
 
   const handleImportedData = (importedData: {
-    shifts: Shift[],
-    leave: Leave[],
-    employeeOrder: string[],
-    overwrittenCells: { employeeId: string, date: Date }[],
-    monthKeys: string[]
+    shifts: Shift[];
+    leave: Leave[];
+    monthlyOrders: Record<string, string[]>;
+    overwrittenCells: { employeeId: string; date: Date }[];
+    monthKeys: string[];
   }) => {
-    const { shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKeys } = importedData;
+    const { shifts: importedShifts, leave: importedLeave, monthlyOrders, overwrittenCells, monthKeys } = importedData;
   
     const cellsToOverwrite = new Set(
       overwrittenCells.map(cell => `${cell.employeeId}-${format(cell.date, 'yyyy-MM-dd')}`)
     );
   
-    // Filter out shifts that will be overwritten
     const remainingShifts = shifts.filter(s => 
         !s.employeeId || !cellsToOverwrite.has(`${s.employeeId}-${format(new Date(s.date), 'yyyy-MM-dd')}`)
     );
     
-    // Filter out leave entries that overlap with overwritten cells
     const remainingLeave = leave.filter(l => {
         if (!l.employeeId || !l.startDate || !l.endDate) return true;
         const daysOfLeave = eachDayOfInterval({ start: new Date(l.startDate), end: new Date(l.endDate) });
@@ -394,19 +392,14 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     setShifts([...remainingShifts, ...shiftsWithStatus]);
     setLeave([...remainingLeave, ...importedLeave]);
     
-    // Set the employee order for all imported months
-    setMonthlyEmployeeOrder(prev => {
-        const newOrder = { ...prev };
-        monthKeys.forEach(key => {
-            newOrder[key] = employeeOrder;
-        });
-        return newOrder;
-    });
+    setMonthlyEmployeeOrder(prev => ({
+        ...prev,
+        ...monthlyOrders,
+    }));
 
-    // Immediately apply the new order to the view if we are in one of the imported months
     const currentMonthKey = format(currentDate, 'yyyy-MM');
-    if (monthKeys.includes(currentMonthKey)) {
-      setViewEmployeeOrder(employeeOrder);
+    if (monthKeys && monthKeys.includes(currentMonthKey)) {
+        setViewEmployeeOrder(monthlyOrders[currentMonthKey]);
     }
   };
   
