@@ -27,8 +27,8 @@ import { useToast } from '@/hooks/use-toast';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
-  employeeNumber: z.string().optional(),
-  personnelNumber: z.string().optional(),
+  employeeNumber: z.string().optional().nullable(),
+  personnelNumber: z.string().optional().nullable(),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   middleInitial: z.string().max(1).optional(),
@@ -126,6 +126,8 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
             },
         } : {
             ...employee,
+            employeeNumber: employee.employeeNumber || '',
+            personnelNumber: employee.personnelNumber || '',
             password: '', // Always start with an empty password field for editing
             birthDate: employee.birthDate ? new Date(employee.birthDate) : undefined,
             startDate: employee.startDate ? new Date(employee.startDate) : undefined,
@@ -345,7 +347,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     <FormItem>
                                         <FormLabel>ID Number</FormLabel>
                                         <FormControl>
-                                        <Input {...field} />
+                                        <Input {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -358,7 +360,7 @@ export function TeamEditor({ isOpen, setIsOpen, employee, onSave, isPasswordRese
                                     <FormItem>
                                         <FormLabel>Employee Number</FormLabel>
                                         <FormControl>
-                                        <Input {...field} />
+                                        <Input {...field} value={field.value ?? ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
