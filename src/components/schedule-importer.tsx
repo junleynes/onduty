@@ -210,7 +210,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                                     endTime,
                                     status: 'approved',
                                     color: leaveTypeDetails?.color
-                                });
+                                } as Leave);
                                 return;
                             }
                         }
@@ -224,11 +224,11 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                               employeeId: employee.id, 
                               startDate: date,
                               endDate: date,
-                              type: upperCellValue, 
+                              type: leaveTypeDetails!.type, 
                               isAllDay: true, 
                               status: 'approved',
                               color: leaveTypeDetails?.color
-                          });
+                          } as Leave);
                           return;
                       }
                       
