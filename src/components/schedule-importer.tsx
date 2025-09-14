@@ -31,9 +31,8 @@ type ScheduleImporterProps = {
   onImport: (importedData: {
     shifts: Shift[],
     leave: Leave[],
-    employeeOrder: string[],
+    monthlyOrders: Record<string, string[]>,
     overwrittenCells: { employeeId: string, date: Date }[],
-    monthKeys: string[],
   }) => void;
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
@@ -91,9 +90,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
           const rows = results.data as string[][];
           const importedShifts: Shift[] = [];
           const importedLeave: Leave[] = [];
-          const employeeOrder: string[] = [];
+          const monthlyOrders: Record<string, string[]> = {};
           const overwrittenCells: { employeeId: string, date: Date }[] = [];
-          const monthKeySet = new Set<string>();
           
           const scheduleBlocks: string[][][] = [];
           let currentBlock: string[][] = [];
@@ -129,6 +127,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
               }
 
               const dates: { colIndex: number, date: Date }[] = [];
+              const blockMonthKeySet = new Set<string>();
+
               for(let i = 1; i < headerRow.length; i++) {
                   const dateStr = headerRow[i]?.trim();
                   if (dateStr) {
@@ -136,7 +136,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       const date = new Date(dateStr + 'T00:00:00Z');
                       if (!isNaN(date.getTime())) {
                           dates.push({ colIndex: i, date });
-                          monthKeySet.add(format(date, 'yyyy-MM')); // Collect all unique months
+                          blockMonthKeySet.add(format(date, 'yyyy-MM'));
                       }
                   }
               }
@@ -145,6 +145,8 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                   console.warn(`No valid dates found in header of block ${blockIndex + 1}. Skipping.`);
                   return;
               }
+              
+              const blockEmployeeOrder: string[] = [];
 
               for (let rowIndex = 1; rowIndex < block.length; rowIndex++) {
                   const employeeRow = block[rowIndex];
@@ -157,14 +159,13 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       continue;
                   }
 
-                  if (!employeeOrder.includes(employee.id)) {
-                      employeeOrder.push(employee.id);
+                  if (!blockEmployeeOrder.includes(employee.id)) {
+                      blockEmployeeOrder.push(employee.id);
                   }
 
                   dates.forEach(({ colIndex, date }) => {
                       const cellValue = employeeRow[colIndex]?.trim();
                       if (!cellValue) {
-                          // Still mark this cell for overwrite, even if it's empty
                           overwrittenCells.push({ employeeId: employee.id, date });
                           return;
                       };
@@ -182,7 +183,6 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                           return;
                       }
 
-                      // Handle partial-day leave first, e.g., "1pm-5pm / VL"
                       if (cellValue.includes('/')) {
                         const parts = cellValue.split('/').map(p => p.trim());
                         const timeRegex = /(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm|a|p)?)/i;
@@ -199,7 +199,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                                     employeeId: employee.id,
                                     startDate: date,
                                     endDate: date,
-                                    type: leaveType,
+                                    type: leaveTypeDetails!.type,
                                     isAllDay: false,
                                     startTime,
                                     endTime,
@@ -211,7 +211,6 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                         }
                       }
                       
-                      // Handle full-day leave, e.g., "VL"
                       if (validLeaveTypes.has(upperCellValue)) {
                           const leaveTypeDetails = leaveTypes.find(lt => lt.type.toUpperCase() === upperCellValue);
                           importedLeave.push({ 
@@ -252,6 +251,11 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
                       }
                   });
               }
+
+              // After processing a block, save its order for all its months
+              blockMonthKeySet.forEach(monthKey => {
+                  monthlyOrders[monthKey] = blockEmployeeOrder;
+              });
           });
 
           if (importedShifts.length === 0 && importedLeave.length === 0) {
@@ -261,7 +265,7 @@ export function ScheduleImporter({ isOpen, setIsOpen, onImport, employees, shift
             return;
           }
 
-          onImport({ shifts: importedShifts, leave: importedLeave, employeeOrder, overwrittenCells, monthKeys: Array.from(monthKeySet) });
+          onImport({ shifts: importedShifts, leave: importedLeave, monthlyOrders, overwrittenCells });
           toast({ title: 'Import Successful', description: `${importedShifts.length} shifts and ${importedLeave.length} leave entries imported.` });
           setIsOpen(false);
 
