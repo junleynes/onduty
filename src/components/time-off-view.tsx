@@ -276,35 +276,40 @@ type EmailDialogProps = {
 };
 
 function EmailDialog({ isOpen, setIsOpen, leaveRequest, smtpSettings, employees }: EmailDialogProps) {
-    const employee = employees.find(e => e.id === leaveRequest.employeeId);
-    
-    const defaultSubject = `Leave Request - ${employee ? getFullName(employee) : 'N/A'}`;
-    const defaultBody = `
-        <p>Dear ${employee?.firstName},</p>
-        <p>Please find attached your leave application form for your request from ${format(new Date(leaveRequest.startDate), 'MMM d, yyyy')} to ${format(new Date(leaveRequest.endDate), 'MMM d, yyyy')}.</p>
-        <p>Details:</p>
-        <ul>
-            <li><strong>Type:</strong> ${leaveRequest.type}</li>
-            <li><strong>Reason:</strong> ${leaveRequest.reason}</li>
-            <li><strong>Status:</strong> ${leaveRequest.status}</li>
-        </ul>
-        <p>Thank you,</p>
-        <p>OnDuty System</p>
-    `;
+    const requestee = employees.find(e => e.id === leaveRequest.employeeId);
+    const manager = employees.find(e => e.id === leaveRequest.managedBy);
 
-    const [to, setTo] = useState(employee?.email || '');
-    const [subject, setSubject] = useState(defaultSubject);
-    const [body, setBody] = useState(defaultBody.replace(/<p>|<\/p>|<ul>|<\/ul>|<li>|<\/li>|<strong>|<\/strong>/g, ''));
+    const [to, setTo] = useState(requestee?.email || '');
+    const [subject, setSubject] = useState('');
+    const [body, setBody] = useState('');
     const [isSending, startTransition] = useTransition();
     const { toast } = useToast();
 
     React.useEffect(() => {
-        if (isOpen && employee) {
-            setTo(employee.email);
-            setSubject(`Leave Request - ${getFullName(employee)}`);
-            setBody(`Dear ${employee.firstName},\n\nPlease find attached your leave application form for your request from ${format(new Date(leaveRequest.startDate), 'MMM d, yyyy')} to ${format(new Date(leaveRequest.endDate), 'MMM d, yyyy')}.\n\nDetails:\n- Type: ${leaveRequest.type}\n- Reason: ${leaveRequest.reason}\n- Status: ${leaveRequest.status}\n\nThank you,\nOnDuty System`);
+        if (isOpen && requestee) {
+            const startDate = format(new Date(leaveRequest.startDate), 'MMM d, yyyy');
+            const endDate = format(new Date(leaveRequest.endDate), 'MMM d, yyyy');
+            const duration = isSameDay(new Date(leaveRequest.startDate), new Date(leaveRequest.endDate)) ? startDate : `From ${startDate} to ${endDate}`;
+
+            const newSubject = `Leave Request - ${getFullName(requestee)}`;
+            const newBody = `Dear Ma'am/Sir,
+
+Please find attached the leave application form of ${getFullName(requestee)}.
+
+Details:
+- Type: ${leaveRequest.type}
+- Reason: ${leaveRequest.reason || 'N/A'}
+- Status: ${leaveRequest.status.charAt(0).toUpperCase() + leaveRequest.status.slice(1)}
+- Duration: ${duration}
+
+Thank you,
+${manager ? getFullName(manager) : 'OnDuty System'}
+`;
+            setTo(requestee.email);
+            setSubject(newSubject);
+            setBody(newBody);
         }
-    }, [isOpen, leaveRequest, employee]);
+    }, [isOpen, leaveRequest, requestee, manager]);
     
     const handleSend = async () => {
         if (!to) {
@@ -318,7 +323,7 @@ function EmailDialog({ isOpen, setIsOpen, leaveRequest, smtpSettings, employees 
 
         startTransition(async () => {
             const attachment = {
-                filename: `Leave Application - ${employee ? getFullName(employee) : 'Unknown'}.pdf`,
+                filename: `Leave Application - ${requestee ? getFullName(requestee) : 'Unknown'}.pdf`,
                 content: leaveRequest.pdfDataUri!.split('base64,')[1],
                 contentType: 'application/pdf',
             };
@@ -353,7 +358,7 @@ function EmailDialog({ isOpen, setIsOpen, leaveRequest, smtpSettings, employees 
                     </div>
                     <div className="space-y-2">
                         <Label>Body</Label>
-                        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={10} />
+                        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={12} />
                     </div>
                 </div>
                 <DialogFooter>
