@@ -276,40 +276,40 @@ type EmailDialogProps = {
 };
 
 function EmailDialog({ isOpen, setIsOpen, leaveRequest, smtpSettings, employees }: EmailDialogProps) {
-    const requestee = employees.find(e => e.id === leaveRequest.employeeId);
+    const requester = employees.find(e => e.id === leaveRequest.employeeId);
     const manager = employees.find(e => e.id === leaveRequest.managedBy);
 
-    const [to, setTo] = useState(requestee?.email || '');
+    const [to, setTo] = useState('');
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
     const [isSending, startTransition] = useTransition();
     const { toast } = useToast();
 
     React.useEffect(() => {
-        if (isOpen && requestee) {
+        if (isOpen && requester && manager) {
             const startDate = format(new Date(leaveRequest.startDate), 'MMM d, yyyy');
             const endDate = format(new Date(leaveRequest.endDate), 'MMM d, yyyy');
             const duration = isSameDay(new Date(leaveRequest.startDate), new Date(leaveRequest.endDate)) ? startDate : `From ${startDate} to ${endDate}`;
 
-            const newSubject = `Leave Request - ${getFullName(requestee)}`;
-            const newBody = `Dear Ma'am/Sir,
+            const newSubject = `Leave Request - ${getFullName(requester)}`;
+            const newBody = `Dear ${getFullName(manager)},
 
-Please find attached the leave application form of ${getFullName(requestee)}.
+Please find attached the leave application form of ${getFullName(requester)}.
 
 Details:
 - Type: ${leaveRequest.type}
 - Reason: ${leaveRequest.reason || 'N/A'}
-- Status: ${leaveRequest.status.charAt(0).toUpperCase() + leaveRequest.status.slice(1)}
 - Duration: ${duration}
+- Status: ${leaveRequest.status.charAt(0).toUpperCase() + leaveRequest.status.slice(1)}
 
-Thank you,
-${manager ? getFullName(manager) : 'OnDuty System'}
-`;
-            setTo(requestee.email);
+Thank you,  
+Onduty Admin`;
+            
+            setTo(manager.email);
             setSubject(newSubject);
             setBody(newBody);
         }
-    }, [isOpen, leaveRequest, requestee, manager]);
+    }, [isOpen, leaveRequest, requester, manager]);
     
     const handleSend = async () => {
         if (!to) {
@@ -323,7 +323,7 @@ ${manager ? getFullName(manager) : 'OnDuty System'}
 
         startTransition(async () => {
             const attachment = {
-                filename: `Leave Application - ${requestee ? getFullName(requestee) : 'Unknown'}.pdf`,
+                filename: `Leave Application - ${requester ? getFullName(requester) : 'Unknown'}.pdf`,
                 content: leaveRequest.pdfDataUri!.split('base64,')[1],
                 contentType: 'application/pdf',
             };
