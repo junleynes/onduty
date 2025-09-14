@@ -5,7 +5,7 @@ import React, from 'react';
 import type { Employee, Shift, Leave, Holiday, TardyRecord, RolePermissions } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
-import { Download, Upload, Calendar as CalendarIcon, Eye, Settings } from 'lucide-react';
+import { Download, Upload, Calendar as CalendarIcon, Eye, Settings, Send, Loader2 } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Calendar } from './ui/calendar';
@@ -29,6 +29,7 @@ import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import { OvertimeTemplateUploader } from './overtime-template-uploader';
 import { AlafTemplateUploader } from './alaf-template-uploader';
+import { sendEmail } from '@/app/actions';
 
 
 type ReportsViewProps = {
@@ -132,11 +133,14 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     const [isOvertimeSettingsOpen, setIsOvertimeSettingsOpen] = React.useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
     const [isAlafUploaderOpen, setIsAlafUploaderOpen] = React.useState(false);
+    const [isEmailDialogOpen, setIsEmailDialogOpen] = React.useState(false);
     
     // Preview states
     const [previewData, setPreviewData] = React.useState<ReportData | null>(null);
     const [reportGenerator, setReportGenerator] = React.useState<(() => Promise<void>) | null>(null);
     const [reportTitle, setReportTitle] = React.useState('');
+    const [emailGenerator, setEmailGenerator] = React.useState<(() => Promise<Buffer | null>) | null>(null);
+
 
     const userPermissions = permissions[currentUser.role] || [];
 
@@ -174,7 +178,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             unpaidbreak_start: template.isUnpaidBreak ? template.breakStartTime || '' : '',
             unpaidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
             paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
-            paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
+            paidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
         };
     };
     
@@ -313,19 +317,19 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         return { headers, rows };
     }
     
-    const handleDownloadWorkSchedule = async (data: WorkScheduleRowData[] | null) => {
+    const generateWorkScheduleBuffer = async (data: WorkScheduleRowData[] | null): Promise<Buffer | null> => {
         if (!data) {
             toast({ variant: 'destructive', title: 'Data Missing', description: 'Could not generate data for the report.' });
-            return;
+            return null;
         }
         const workScheduleTemplate = templates.workScheduleTemplate;
         if (!workScheduleTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a work schedule template first.' });
-            return;
+            return null;
         }
         if (!workScheduleDateRange || !workScheduleDateRange.from || !workScheduleDateRange.to) {
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a covered period for the report.' });
-            return;
+            return null;
         }
         
         try {
@@ -406,16 +410,23 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             // Remove the original template row
             worksheet.spliceRows(templateRowNumber, 1);
 
-
-            const uint8Array = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `Regular Work Schedule - ${format(workScheduleDateRange.from!, 'yyyy-MM-dd')} to ${format(workScheduleDateRange.to!, 'yyyy-MM-dd')}.xlsx`);
+            const fileBuffer = await workbook.xlsx.writeBuffer();
+            return Buffer.from(fileBuffer);
 
         } catch (error) {
             console.error("Error generating report:", error);
             toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
+            return null;
         }
     };
+    
+    const handleDownloadWorkSchedule = async () => {
+        const buffer = await generateWorkScheduleBuffer(generateWorkScheduleData());
+        if (buffer) {
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `Regular Work Schedule - ${format(workScheduleDateRange!.from!, 'yyyy-MM-dd')} to ${format(workScheduleDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+        }
+    }
     
     // --- Attendance Sheet Functions ---
 
@@ -451,20 +462,20 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         
         return { headers, rows };
     };
-
-    const handleDownloadAttendanceSheet = async (data: ReportData | null) => {
-         if (!data) {
+    
+    const generateAttendanceSheetBuffer = async(data: ReportData | null): Promise<Buffer | null> => {
+        if (!data) {
             toast({ variant: 'destructive', title: 'Data Missing', description: 'Could not generate data for the report.' });
-            return;
+            return null;
         }
         const attendanceTemplate = templates.attendanceSheetTemplate;
         if (!attendanceTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an attendance sheet template first.' });
-            return;
+            return null;
         }
          if (!attendanceDateRange || !attendanceDateRange.from || !attendanceDateRange.to) {
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a date range for the attendance sheet.' });
-            return;
+            return null;
         }
         
         try {
@@ -528,13 +539,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             }
 
-            const uint8Array = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `${currentUser?.group} Attendance Sheet - ${format(attendanceDateRange.from, 'yyyy-MM-dd')} to ${format(attendanceDateRange.to, 'yyyy-MM-dd')}.xlsx`);
+            const fileBuffer = await workbook.xlsx.writeBuffer();
+            return Buffer.from(fileBuffer);
 
         } catch (error) {
             console.error("Error generating Excel from template:", error);
             toast({ variant: 'destructive', title: 'Template Error', description: (error as Error).message, duration: 8000 });
+            return null;
+        }
+    }
+
+    const handleDownloadAttendanceSheet = async () => {
+        const buffer = await generateAttendanceSheetBuffer(generateAttendanceSheetData());
+        if (buffer) {
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `${currentUser?.group} Attendance Sheet - ${format(attendanceDateRange!.from!, 'yyyy-MM-dd')} to ${format(attendanceDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
         }
     };
     
@@ -602,9 +621,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         
         return { headers, rows };
     };
-
-    const handleDownloadUserSummary = async (data: ReportData | null) => {
-        if (!data) return;
+    
+    const generateUserSummaryBuffer = async(data: ReportData | null): Promise<Buffer | null> => {
+        if (!data) return null;
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('User Summary');
@@ -620,9 +639,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const headerRow = worksheet.getRow(1);
         headerRow.font = { bold: true };
 
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        saveAs(blob, `User Summary - ${format(summaryDateRange!.from!, 'yyyy-MM-dd')} to ${format(summaryDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+        const fileBuffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(fileBuffer);
+    }
+
+    const handleDownloadUserSummary = async () => {
+        const buffer = await generateUserSummaryBuffer(generateUserSummaryData());
+        if(buffer) {
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `User Summary - ${format(summaryDateRange!.from!, 'yyyy-MM-dd')} to ${format(summaryDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+        }
     };
 
     // --- Cumulative Tardy Report ---
@@ -680,10 +706,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         return { headers, rows };
     };
-
-    const handleDownloadTardyReport = async (data: ReportData | null) => {
-        if (!data) return;
-
+    
+    const generateTardyReportBuffer = async (data: ReportData | null): Promise<Buffer | null> => {
+        if (!data) return null;
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Cumulative Tardy Report');
 
@@ -700,9 +725,16 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
 
 
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        saveAs(blob, `Cumulative Tardy Report - ${format(tardyDateRange!.from!, 'yyyy-MM-dd')} to ${format(tardyDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+        const fileBuffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(fileBuffer);
+    };
+
+    const handleDownloadTardyReport = async () => {
+        const buffer = await generateTardyReportBuffer(generateTardyReportData());
+        if(buffer) {
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `Cumulative Tardy Report - ${format(tardyDateRange!.from!, 'yyyy-MM-dd')} to ${format(tardyDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+        }
     };
     
     // --- WFH Certification Functions ---
@@ -771,17 +803,17 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         
         return rows.sort((a, b) => new Date(a.DATE).getTime() - new Date(b.DATE).getTime());
     };
-
-    const handleDownloadWfhCertification = async (data: WfhCertRowData[] | null) => {
-        if (!data) return;
+    
+    const generateWfhCertificationBuffer = async (data: WfhCertRowData[] | null): Promise<Buffer | null> => {
+         if (!data) return null;
         const wfhCertTemplate = templates.wfhCertificationTemplate;
         if (!wfhCertTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a WFH Certification template first.' });
-            return;
+            return null;
         }
         if (!wfhCertDateRange || !wfhCertDateRange.from) {
             toast({ variant: 'destructive', title: 'No Date Range', description: 'Please select a month.' });
-            return;
+            return null;
         }
     
         try {
@@ -904,14 +936,22 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             }
     
-            const fileName = `${currentUser.lastName}, ${currentUser.firstName}${currentUser.middleInitial ? ` ${currentUser.middleInitial}` : ''}_${format(wfhCertDateRange.from, 'MMMM')}.xlsx`;
-            const uint8Array = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, fileName);
+            const fileBuffer = await workbook.xlsx.writeBuffer();
+            return Buffer.from(fileBuffer);
     
         } catch(error: any) {
             console.error("Error generating WFH cert:", error);
             toast({ variant: 'destructive', title: 'Report Generation Failed', description: error.message || "An unknown error occurred." });
+            return null;
+        }
+    }
+
+    const handleDownloadWfhCertification = async () => {
+        const buffer = await generateWfhCertificationBuffer(generateWfhCertificationData());
+        if(buffer) {
+            const fileName = `${currentUser.lastName}, ${currentUser.firstName}${currentUser.middleInitial ? ` ${currentUser.middleInitial}` : ''}_${format(wfhCertDateRange!.from!, 'MMMM')}.xlsx`;
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, fileName);
         }
     };
     
@@ -955,13 +995,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         return data.sort((a,b) => new Date(a.work_sched_date).getTime() - new Date(b.work_sched_date).getTime());
     }
-
-    const handleDownloadWorkExtension = async (data: WorkExtensionRowData[] | null) => {
-        if (!data) return;
+    
+    const generateWorkExtensionBuffer = async (data: WorkExtensionRowData[] | null): Promise<Buffer | null> => {
+        if (!data) return null;
         const workExtensionTemplate = templates.workExtensionTemplate;
         if (!workExtensionTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload a Work Extension template first.' });
-            return;
+            return null;
         }
 
         try {
@@ -1015,13 +1055,21 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             });
             
-            const uint8Array = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `Work Extension Summary - ${format(workExtensionDateRange!.from!, 'yyyy-MM-dd')} to ${format(workExtensionDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+            const fileBuffer = await workbook.xlsx.writeBuffer();
+            return Buffer.from(fileBuffer);
 
         } catch (error) {
             console.error("Error generating work extension report:", error);
             toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
+            return null;
+        }
+    };
+
+    const handleDownloadWorkExtension = async () => {
+        const buffer = await generateWorkExtensionBuffer(generateWorkExtensionData());
+        if(buffer) {
+             const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `Work Extension Summary - ${format(workExtensionDateRange!.from!, 'yyyy-MM-dd')} to ${format(workExtensionDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
         }
     }
     
@@ -1133,13 +1181,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         return data;
     }
 
-
-    const handleDownloadOvertime = async (data: OvertimeRowData[] | null) => {
-        if (!data) return;
+    const generateOvertimeBuffer = async(data: OvertimeRowData[] | null): Promise<Buffer | null> => {
+        if (!data) return null;
         const overtimeTemplate = templates.overtimeTemplate;
         if (!overtimeTemplate) {
             toast({ variant: 'destructive', title: 'No Template', description: 'Please upload an Overtime/ND template first.' });
-            return;
+            return null;
         }
 
         try {
@@ -1237,13 +1284,20 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 });
             }
 
-            const uint8Array = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([uint8Array], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `Overtime and ND Report - ${format(overtimeDateRange!.from!, 'yyyy-MM-dd')} to ${format(overtimeDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
-
+            const fileBuffer = await workbook.xlsx.writeBuffer();
+            return Buffer.from(fileBuffer);
         } catch (error) {
             console.error("Error generating Overtime/ND report:", error);
             toast({ variant: 'destructive', title: 'Report Generation Failed', description: (error as Error).message });
+            return null;
+        }
+    };
+
+    const handleDownloadOvertime = async () => {
+        const buffer = await generateOvertimeBuffer(generateOvertimeData());
+        if(buffer) {
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `Overtime and ND Report - ${format(overtimeDateRange!.from!, 'yyyy-MM-dd')} to ${format(overtimeDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
         }
     }
 
@@ -1254,31 +1308,39 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         let data: ReportData | null = null;
         let title = '';
         let generator: (() => Promise<void>) | null = null;
+        let emailGen: (() => Promise<Buffer | null>) | null = null;
 
         if (type === 'workSchedule') {
             const rawData = generateWorkScheduleData();
             data = generateWorkSchedulePreviewData(rawData);
             if (data && workScheduleDateRange?.from && workScheduleDateRange?.to) {
                 title = `Regular Work Schedule (${format(workScheduleDateRange!.from!, 'LLL d')} - ${format(workScheduleDateRange!.to!, 'LLL d, y')})`;
-                generator = () => handleDownloadWorkSchedule(rawData);
+                generator = () => handleDownloadWorkSchedule();
+                emailGen = () => generateWorkScheduleBuffer(rawData);
             }
         } else if (type === 'attendance') {
-            data = generateAttendanceSheetData();
+            const rawData = generateAttendanceSheetData();
+            data = rawData;
             if (data && attendanceDateRange?.from && attendanceDateRange?.to) {
                 title = `Attendance Sheet (${format(attendanceDateRange!.from!, 'LLL d')} - ${format(attendanceDateRange!.to!, 'LLL d, y')})`;
-                generator = () => handleDownloadAttendanceSheet(data);
+                generator = () => handleDownloadAttendanceSheet();
+                emailGen = () => generateAttendanceSheetBuffer(rawData);
             }
         } else if (type === 'userSummary') {
-            data = generateUserSummaryData();
+            const rawData = generateUserSummaryData();
+            data = rawData;
             if (data && summaryDateRange?.from && summaryDateRange?.to) {
                 title = `User Summary (${format(summaryDateRange!.from!, 'LLL d')} - ${format(summaryDateRange!.to!, 'LLL d, y')})`;
-                generator = () => handleDownloadUserSummary(data);
+                generator = () => handleDownloadUserSummary();
+                emailGen = () => generateUserSummaryBuffer(rawData);
             }
         } else if (type === 'tardy') {
-            data = generateTardyReportData();
+            const rawData = generateTardyReportData();
+            data = rawData;
             if (data && tardyDateRange?.from && tardyDateRange?.to) {
                 title = `Cumulative Tardy Report (${format(tardyDateRange!.from!, 'LLL d')} - ${format(tardyDateRange!.to!, 'LLL d, y')})`;
-                generator = () => handleDownloadTardyReport(data);
+                generator = () => handleDownloadTardyReport();
+                emailGen = () => generateTardyReportBuffer(rawData);
             }
         } else if (type === 'wfh') {
             const rawData = generateWfhCertificationData();
@@ -1289,7 +1351,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     rows: previewRows,
                 }
                 title = `WFH Certification - ${getFullName(currentUser)} (${format(wfhCertDateRange!.from!, 'MMMM yyyy')})`;
-                generator = () => handleDownloadWfhCertification(rawData);
+                generator = () => handleDownloadWfhCertification();
+                emailGen = () => generateWfhCertificationBuffer(rawData);
             }
         } else if (type === 'workExtension') {
             const rawData = generateWorkExtensionData();
@@ -1299,7 +1362,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     rows: rawData.map(d => Object.values(d))
                 };
                 title = `Work Extension Summary (${format(workExtensionDateRange!.from!, 'LLL d')} - ${format(workExtensionDateRange!.to!, 'LLL d, y')})`;
-                generator = () => handleDownloadWorkExtension(rawData);
+                generator = () => handleDownloadWorkExtension();
+                emailGen = () => generateWorkExtensionBuffer(rawData);
             }
         } else if (type === 'overtime') {
             const rawData = generateOvertimeData();
@@ -1310,7 +1374,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     rows: rawData.map(d => headers.map(h => d[h]))
                 };
                 title = `Overtime & Night Differential (${format(overtimeDateRange!.from!, 'LLL d')} - ${format(overtimeDateRange!.to!, 'LLL d, y')})`;
-                generator = () => handleDownloadOvertime(rawData);
+                generator = () => handleDownloadOvertime();
+                emailGen = () => generateOvertimeBuffer(rawData);
             }
         }
         
@@ -1318,27 +1383,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             setPreviewData(data);
             setReportTitle(title);
             setReportGenerator(() => generator);
+            setEmailGenerator(() => emailGen);
             setIsPreviewOpen(true);
         }
     }
-
-    const handleDirectDownload = (type: ReportType) => {
-        if (type === 'workSchedule') {
-            handleDownloadWorkSchedule(generateWorkScheduleData());
-        } else if (type === 'attendance') {
-            handleDownloadAttendanceSheet(generateAttendanceSheetData());
-        } else if (type === 'userSummary') {
-            handleDownloadUserSummary(generateUserSummaryData());
-        } else if (type === 'tardy') {
-            handleDownloadTardyReport(generateTardyReportData());
-        } else if (type === 'wfh') {
-            handleDownloadWfhCertification(generateWfhCertificationData());
-        } else if (type === 'workExtension') {
-            handleDownloadWorkExtension(generateWorkExtensionData());
-        } else if (type === 'overtime') {
-            handleDownloadOvertime(generateOvertimeData());
-        }
-    };
     
     const setSemiMonthlyRange = (period: 'first-half' | 'second-half', monthOffset: 0 | -1) => {
         const today = new Date();
@@ -1720,6 +1768,49 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         toast({ title: 'Overtime settings saved.' });
         setIsOvertimeSettingsOpen(false);
     }
+    
+    const handleEmailReport = () => {
+        let generator: (() => Promise<Buffer | null>) | null = null;
+        let title = '';
+        
+        switch (selectedReportType) {
+            case 'workSchedule':
+                generator = () => generateWorkScheduleBuffer(generateWorkScheduleData());
+                title = `Regular Work Schedule - ${format(workScheduleDateRange!.from!, 'yyyy-MM-dd')} to ${format(workScheduleDateRange!.to!, 'yyyy-MM-dd')}`;
+                break;
+            case 'attendance':
+                generator = () => generateAttendanceSheetBuffer(generateAttendanceSheetData());
+                title = `Attendance Sheet - ${format(attendanceDateRange!.from!, 'yyyy-MM-dd')} to ${format(attendanceDateRange!.to!, 'yyyy-MM-dd')}`;
+                break;
+            case 'userSummary':
+                generator = () => generateUserSummaryBuffer(generateUserSummaryData());
+                title = `User Summary - ${format(summaryDateRange!.from!, 'yyyy-MM-dd')} to ${format(summaryDateRange!.to!, 'yyyy-MM-dd')}`;
+                break;
+            case 'tardy':
+                generator = () => generateTardyReportBuffer(generateTardyReportData());
+                title = `Cumulative Tardy Report - ${format(tardyDateRange!.from!, 'yyyy-MM-dd')} to ${format(tardyDateRange!.to!, 'yyyy-MM-dd')}`;
+                break;
+            case 'wfh':
+                generator = () => generateWfhCertificationBuffer(generateWfhCertificationData());
+                title = `WFH Certification - ${getFullName(currentUser)}`;
+                break;
+            case 'workExtension':
+                generator = () => generateWorkExtensionBuffer(generateWorkExtensionData());
+                title = `Work Extension Summary - ${format(workExtensionDateRange!.from!, 'yyyy-MM-dd')} to ${format(workExtensionDateRange!.to!, 'yyyy-MM-dd')}`;
+                break;
+            case 'overtime':
+                generator = () => generateOvertimeBuffer(generateOvertimeData());
+                title = `Overtime & ND Report - ${format(overtimeDateRange!.from!, 'yyyy-MM-dd')} to ${format(overtimeDateRange!.to!, 'yyyy-MM-dd')}`;
+                break;
+        }
+
+        if (generator) {
+            setEmailGenerator(() => generator);
+            setReportTitle(title);
+            setIsEmailDialogOpen(true);
+        }
+    };
+
 
     return (
         <>
@@ -1768,7 +1859,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                                     <Eye className="mr-2 h-4 w-4" />
                                     View Report
                                 </Button>
-                                <Button onClick={() => handleDirectDownload(selectedReportType)} disabled={isDownloadDisabled}>
+                                <Button onClick={() => handleEmailReport()} disabled={isDownloadDisabled}>
+                                    <Send className="mr-2 h-4 w-4" />
+                                    Send Email
+                                </Button>
+                                <Button onClick={() => reportGenerator && reportGenerator()} disabled={isDownloadDisabled}>
                                     <Download className="mr-2 h-4 w-4" />
                                     Generate & Download
                                 </Button>
@@ -1875,6 +1970,111 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 data={previewData}
                 onDownload={reportGenerator}
             />
+            {isEmailDialogOpen && (
+                <EmailDialog
+                    isOpen={isEmailDialogOpen}
+                    setIsOpen={setIsEmailDialogOpen}
+                    subject={reportTitle}
+                    smtpSettings={currentUser.role === 'admin' ? templates as any : {}}
+                    generateExcelData={emailGenerator!}
+                    fileName={`${reportTitle}.xlsx`}
+                />
+            )}
         </>
     );
 }
+
+
+type EmailDialogProps = {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    subject: string;
+    smtpSettings: SmtpSettings;
+    generateExcelData: () => Promise<Buffer | null>;
+    fileName: string;
+};
+
+function EmailDialog({ 
+    isOpen, 
+    setIsOpen, 
+    subject, 
+    smtpSettings,
+    generateExcelData,
+    fileName,
+}: EmailDialogProps) {
+    const [to, setTo] = React.useState('');
+    const [isSending, startTransition] = React.useTransition();
+    const { toast } = useToast();
+    
+    const htmlBody = `<p>Please find the report attached.</p>`;
+
+    const handleSend = async () => {
+        if (!to) {
+            toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                toast({ title: 'Generating report...', description: 'Please wait while the file is being prepared.'});
+                const excelBuffer = await generateExcelData();
+                 if (!excelBuffer) {
+                    toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated.' });
+                    return;
+                }
+                const excelData = excelBuffer.toString('base64');
+
+                const attachments = [{
+                    filename: fileName,
+                    content: excelData,
+                    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                }];
+                
+                toast({ title: 'Sending email...', description: `Sending report to ${to}.`});
+                const result = await sendEmail({ to, subject, htmlBody, attachments }, smtpSettings);
+
+                if (result?.success) {
+                    toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
+                    setIsOpen(false);
+                } else {
+                    toast({ variant: 'destructive', title: 'Email Failed', description: result?.error || 'An unknown error occurred.' });
+                }
+            } catch(e: any) {
+                toast({ variant: 'destructive', title: 'Failed to generate report', description: e.message });
+            }
+        });
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Send Report via Email</DialogTitle>
+                    <DialogDescription>The report will be generated and sent as an Excel attachment.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="recipientEmail">Recipient Email</Label>
+                        <Input id="recipientEmail" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="recipient@example.com" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Subject</Label>
+                        <Input value={subject} readOnly disabled />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Body</Label>
+                        <div className="h-24 rounded-md border p-2 text-sm" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSend} disabled={isSending}>
+                        {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
