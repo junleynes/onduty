@@ -479,6 +479,15 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
     });
   };
 
+    const isMemberEditingAllowed = useMemo(() => {
+        if (isManager) return false;
+        const today = new Date();
+        const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
+        const nextMonth = addMonths(startOfMonth(today), 1);
+        const isViewingNextMonth = isSameMonth(currentDate, nextMonth);
+        return isEditingWindowActive && isViewingNextMonth;
+    }, [isManager, currentDate, editableStartDay, editableEndDay]);
+
 
   return (
     <>
@@ -528,6 +537,12 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                           <Button variant="ghost" size="icon" onClick={() => navigateMonth('next')} disabled={isNextMonthButtonDisabled()}>
                           <ChevronRight className="h-4 w-4" />
                           </Button>
+                          {isMemberEditingAllowed && (
+                            <Button variant="outline" onClick={() => handleOpenBalanceEditor(currentUser.id, currentDate)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Update My Balance
+                            </Button>
+                          )}
                       </div>
                       {isManager && (
                           <div className="flex items-center gap-2 flex-wrap">
@@ -662,18 +677,6 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                       
                       const willReceive = (balance !== undefined && balance !== null) ? balance <= limit : undefined;
                       
-                      const isCurrentUser = employee.id === currentUser.id;
-                      const today = new Date();
-                      
-                      const isNextMonthView = isAfter(startOfMonth(currentDate), startOfMonth(today));
-                      const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
-                      
-                      const canUserEdit = !isManager && isCurrentUser && isNextMonthView && isEditingWindowActive;
-
-                      const canManagerEdit = isManager;
-                      
-                      const canEdit = canManagerEdit || canUserEdit;
-                      
                       return (
                           <TableRow key={employee.id}>
                           <TableCell className="font-medium">{`${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase()}</TableCell>
@@ -689,11 +692,10 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                           <TableCell className={cn(willReceive === false && 'bg-red-200 text-black font-bold')}>
                               {willReceive === undefined ? 'N/A' : (willReceive ? 'Yes' : 'No')}
                           </TableCell>
-                          <TableCell className="text-right">
-                              {canEdit && (
-                                  <Button size="sm" variant="outline" onClick={() => handleOpenBalanceEditor(employee.id, currentDate)}>
-                                      <Pencil className="mr-2 h-4 w-4" />
-                                      Update
+                           <TableCell className="text-right">
+                              {isManager && (
+                                  <Button size="icon" variant="ghost" onClick={() => handleOpenBalanceEditor(employee.id, currentDate)}>
+                                      <Pencil className="h-4 w-4" />
                                   </Button>
                               )}
                           </TableCell>
@@ -901,6 +903,7 @@ function EmailDialog({
 
 
     
+
 
 
 
