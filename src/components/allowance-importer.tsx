@@ -63,7 +63,6 @@ export function AllowanceImporter({ isOpen, setIsOpen, onImport, employees }: Al
           }
           
           const requiredHeaders = ['Recipient', 'Load Allocation', 'Load Balance'];
-          const optionalHeaders = ['Balance As Of'];
           const headers = results.meta.fields || [];
           const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
@@ -82,7 +81,12 @@ export function AllowanceImporter({ isOpen, setIsOpen, onImport, employees }: Al
 
             const loadAllocation = parseFloat(row['Load Allocation']);
             const balance = parseFloat(row['Load Balance']);
-            const asOfDateStr = row['Balance As Of'];
+            
+            // Check for both quoted and unquoted header for "Balance As Of"
+            const asOfDateStr = row['"Balance As Of"'] || row['Balance As Of'];
+
+            // The date constructor can handle 'YYYY-MM-DD' strings directly.
+            // isDate is a good check to ensure it's a valid date object afterwards.
             const asOfDate = asOfDateStr && isDate(new Date(asOfDateStr)) ? new Date(asOfDateStr) : undefined;
 
             if (isNaN(loadAllocation) || isNaN(balance)) {
