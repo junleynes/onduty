@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Task, Employee } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Trash2, Pencil } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, X, Check, ChevronsUpDown } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Checkbox } from './ui/checkbox';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { getFullName } from '@/lib/utils';
 import { Badge } from './ui/badge';
 import { v4 as uuidv4 } from 'uuid';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
+
 
 type TaskManagerViewProps = {
   tasks: Task[];
@@ -116,19 +120,42 @@ export default function TaskManagerView({ tasks, setTasks, currentUser, employee
     toast({ title: 'Task Deleted', variant: 'destructive'});
   }
 
-  const handleSaveTask = (taskData: Partial<Task>) => {
+  const handleSaveTask = (taskData: Partial<Task>, assigneeIds: string[] | null) => {
     if (taskData.id) { // Editing existing task
         setTasks(prev => prev.map(t => t.id === taskData.id ? {...t, ...taskData} as Task : t));
         toast({ title: 'Task Updated' });
     } else { // Creating new task
-        const newTask: Task = {
-            id: uuidv4(),
-            status: 'pending',
-            createdBy: currentUser.id,
-            ...taskData,
-        } as Task;
-        setTasks(prev => [...prev, newTask]);
-        toast({ title: 'Task Created' });
+        
+        let newTasks: Task[] = [];
+        
+        if (taskData.scope === 'global') {
+            const newTask: Task = {
+                id: uuidv4(),
+                status: 'pending',
+                createdBy: currentUser.id,
+                ...taskData,
+                assigneeId: null,
+            } as Task;
+            newTasks.push(newTask);
+        } else if (assigneeIds && assigneeIds.length > 0) {
+            assigneeIds.forEach(assigneeId => {
+                const newTask: Task = {
+                    id: uuidv4(),
+                    status: 'pending',
+                    createdBy: currentUser.id,
+                    ...taskData,
+                    assigneeId: assigneeId,
+                } as Task;
+                newTasks.push(newTask);
+            });
+        }
+        
+        if (newTasks.length > 0) {
+            setTasks(prev => [...prev, ...newTasks]);
+            toast({ title: `${newTasks.length} Task(s) Created` });
+        } else {
+             toast({ title: 'No tasks created', description: 'Please select at least one assignee for a personal task.', variant: 'destructive' });
+        }
     }
     setIsEditorOpen(false);
   }
@@ -212,7 +239,7 @@ type TaskEditorDialogProps = {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
     task: Partial<Task> | null;
-    onSave: (taskData: Partial<Task>) => void;
+    onSave: (taskData: Partial<Task>, assigneeIds: string[] | null) => void;
     currentUser: Employee;
     employees: Employee[];
 }
@@ -222,31 +249,49 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
     const [scope, setScope] = useState<'personal' | 'global'>('personal');
-    const [assigneeId, setAssigneeId] = useState<string | null>(null);
-
+    const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+    
     const canCreateGlobal = currentUser.role === 'manager' || currentUser.role === 'admin';
+    const isEditing = !!task?.id;
+    
+    const employeesInGroup = useMemo(() => 
+        employees.filter(e => e.group === currentUser.group && e.id !== currentUser.id),
+    [employees, currentUser]);
 
     useEffect(() => {
         if (isOpen) {
             setTitle(task?.title || '');
             setDescription(task?.description || '');
             setDueDate(task?.dueDate ? new Date(task.dueDate) : undefined);
-            setScope(task?.scope === 'global' ? 'global' : 'personal');
-            setAssigneeId(task?.assigneeId || currentUser.id);
+            const initialScope = task?.scope || 'personal';
+            setScope(initialScope);
+            
+            if (isEditing) {
+                setSelectedAssigneeIds(task?.assigneeId ? [task.assigneeId] : []);
+            } else {
+                 setSelectedAssigneeIds([currentUser.id]);
+            }
         }
-    }, [task, isOpen, currentUser.id]);
+    }, [task, isOpen, currentUser.id, isEditing]);
 
     const handleSave = () => {
         const finalScope = canCreateGlobal ? scope : 'personal';
-        const finalAssignee = finalScope === 'global' ? null : assigneeId;
-        onSave({
+        const taskData = {
             id: task?.id,
             title,
             description,
             dueDate,
             scope: finalScope,
-            assigneeId: finalAssignee,
-        });
+        };
+        onSave(taskData, finalScope === 'global' ? null : selectedAssigneeIds);
+    }
+    
+    const handleAssigneeToggle = (employeeId: string) => {
+        setSelectedAssigneeIds(prev => 
+            prev.includes(employeeId)
+                ? prev.filter(id => id !== employeeId)
+                : [...prev, employeeId]
+        );
     }
 
     return (
@@ -272,16 +317,60 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
                     {canCreateGlobal && (
                         <div className="space-y-2">
                             <Label>Scope</Label>
-                            <Select value={scope} onValueChange={(v) => setScope(v as 'personal' | 'global')}>
+                            <Select value={scope} onValueChange={(v) => setScope(v as 'personal' | 'global')} disabled={isEditing}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="personal">Personal (Just for me)</SelectItem>
-                                    <SelectItem value="global">Global (For everyone)</SelectItem>
+                                    <SelectItem value="personal">Personal (for specific employees)</SelectItem>
+                                    <SelectItem value="global">Global (for everyone)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
+                    )}
+                    {scope === 'personal' && (
+                         <div className="space-y-2">
+                            <Label>Assign To</Label>
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full justify-start">
+                                        <div className="flex gap-1 flex-wrap">
+                                            {selectedAssigneeIds.length > 0 ? selectedAssigneeIds.map(id => {
+                                                const emp = employees.find(e => e.id === id);
+                                                return <Badge key={id} variant="secondary">{emp ? getFullName(emp) : 'Unknown'}</Badge>;
+                                            }) : <span className="text-muted-foreground">Select employees...</span>}
+                                        </div>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-full p-0">
+                                     <Command>
+                                        <CommandInput placeholder="Search employees..." />
+                                        <CommandList>
+                                            <CommandEmpty>No employees found.</CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem
+                                                    onSelect={() => handleAssigneeToggle(currentUser.id)}
+                                                    disabled={isEditing}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", selectedAssigneeIds.includes(currentUser.id) ? "opacity-100" : "opacity-0")} />
+                                                    {getFullName(currentUser)} (Me)
+                                                </CommandItem>
+                                                {employeesInGroup.map(employee => (
+                                                    <CommandItem
+                                                        key={employee.id}
+                                                        onSelect={() => handleAssigneeToggle(employee.id)}
+                                                        disabled={isEditing}
+                                                    >
+                                                        <Check className={cn("mr-2 h-4 w-4", selectedAssigneeIds.includes(employee.id) ? "opacity-100" : "opacity-0")} />
+                                                        {getFullName(employee)}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                         </div>
                     )}
                 </div>
                 <DialogFooter>
