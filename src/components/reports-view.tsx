@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, from 'react';
-import type { Employee, Shift, Leave, Holiday, TardyRecord, RolePermissions } from '@/types';
+import type { Employee, Shift, Leave, Holiday, TardyRecord, RolePermissions, SmtpSettings } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
 import { Download, Upload, Calendar as CalendarIcon, Eye, Settings, Send, Loader2 } from 'lucide-react';
@@ -45,6 +46,7 @@ type ReportsViewProps = {
     shiftTemplates: ShiftTemplate[];
     leaveTypes: LeaveTypeOption[];
     permissions: RolePermissions;
+    smtpSettings: SmtpSettings;
 }
 
 type ReportType = 'workSchedule' | 'attendance' | 'userSummary' | 'tardy' | 'wfh' | 'workExtension' | 'overtime' | 'alaf';
@@ -102,7 +104,7 @@ type OvertimeRowData = {
 
 const ALL_CLASSIFICATIONS = ['Rank-and-File', 'Confidential', 'Managerial'];
 
-export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes, permissions }: ReportsViewProps) {
+export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes, permissions, smtpSettings }: ReportsViewProps) {
     const { toast } = useToast();
     const [selectedReportType, setSelectedReportType] = React.useState<ReportType>('wfh');
     
@@ -1975,7 +1977,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     isOpen={isEmailDialogOpen}
                     setIsOpen={setIsEmailDialogOpen}
                     subject={reportTitle}
-                    smtpSettings={currentUser.role === 'admin' ? templates as any : {}}
+                    smtpSettings={smtpSettings}
                     generateExcelData={emailGenerator!}
                     fileName={`${reportTitle}.xlsx`}
                 />
@@ -2077,4 +2079,5 @@ function EmailDialog({
         </Dialog>
     );
 }
+
 

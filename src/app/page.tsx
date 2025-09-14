@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -696,6 +697,7 @@ function AppContent() {
                     shiftTemplates={shiftTemplates}
                     leaveTypes={leaveTypes}
                     permissions={permissions}
+                    smtpSettings={smtpSettings}
                   />;
       case 'admin':
         return (
