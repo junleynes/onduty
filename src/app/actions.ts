@@ -27,6 +27,7 @@ export async function sendEmail(
 
     try {
         const transporter = nodemailer.createTransport({
+            pool: false, // This can help prevent ECONNRESET errors by not reusing connections
             host: smtpSettings.host,
             port: smtpSettings.port,
             secure: smtpSettings.secure,
