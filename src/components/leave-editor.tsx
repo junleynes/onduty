@@ -69,11 +69,12 @@ export function LeaveEditor({ isOpen, setIsOpen, leave, onSave, onDelete, employ
     if (isOpen) {
         const fromDate = leave?.startDate ? new Date(leave.startDate) : new Date();
         const toDate = leave?.endDate ? new Date(leave.endDate) : fromDate;
-        const selectedType = leaveTypes.find(lt => lt.type === (leave?.type || 'VL'));
+        const defaultType = leave?.type || (leaveTypes.length > 0 ? leaveTypes[0].type : '');
+        const selectedType = leaveTypes.find(lt => lt.type === defaultType);
         form.reset({
             id: leave?.id || undefined,
             employeeId: leave?.employeeId || '',
-            type: leave?.type || 'VL',
+            type: defaultType,
             color: leave?.color || selectedType?.color || '#3b82f6',
             dateRange: { from: fromDate, to: toDate },
             isAllDay: leave?.isAllDay ?? true,

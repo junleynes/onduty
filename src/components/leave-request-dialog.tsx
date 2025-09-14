@@ -57,14 +57,15 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
     if (isOpen) {
       const fromDate = request?.startDate ? new Date(request.startDate) : new Date();
       const toDate = request?.endDate ? new Date(request.endDate) : fromDate;
+      const defaultType = request?.type || (leaveTypes.length > 0 ? leaveTypes[0].type : '');
       form.reset({
-        type: request?.type || 'VL',
+        type: defaultType,
         reason: request?.reason || '',
         dateRange: { from: fromDate, to: toDate },
         isAllDay: request?.isAllDay ?? true,
       });
     }
-  }, [request, isOpen, form, currentUser]);
+  }, [request, isOpen, form, currentUser, leaveTypes]);
 
   const onSubmit = (values: z.infer<typeof requestSchema>) => {
     const finalValues: Partial<Leave> = {
