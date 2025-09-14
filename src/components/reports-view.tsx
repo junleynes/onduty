@@ -181,7 +181,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             unpaidbreak_start: template.isUnpaidBreak ? template.breakStartTime || '' : '',
             unpaidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
             paidbreak_start: !template.isUnpaidBreak ? template.breakStartTime || '' : '',
-            paidbreak_end: template.isUnpaidBreak ? template.breakEndTime || '' : '',
+            paidbreak_end: !template.isUnpaidBreak ? template.breakEndTime || '' : '',
         };
     };
     
@@ -269,7 +269,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                             unpaidbreak_start: dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
                             unpaidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
                             paidbreak_start: !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
-                            paidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
+                            paidbreak_end: !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
                         };
                     } else { // Should not happen if logic is correct, but as a fallback
                         const defaultTemplate = getDefaultShiftTemplate(employee);
@@ -2088,6 +2088,3 @@ function EmailDialog({
         </Dialog>
     );
 }
-
-
-
