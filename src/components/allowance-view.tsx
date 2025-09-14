@@ -526,8 +526,8 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                  <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap gap-4 justify-between items-center">
+                      <div className="flex items-center gap-2">
                           <Button variant="ghost" size="icon" onClick={() => navigateMonth('prev')}>
                           <ChevronLeft className="h-4 w-4" />
                           </Button>
@@ -545,27 +545,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                           )}
                       </div>
                       {isManager && (
-                          <div className="flex items-center gap-2 flex-wrap">
-                              <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                      <Button variant="destructive">
-                                          <Trash2 className="h-4 w-4 mr-2" />
-                                          Clear Balances
-                                      </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                          This action will permanently delete all balance records for {format(currentDate, 'MMMM yyyy')}. This cannot be undone.
-                                      </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction onClick={handleClearBalances}>Continue</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                  </AlertDialogContent>
-                              </AlertDialog>
+                          <div className="flex items-center gap-2 flex-wrap justify-end">
                               <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
                                   <Upload className="h-4 w-4 mr-2" />
                                   Import Balances
@@ -582,6 +562,25 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                                   <Download className="h-4 w-4 mr-2" />
                                   Download Report
                               </Button>
+                              <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                      <Button variant="destructive" size="icon">
+                                          <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                          This action will permanently delete all balance records for {format(currentDate, 'MMMM yyyy')}. This cannot be undone.
+                                      </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={handleClearBalances}>Continue</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
                               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                                   <DialogTrigger asChild>
                                       <Button variant="outline" size="icon">
@@ -897,17 +896,3 @@ function EmailDialog({
         </Dialog>
     );
 }
-
-    
-
-
-
-    
-
-
-
-
-
-
-
-
