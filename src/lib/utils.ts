@@ -43,7 +43,10 @@ export const getInitialState = <T>(key: string, defaultValue: T): T => {
     }
     try {
         const item = window.localStorage.getItem(key);
-        
+        if (!item) {
+            return defaultValue;
+        }
+
         // A more robust date reviver that handles UTC dates correctly
         const dateReviver = (k: string, v: any) => {
             if (['date', 'birthDate', 'startDate', 'timestamp', 'completedAt', 'dueDate', 'asOfDate'].includes(k) && typeof v === 'string') {
@@ -58,7 +61,20 @@ export const getInitialState = <T>(key: string, defaultValue: T): T => {
             }
             return v;
         };
-        return item ? JSON.parse(item, dateReviver) : defaultValue;
+
+        try {
+            // First, try to parse as JSON. This will handle complex objects and arrays.
+            return JSON.parse(item, dateReviver);
+        } catch (jsonError) {
+            // If parsing fails, it might be a simple string or number that wasn't stored as JSON.
+            // In this case, we return the raw item.
+            // We can check if it's a number and parse it.
+            if (!isNaN(Number(item))) {
+                return Number(item) as any;
+            }
+            return item as any;
+        }
+
     } catch (error) {
         console.error(`Error reading from localStorage for key "${key}":`, error);
         return defaultValue;
