@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useTransition } from 'react';
 import type { Leave, Employee, LeaveRequestStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format, isSameDay } from 'date-fns';
 import { getFullName } from '@/lib/utils';
-import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload } from 'lucide-react';
+import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2 } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,10 @@ import { v4 as uuidv4 } from 'uuid';
 import type { LeaveTypeOption } from './leave-type-editor';
 import { generateLeavePdf, sendEmail } from '@/app/actions';
 import type { SmtpSettings } from '@/types';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 
 type TimeOffViewProps = {
   leaveRequests: Leave[];
@@ -32,7 +36,9 @@ type TimeOffViewProps = {
 export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUser, employees, leaveTypes, smtpSettings, onUploadAlaf }: TimeOffViewProps) {
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
+  const [emailingRequest, setEmailingRequest] = useState<Leave | null>(null);
 
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
 
@@ -134,37 +140,9 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
     document.body.removeChild(link);
   };
 
-  const handleSendEmail = async (leaveRequest: Leave) => {
-    const employee = employees.find(e => e.id === leaveRequest.employeeId);
-    if (!employee || !leaveRequest.pdfDataUri) return;
-    
-    const subject = `Leave Request - ${getFullName(employee)}`;
-    const body = `
-      <p>Dear ${employee.firstName},</p>
-      <p>Please find attached your leave application form for your request from ${format(new Date(leaveRequest.startDate), 'MMM d, yyyy')} to ${format(new Date(leaveRequest.endDate), 'MMM d, yyyy')}.</p>
-      <p>Details:</p>
-      <ul>
-        <li><strong>Type:</strong> ${leaveRequest.type}</li>
-        <li><strong>Reason:</strong> ${leaveRequest.reason}</li>
-        <li><strong>Status:</strong> ${leaveRequest.status}</li>
-      </ul>
-      <p>Thank you,</p>
-      <p>OnDuty System</p>
-    `;
-    const attachment = {
-      filename: `Leave Application - ${getFullName(employee)}.pdf`,
-      content: leaveRequest.pdfDataUri.split('base64,')[1],
-      contentType: 'application/pdf',
-    };
-
-    toast({ title: 'Sending email...', description: `Sending leave form to ${employee.email}` });
-    const result = await sendEmail({ to: employee.email, subject, htmlBody: body, attachments: [attachment] }, smtpSettings);
-
-    if (result.success) {
-      toast({ title: 'Email Sent!', description: 'The leave form has been sent successfully.' });
-    } else {
-      toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
-    }
+  const handleOpenEmailDialog = (leaveRequest: Leave) => {
+    setEmailingRequest(leaveRequest);
+    setIsEmailDialogOpen(true);
   };
   
   const RequestTable = ({ requests, forManagerView = false }: { requests: Leave[], forManagerView?: boolean }) => (
@@ -206,7 +184,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
                             <div className="flex gap-2 justify-end">
                               <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
                               <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4" /></Button>
-                              <Button size="sm" variant="outline" onClick={() => handleSendEmail(req)}><Mail className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="outline" onClick={() => handleOpenEmailDialog(req)}><Mail className="h-4 w-4" /></Button>
                             </div>
                           )
                         ) : (
@@ -274,6 +252,118 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
         leaveTypes={leaveTypes}
         currentUser={currentUser}
       />
+
+      {emailingRequest && (
+        <EmailDialog
+            isOpen={isEmailDialogOpen}
+            setIsOpen={setIsEmailDialogOpen}
+            leaveRequest={emailingRequest}
+            smtpSettings={smtpSettings}
+            employees={employees}
+        />
+      )}
     </>
   );
+}
+
+
+type EmailDialogProps = {
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    leaveRequest: Leave;
+    smtpSettings: SmtpSettings;
+    employees: Employee[];
+};
+
+function EmailDialog({ isOpen, setIsOpen, leaveRequest, smtpSettings, employees }: EmailDialogProps) {
+    const employee = employees.find(e => e.id === leaveRequest.employeeId);
+    
+    const defaultSubject = `Leave Request - ${employee ? getFullName(employee) : 'N/A'}`;
+    const defaultBody = `
+        <p>Dear ${employee?.firstName},</p>
+        <p>Please find attached your leave application form for your request from ${format(new Date(leaveRequest.startDate), 'MMM d, yyyy')} to ${format(new Date(leaveRequest.endDate), 'MMM d, yyyy')}.</p>
+        <p>Details:</p>
+        <ul>
+            <li><strong>Type:</strong> ${leaveRequest.type}</li>
+            <li><strong>Reason:</strong> ${leaveRequest.reason}</li>
+            <li><strong>Status:</strong> ${leaveRequest.status}</li>
+        </ul>
+        <p>Thank you,</p>
+        <p>OnDuty System</p>
+    `;
+
+    const [to, setTo] = useState(employee?.email || '');
+    const [subject, setSubject] = useState(defaultSubject);
+    const [body, setBody] = useState(defaultBody.replace(/<p>|<\/p>|<ul>|<\/ul>|<li>|<\/li>|<strong>|<\/strong>/g, ''));
+    const [isSending, startTransition] = useTransition();
+    const { toast } = useToast();
+
+    React.useEffect(() => {
+        if (isOpen && employee) {
+            setTo(employee.email);
+            setSubject(`Leave Request - ${getFullName(employee)}`);
+            setBody(`Dear ${employee.firstName},\n\nPlease find attached your leave application form for your request from ${format(new Date(leaveRequest.startDate), 'MMM d, yyyy')} to ${format(new Date(leaveRequest.endDate), 'MMM d, yyyy')}.\n\nDetails:\n- Type: ${leaveRequest.type}\n- Reason: ${leaveRequest.reason}\n- Status: ${leaveRequest.status}\n\nThank you,\nOnDuty System`);
+        }
+    }, [isOpen, leaveRequest, employee]);
+    
+    const handleSend = async () => {
+        if (!to) {
+            toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
+            return;
+        }
+        if (!leaveRequest.pdfDataUri) {
+            toast({ variant: 'destructive', title: 'PDF not found', description: 'The leave form PDF is not available to attach.' });
+            return;
+        }
+
+        startTransition(async () => {
+            const attachment = {
+                filename: `Leave Application - ${employee ? getFullName(employee) : 'Unknown'}.pdf`,
+                content: leaveRequest.pdfDataUri!.split('base64,')[1],
+                contentType: 'application/pdf',
+            };
+
+            toast({ title: 'Sending email...', description: `Sending leave form to ${to}` });
+            const result = await sendEmail({ to, subject, htmlBody: body.replace(/\n/g, '<br>'), attachments: [attachment] }, smtpSettings);
+
+            if (result.success) {
+                toast({ title: 'Email Sent!', description: 'The leave form has been sent successfully.' });
+                setIsOpen(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Email Failed', description: result.error });
+            }
+        });
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Send Leave Form</DialogTitle>
+                    <DialogDescription>The approved ALAF will be sent as a PDF attachment.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="recipientEmail">Recipient Email</Label>
+                        <Input id="recipientEmail" type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="recipient@example.com" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Subject</Label>
+                        <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Body</Label>
+                        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={10} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSend} disabled={isSending}>
+                        {isSending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }

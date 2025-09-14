@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
@@ -20,6 +21,7 @@ import { Separator } from './ui/separator';
 import { AllowanceImporter, type ImportedAllowance } from './allowance-importer';
 import { sendEmail } from '@/app/actions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import { Textarea } from './ui/textarea';
 
 
 const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentage, currency }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date, loadLimitPercentage: number, currency: string }) => {
@@ -711,7 +713,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         <EmailDialog
             isOpen={isEmailDialogOpen}
             setIsOpen={setIsEmailDialogOpen}
-            subject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
+            defaultSubject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
             smtpSettings={smtpSettings}
             generateExcelData={generateExcelData}
             fileName={`${currentUser.group} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`}
@@ -800,7 +802,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
 type EmailDialogProps = {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
-    subject: string;
+    defaultSubject: string;
     smtpSettings: SmtpSettings;
     generateExcelData: () => Promise<Buffer | null>;
     fileName: string;
@@ -809,17 +811,25 @@ type EmailDialogProps = {
 function EmailDialog({ 
     isOpen, 
     setIsOpen, 
-    subject, 
+    defaultSubject, 
     smtpSettings,
     generateExcelData,
     fileName,
 }: EmailDialogProps) {
     const [to, setTo] = useState('');
+    const [subject, setSubject] = useState(defaultSubject);
+    const [body, setBody] = useState('Please find the report attached.');
     const [isSending, startTransition] = useTransition();
     const { toast } = useToast();
-    
-    const htmlBody = `<p>Please find the report attached.</p>`;
 
+    useEffect(() => {
+        if (isOpen) {
+            setSubject(defaultSubject);
+            setBody('Please find the report attached.');
+            setTo('');
+        }
+    }, [isOpen, defaultSubject]);
+    
     const handleSend = async () => {
         if (!to) {
             toast({ variant: 'destructive', title: 'Recipient required', description: 'Please enter an email address.' });
@@ -828,6 +838,7 @@ function EmailDialog({
 
         startTransition(async () => {
             try {
+                toast({ title: 'Generating report...', description: 'Please wait while the file is being prepared.'});
                 const excelBuffer = await generateExcelData();
                  if (!excelBuffer) {
                     toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated.' });
@@ -840,8 +851,9 @@ function EmailDialog({
                     content: excelData,
                     contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 }];
-
-                const result = await sendEmail({ to, subject, htmlBody, attachments }, smtpSettings);
+                
+                toast({ title: 'Sending email...', description: `Sending report to ${to}.`});
+                const result = await sendEmail({ to, subject, htmlBody: body.replace(/\n/g, '<br>') }, smtpSettings);
 
                 if (result?.success) {
                     toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
@@ -869,11 +881,11 @@ function EmailDialog({
                     </div>
                      <div className="space-y-2">
                         <Label>Subject</Label>
-                        <Input value={subject} readOnly disabled />
+                        <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                         <Label>Body</Label>
-                        <div className="h-24 rounded-md border p-2 text-sm" dangerouslySetInnerHTML={{ __html: htmlBody }} />
+                        <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={4} />
                     </div>
                 </div>
                 <DialogFooter>
@@ -893,5 +905,6 @@ function EmailDialog({
 
 
     
+
 
 
