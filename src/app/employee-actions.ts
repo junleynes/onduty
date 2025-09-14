@@ -8,8 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 const employeeSchema = z.object({
   id: z.string().optional(),
-  employeeNumber: z.string().optional(),
-  personnelNumber: z.string().optional(),
+  employeeNumber: z.string().optional().nullable(),
+  personnelNumber: z.string().optional().nullable(),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   middleInitial: z.string().max(1).optional(),
