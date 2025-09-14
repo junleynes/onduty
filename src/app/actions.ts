@@ -265,11 +265,15 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
         }
         
         // Handle Leave Type Checkbox
-        try {
-            const checkbox = form.getCheckBox(leaveRequest.type);
-            checkbox.check();
-        } catch (e) {
-            console.warn(`Could not find checkbox for leave type: "${leaveRequest.type}".`);
+        if (leaveRequest.type) {
+            try {
+                const checkbox = form.getCheckBox(leaveRequest.type);
+                checkbox.check();
+            } catch (e) {
+                console.warn(`Could not find checkbox for leave type: "${leaveRequest.type}". It may have been deleted.`);
+            }
+        } else {
+            console.warn(`Leave request has an undefined leave type. Cannot check box in PDF.`);
         }
         
         // Handle Approval Status Checkbox
