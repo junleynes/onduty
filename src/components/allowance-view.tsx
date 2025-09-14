@@ -150,7 +150,7 @@ type SortConfig = {
 
 export default function AllowanceView({ employees, setEmployees, allowances, setAllowances, currentUser, smtpSettings }: AllowanceViewProps) {
   const { toast } = useToast();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => addMonths(new Date(), 1));
   const [loadLimitPercentage, setLoadLimitPercentage] = useState<number>(() => getInitialState('globalLoadLimit', 150));
   const [editableStartDay, setEditableStartDay] = useState<number>(() => getInitialState('editableStartDay', 15));
   const [editableEndDay, setEditableEndDay] = useState<number>(() => getInitialState('editableEndDay', 20));
@@ -664,17 +664,17 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                     const isCurrentUser = employee.id === currentUser.id;
                     const today = new Date();
                     
-                    // This logic determines if the edit button should be shown for a user
-                    const isViewingNextMonth = isAfter(startOfMonth(currentDate), startOfMonth(today));
+                    const isNextMonthView = isAfter(startOfMonth(currentDate), startOfMonth(today));
+                    const isCurrentMonthView = isSameMonth(currentDate, today);
                     const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
                     
                     // A regular user can edit the *next* month's balance, but only during the current month's editing window.
-                    const canUserEditNextMonth = !isManager && isCurrentUser && isViewingNextMonth && isEditingWindowActive;
+                    const canUserEdit = !isManager && isCurrentUser && isNextMonthView && isEditingWindowActive;
 
                     // A manager can edit any balance at any time.
                     const canManagerEdit = isManager;
                     
-                    const canEdit = canManagerEdit || canUserEditNextMonth;
+                    const canEdit = canManagerEdit || canUserEdit;
                     
                     return (
                         <TableRow key={employee.id}>
@@ -712,7 +712,6 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
         <EmailDialog
             isOpen={isEmailDialogOpen}
             setIsOpen={setIsEmailDialogOpen}
-            defaultSubject={`Communication Allowance Report - ${format(currentDate, 'MMMM yyyy')}`}
             smtpSettings={smtpSettings}
             generateExcelData={generateExcelData}
             fileName={`${currentUser.group} Communication Allowance - ${format(currentDate, 'MMMM yyyy')}.xlsx`}
@@ -801,7 +800,6 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
 type EmailDialogProps = {
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
-    defaultSubject: string;
     smtpSettings: SmtpSettings;
     generateExcelData: () => Promise<Buffer | null>;
     fileName: string;
@@ -810,11 +808,11 @@ type EmailDialogProps = {
 function EmailDialog({ 
     isOpen, 
     setIsOpen, 
-    defaultSubject, 
     smtpSettings,
     generateExcelData,
     fileName,
 }: EmailDialogProps) {
+    const defaultSubject = `Communication Allowance Report - ${fileName.split(' - ')[1].replace('.xlsx', '')}`;
     const [to, setTo] = useState('');
     const [subject, setSubject] = useState(defaultSubject);
     const [body, setBody] = useState('Please find the report attached.');
@@ -871,7 +869,7 @@ function EmailDialog({
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Send Report via Email</DialogTitle>
-                    <DialogDescription>The report will be sent as an Excel attachment.</DialogDescription>
+                    <DialogDescription>The report will be generated and sent as an Excel attachment.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
@@ -904,6 +902,7 @@ function EmailDialog({
 
 
     
+
 
 
 
