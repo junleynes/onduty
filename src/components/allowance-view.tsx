@@ -306,7 +306,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
           year,
           month,
           balance: item.balance,
-          asOfDate: new Date(),
+          asOfDate: item.asOfDate || new Date(),
         };
 
         if (existingIndex > -1) {
@@ -628,12 +628,15 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                     const isCurrentUser = employee.id === currentUser.id;
                     const today = new Date();
                     
-                    // User editing logic for NEXT month
-                    const isNextMonthView = startOfMonth(currentDate).getTime() === startOfMonth(addMonths(today, 1)).getTime();
+                    // This logic determines if the edit button should be shown for a user
+                    const isNextMonthView = startOfMonth(currentDate).getTime() > startOfMonth(today).getTime();
+                    const isCurrentMonthView = isSameMonth(currentDate, today);
                     const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
-                    const canUserEditNextMonth = !isManager && isCurrentUser && isNextMonthView && isEditingWindowActive;
+                    
+                    // A regular user can edit the *next* month's balance, but only during the current month's editing window.
+                    const canUserEditNextMonth = !isManager && isCurrentUser && isNextMonthView && isCurrentMonthView && isEditingWindowActive;
 
-                    // Manager editing logic for any month
+                    // A manager can edit any balance at any time.
                     const canManagerEdit = isManager;
                     
                     const canEdit = canManagerEdit || canUserEditNextMonth;
@@ -856,3 +859,4 @@ function EmailDialog({
 
 
     
+

@@ -18,11 +18,13 @@ import { Label } from './ui/label';
 import { Loader2 } from 'lucide-react';
 import type { Employee } from '@/types';
 import { findEmployeeByName } from '@/lib/utils';
+import { isDate } from 'date-fns';
 
 export type ImportedAllowance = {
     employeeId: string;
     loadAllocation: number;
     balance: number;
+    asOfDate?: Date;
 }
 
 type AllowanceImporterProps = {
@@ -61,6 +63,7 @@ export function AllowanceImporter({ isOpen, setIsOpen, onImport, employees }: Al
           }
           
           const requiredHeaders = ['Recipient', 'Load Allocation', 'Load Balance'];
+          const optionalHeaders = ['Balance As Of'];
           const headers = results.meta.fields || [];
           const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
 
@@ -79,6 +82,8 @@ export function AllowanceImporter({ isOpen, setIsOpen, onImport, employees }: Al
 
             const loadAllocation = parseFloat(row['Load Allocation']);
             const balance = parseFloat(row['Load Balance']);
+            const asOfDateStr = row['Balance As Of'];
+            const asOfDate = asOfDateStr && isDate(new Date(asOfDateStr)) ? new Date(asOfDateStr) : undefined;
 
             if (isNaN(loadAllocation) || isNaN(balance)) {
                 console.warn(`Invalid number format for employee "${row['Recipient']}". Skipping row.`);
@@ -88,7 +93,8 @@ export function AllowanceImporter({ isOpen, setIsOpen, onImport, employees }: Al
             importedData.push({
                 employeeId: employee.id,
                 loadAllocation,
-                balance
+                balance,
+                asOfDate,
             });
           });
           
@@ -120,7 +126,7 @@ export function AllowanceImporter({ isOpen, setIsOpen, onImport, employees }: Al
         <DialogHeader>
           <DialogTitle>Import Allowances from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV with headers: Recipient, Load Allocation, Load Balance. This will update allocations and set the balance for the current month.
+            Upload a CSV with headers: Recipient, Load Allocation, Load Balance. Optionally include 'Balance As Of'. This will update allocations and set the balance for the current month.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
