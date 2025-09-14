@@ -277,17 +277,25 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
         }
         
         // Handle Approval Status Checkbox
-        try {
-            const statusCheckboxName = leaveRequest.status; // 'approved' or 'rejected'
-            const statusCheckbox = form.getCheckBox(statusCheckboxName);
-            statusCheckbox.check();
-        } catch (e) {
-            console.warn(`Could not find checkbox for approval status: "${leaveRequest.status}". Trying to set "approval_status" text field as fallback.`);
-            // Fallback to setting the text field if the checkbox isn't found
+        if (leaveRequest.status === 'approved' || leaveRequest.status === 'rejected') {
+            try {
+                const statusCheckbox = form.getCheckBox(leaveRequest.status);
+                statusCheckbox.check();
+            } catch (e) {
+                console.warn(`Could not find checkbox for approval status: "${leaveRequest.status}". Trying to set "approval_status" text field as fallback.`);
+                try {
+                    form.getTextField('approval_status').setText(leaveRequest.status.toUpperCase());
+                } catch (textFieldError) {
+                    console.warn(`Could not find fallback text field "approval_status" either.`);
+                }
+            }
+        } else {
+            // For 'pending' or other statuses, you might want to set a text field if it exists
             try {
                 form.getTextField('approval_status').setText(leaveRequest.status.toUpperCase());
-            } catch (textFieldError) {
-                 console.warn(`Could not find fallback text field "approval_status" either.`);
+            } catch (e) {
+                // It's okay if this field doesn't exist, just log a warning.
+                console.warn('No "approval_status" text field found to indicate pending status.');
             }
         }
 
