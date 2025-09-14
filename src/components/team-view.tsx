@@ -18,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 type TeamViewProps = {
     employees: Employee[];
     currentUser: Employee | null;
-    onEditMember: (employee: Employee, context: 'manager' | 'admin') => void;
+    onEditMember: (employee: Employee, isPasswordReset?: boolean) => void;
 };
 
 const calculateTenure = (startDate: Date | undefined): string => {
@@ -158,7 +158,7 @@ export default function TeamView({ employees, currentUser, onEditMember }: TeamV
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => onEditMember(employee, 'manager')}>
+                                                            <DropdownMenuItem onClick={() => onEditMember(employee, false)}>
                                                                 <Pencil className="mr-2 h-4 w-4" />
                                                                 <span>Edit</span>
                                                             </DropdownMenuItem>
