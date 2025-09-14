@@ -39,7 +39,10 @@ export async function sendEmail(
         await transporter.verify();
         
         await transporter.sendMail({
-            from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
+            from: {
+                name: smtpSettings.fromName,
+                address: smtpSettings.fromEmail
+            },
             to,
             subject,
             html: htmlBody,
