@@ -112,7 +112,8 @@ export type Task = {
   scope: 'personal' | 'global' | 'shift';
   title: string;
   description: string;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'acknowledged' | 'completed';
+  acknowledgedAt?: Date;
   completedAt?: Date;
   dueDate?: Date;
   createdBy: string; // Employee ID

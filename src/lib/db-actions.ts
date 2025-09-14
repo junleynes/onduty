@@ -94,6 +94,7 @@ export async function getData() {
 
     const processedTasks: Task[] = tasks.map(t => ({
       ...t,
+      acknowledgedAt: t.acknowledgedAt ? new Date(t.acknowledgedAt) : undefined,
       completedAt: t.completedAt ? new Date(t.completedAt) : undefined,
       dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
     }));
@@ -287,9 +288,9 @@ export async function saveAllData({
 
     // --- TASKS ---
     db.prepare('DELETE FROM tasks').run();
-    const taskStmt = db.prepare('INSERT INTO tasks (id, shiftId, assigneeId, scope, title, description, status, completedAt, dueDate, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const taskStmt = db.prepare('INSERT INTO tasks (id, shiftId, assigneeId, scope, title, description, status, acknowledgedAt, completedAt, dueDate, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     for(const task of tasks) {
-      taskStmt.run(task.id, task.shiftId, task.assigneeId, task.scope, task.title, task.description, task.status, task.completedAt?.toISOString(), task.dueDate?.toISOString(), task.createdBy);
+      taskStmt.run(task.id, task.shiftId, task.assigneeId, task.scope, task.title, task.description, task.status, task.acknowledgedAt?.toISOString(), task.completedAt?.toISOString(), task.dueDate?.toISOString(), task.createdBy);
     }
 
     // --- ALLOWANCES ---

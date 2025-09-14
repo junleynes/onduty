@@ -1,4 +1,5 @@
 
+
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
@@ -76,6 +77,16 @@ function initializeDatabase() {
             }
         }
     });
+
+    // Migration for Task Acknowledgment
+    try {
+        db.exec("ALTER TABLE tasks ADD COLUMN acknowledgedAt TEXT;");
+        console.log("Migration successful: Added 'acknowledgedAt' column to 'tasks' table.");
+    } catch (e: any) {
+        if (!e.message.includes('duplicate column name')) {
+            console.error("Error migrating 'acknowledgedAt' column:", e.message);
+        }
+    }
 
 
     return db;

@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Trash2, Pencil, X, Check, ChevronsUpDown, User, Globe } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
-import { Checkbox } from './ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Label } from './ui/label';
@@ -31,36 +30,37 @@ type TaskManagerViewProps = {
   employees: Employee[];
 };
 
-const TaskItem = ({ task, onToggle, onEdit, onDelete, canModify, assignee }: { 
+const TaskItem = ({ task, onEdit, onDelete, canModify, assignee }: { 
     task: Task; 
-    onToggle: (id: string, checked: boolean) => void;
     onEdit: (task: Task) => void;
     onDelete: (id: string) => void;
     canModify: boolean;
     assignee?: Employee | null;
 }) => {
-    const { toast } = useToast();
     const isCompleted = task.status === 'completed';
-    const isOverdue = task.dueDate && !isCompleted && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate));
+    const isOverdue = task.dueDate && task.status !== 'completed' && isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate));
     
+    const getStatusBadge = () => {
+        switch(task.status) {
+            case 'pending': return <Badge variant="destructive">Pending</Badge>;
+            case 'acknowledged': return <Badge variant="secondary">Acknowledged</Badge>;
+            case 'completed': return <Badge variant="default">Completed</Badge>;
+            default: return null;
+        }
+    }
+
     return (
         <li className={cn("group flex items-start gap-3 rounded-md border p-4 transition-colors", 
             isCompleted && 'bg-muted/50 opacity-70',
             isOverdue && 'border-destructive/50'
         )}>
-            <Checkbox
-                id={`task-${task.id}`}
-                className="mt-1"
-                checked={isCompleted}
-                onCheckedChange={(isChecked) => onToggle(task.id, !!isChecked)}
-            />
             <div className="grid gap-1.5 leading-none flex-1">
-                <label htmlFor={`task-${task.id}`} className={cn("font-medium cursor-pointer", isCompleted && 'line-through')}>
+                <p className={cn("font-medium", isCompleted && 'line-through')}>
                     {task.title}
-                </label>
+                </p>
                 <p className={cn("text-muted-foreground text-sm", isCompleted && 'line-through')}>{task.description}</p>
                 
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 flex-wrap">
                     {task.scope === 'global' ? (
                         <Badge variant="secondary"><Globe className="h-3 w-3 mr-1"/>Global</Badge>
                     ) : assignee ? (
@@ -73,22 +73,32 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete, canModify, assignee }: {
                         </span>
                     )}
                 </div>
-                 {task.completedAt && (
-                    <p className="text-muted-foreground text-xs">
-                        Completed on {format(new Date(task.completedAt), 'MMM d, yyyy @ p')}
-                    </p>
+                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                    {task.acknowledgedAt && (
+                        <span>
+                            Ack: {format(new Date(task.acknowledgedAt), 'MMM d @ p')}
+                        </span>
+                    )}
+                    {task.completedAt && (
+                        <span className="font-semibold text-green-600">
+                            Completed: {format(new Date(task.completedAt), 'MMM d @ p')}
+                        </span>
+                    )}
+                 </div>
+            </div>
+             <div className="flex flex-col items-center gap-2">
+                {getStatusBadge()}
+                 {canModify && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(task)}>
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(task.id)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
                 )}
             </div>
-             {canModify && (
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(task)}>
-                        <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(task.id)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
         </li>
     );
 }
@@ -100,18 +110,13 @@ export default function TaskManagerView({ tasks, setTasks, currentUser, employee
   const employeeMap = useMemo(() => new Map(employees.map(e => [e.id, e])), [employees]);
 
   const managedTasks = useMemo(() => 
-    tasks.filter(t => t.scope === 'global' || t.createdBy === currentUser.id),
-    [tasks, currentUser.id]
+    tasks.filter(t => t.createdBy === currentUser.id || (t.scope === 'global' && (currentUser.role === 'admin' || currentUser.role === 'manager')))
+    .sort((a,b) => {
+        const statusOrder = { 'pending': 1, 'acknowledged': 2, 'completed': 3 };
+        return (statusOrder[a.status] - statusOrder[b.status]) || (new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime());
+    }),
+    [tasks, currentUser.id, currentUser.role]
   );
-  
-
-  const handleTaskToggle = (taskId: string, isChecked: boolean) => {
-    setTasks(currentTasks => currentTasks.map(task => 
-      task.id === taskId 
-        ? { ...task, status: isChecked ? 'completed' : 'pending', completedAt: isChecked ? new Date() : undefined }
-        : task
-    ));
-  };
   
   const handleOpenEditor = (task: Partial<Task> | null = null) => {
     setEditingTask(task);
@@ -186,7 +191,6 @@ export default function TaskManagerView({ tasks, setTasks, currentUser, employee
                         key={task.id} 
                         task={task} 
                         assignee={task.assigneeId ? employeeMap.get(task.assigneeId) : null}
-                        onToggle={handleTaskToggle}
                         onEdit={() => handleOpenEditor(task)}
                         onDelete={handleDeleteTask}
                         canModify={task.createdBy === currentUser.id || (task.scope === 'global' && canCreateGlobal)}
@@ -261,6 +265,7 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
             description,
             dueDate,
             scope: finalScope,
+            status: task?.id ? task.status : 'pending', // Preserve status on edit
         };
         onSave(taskData, finalScope === 'global' ? null : selectedAssigneeIds);
     }

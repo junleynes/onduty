@@ -6,11 +6,11 @@ import React from 'react';
 import type { Task, Shift, Employee } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Checkbox } from '@/components/ui/checkbox';
 import { format, isToday, isFuture, isPast, startOfDay } from 'date-fns';
-import { ClipboardCheck, CalendarClock, CalendarX, CalendarCheck, Globe } from 'lucide-react';
+import { ClipboardCheck, CalendarClock, CalendarX, CalendarCheck, Globe, Check, CornerDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
 
 type MyTasksViewProps = {
   tasks: Task[];
@@ -19,47 +19,67 @@ type MyTasksViewProps = {
   currentUser: Employee | null;
 };
 
-const TaskItem = ({ task, shift, onToggle }: { task: Task; shift?: Shift; onToggle: (id: string, checked: boolean) => void; }) => {
+const TaskItem = ({ task, shift, onAcknowledge, onComplete }: { task: Task; shift?: Shift; onAcknowledge: (id: string) => void; onComplete: (id: string) => void; }) => {
     const isCompleted = task.status === 'completed';
+    const isAcknowledged = task.status === 'acknowledged';
+
     return (
-        <li className={cn("flex items-start gap-3 rounded-md border p-4", isCompleted && 'opacity-70')}>
-            <Checkbox
-                id={`task-${task.id}`}
-                className="mt-1"
-                checked={isCompleted}
-                onCheckedChange={(isChecked) => onToggle(task.id, !!isChecked)}
-            />
-            <div className="grid gap-1.5 leading-none">
-                <label htmlFor={`task-${task.id}`} className={cn("font-medium cursor-pointer", isCompleted && 'line-through')}>
+        <li className={cn("flex items-start gap-4 rounded-md border p-4", isCompleted && 'opacity-60 bg-muted/50')}>
+            <div className="grid gap-1.5 leading-none flex-1">
+                <label htmlFor={`task-${task.id}`} className={cn("font-medium", isCompleted && 'line-through')}>
                     {task.title}
                 </label>
                 <p className={cn("text-muted-foreground text-sm", isCompleted && 'line-through')}>{task.description}</p>
                 
-                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 flex-wrap">
                     {task.scope === 'global' && <Badge variant="secondary"><Globe className="h-3 w-3 mr-1"/>Global</Badge>}
                     {shift && (
-                        <span className="text-muted-foreground text-xs">
+                        <Badge variant="outline">
                             For shift on {format(new Date(shift.date), 'MMM d, yyyy')} ({shift.startTime} - {shift.endTime})
-                        </span>
+                        </Badge>
                     )}
                  </div>
 
-                 {task.completedAt && (
-                    <p className="text-muted-foreground text-xs">
-                        Completed on {format(new Date(task.completedAt), 'MMM d, yyyy @ p')}
-                    </p>
+                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                    {task.acknowledgedAt && (
+                        <span className="flex items-center gap-1">
+                            <CornerDownRight className="h-3 w-3" />
+                            Acknowledged: {format(new Date(task.acknowledgedAt), 'MMM d @ p')}
+                        </span>
+                    )}
+                    {task.completedAt && (
+                        <span className="flex items-center gap-1 font-semibold text-green-600">
+                             <Check className="h-3 w-3" />
+                            Completed: {format(new Date(task.completedAt), 'MMM d @ p')}
+                        </span>
+                    )}
+                 </div>
+            </div>
+            <div className="flex flex-col items-center gap-2 w-32">
+                {task.status === 'pending' && (
+                    <Button size="sm" className="w-full" onClick={() => onAcknowledge(task.id)}>Acknowledge</Button>
+                )}
+                {task.status === 'acknowledged' && (
+                    <Button size="sm" className="w-full" onClick={() => onComplete(task.id)}>Mark as Complete</Button>
+                )}
+                {task.status === 'completed' && (
+                    <div className="flex items-center justify-center text-green-600 font-semibold text-sm gap-1 h-9 px-3">
+                       <Check className="h-4 w-4" />
+                       Done
+                    </div>
                 )}
             </div>
         </li>
     );
 }
 
-const TaskSection = ({ title, icon: Icon, tasks, shifts, onToggle, emptyMessage, emptyIcon: EmptyIcon }: { 
+const TaskSection = ({ title, icon: Icon, tasks, shifts, onAcknowledge, onComplete, emptyMessage, emptyIcon: EmptyIcon }: { 
     title: string;
     icon: React.ElementType;
     tasks: Task[];
     shifts: Shift[];
-    onToggle: (id: string, checked: boolean) => void;
+    onAcknowledge: (id: string) => void;
+    onComplete: (id: string) => void;
     emptyMessage: string;
     emptyIcon: React.ElementType;
 }) => {
@@ -71,7 +91,7 @@ const TaskSection = ({ title, icon: Icon, tasks, shifts, onToggle, emptyMessage,
     
     return (
         <Card>
-            <AccordionItem value={title.toLowerCase().replace(' ', '-')}>
+            <AccordionItem value={title.toLowerCase().replace(/[^a-z0-9]/g, '-')}>
                  <AccordionTrigger className="p-4">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                         <Icon className="h-5 w-5" />
@@ -82,7 +102,13 @@ const TaskSection = ({ title, icon: Icon, tasks, shifts, onToggle, emptyMessage,
                     {tasks.length > 0 ? (
                         <ul className="space-y-3">
                             {tasks.map(task => (
-                                <TaskItem key={task.id} task={task} shift={getShiftForTask(task.id)} onToggle={onToggle} />
+                                <TaskItem 
+                                  key={task.id} 
+                                  task={task} 
+                                  shift={getShiftForTask(task.id)} 
+                                  onAcknowledge={onAcknowledge}
+                                  onComplete={onComplete}
+                                />
                             ))}
                         </ul>
                     ) : (
@@ -114,18 +140,9 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
   const myShiftIds = new Set(shifts.filter(s => s.employeeId === currentUser.id).map(s => s.id));
   
   const myTasks = tasks.filter(task => {
-    // Include global tasks
-    if (task.scope === 'global') {
-        return true;
-    }
-    // Include shift tasks assigned to the user's shifts
-    if (task.scope === 'shift' && task.shiftId && myShiftIds.has(task.shiftId)) {
-        return true;
-    }
-    // Include personal tasks assigned to the user
-    if (task.scope === 'personal' && task.assigneeId === currentUser.id) {
-        return true;
-    }
+    if (task.scope === 'global') return true;
+    if (task.scope === 'shift' && task.shiftId && myShiftIds.has(task.shiftId)) return true;
+    if (task.scope === 'personal' && task.assigneeId === currentUser.id) return true;
     return false;
   });
 
@@ -133,6 +150,7 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
   const today = startOfDay(new Date());
 
   const pendingTasks = myTasks.filter(task => task.status === 'pending');
+  const acknowledgedTasks = myTasks.filter(task => task.status === 'acknowledged');
   const completedTasks = myTasks.filter(task => task.status === 'completed');
 
   const getTaskDate = (task: Task): Date | null => {
@@ -144,25 +162,34 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
       return null;
   }
 
-  const todaysTasks = pendingTasks.filter(task => {
+  const overdueTasks = [...pendingTasks, ...acknowledgedTasks].filter(task => {
+      const taskDate = getTaskDate(task);
+      return taskDate && isPast(taskDate) && !isToday(taskDate);
+  });
+
+  const todaysTasks = [...pendingTasks, ...acknowledgedTasks].filter(task => {
     const taskDate = getTaskDate(task);
     return taskDate && isToday(taskDate);
   });
 
-  const upcomingTasks = pendingTasks.filter(task => {
+  const upcomingTasks = [...pendingTasks, ...acknowledgedTasks].filter(task => {
       const taskDate = getTaskDate(task);
       return taskDate && isFuture(taskDate);
   });
 
-  const overdueTasks = pendingTasks.filter(task => {
-      const taskDate = getTaskDate(task);
-      return taskDate && isPast(taskDate) && !isToday(taskDate);
-  })
 
-  const handleTaskToggle = (taskId: string, isChecked: boolean) => {
+  const handleAcknowledge = (taskId: string) => {
     setTasks(currentTasks => currentTasks.map(task => 
       task.id === taskId 
-        ? { ...task, status: isChecked ? 'completed' : 'pending', completedAt: isChecked ? new Date() : undefined }
+        ? { ...task, status: 'acknowledged', acknowledgedAt: new Date() }
+        : task
+    ));
+  };
+
+  const handleComplete = (taskId: string) => {
+     setTasks(currentTasks => currentTasks.map(task => 
+      task.id === taskId 
+        ? { ...task, status: 'completed', completedAt: new Date() }
         : task
     ));
   };
@@ -177,17 +204,18 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
     <Card>
       <CardHeader>
         <CardTitle>My Tasks</CardTitle>
-        <CardDescription>A list of tasks assigned to you or your shifts. Check them off as you complete them.</CardDescription>
+        <CardDescription>A list of tasks assigned to you or your shifts. Acknowledge them, then mark them as complete.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="multiple" defaultValue={['upcoming-tasks', 'todays-tasks', 'overdue-tasks', 'completed-tasks']} className="w-full space-y-4">
-          <TaskSection
-            title="Upcoming Tasks"
-            icon={CalendarClock}
-            tasks={upcomingTasks}
+        <Accordion type="multiple" defaultValue={['upcoming-tasks', 'todays-tasks', 'overdue-tasks']} className="w-full space-y-4">
+           <TaskSection
+            title="Overdue Tasks"
+            icon={CalendarX}
+            tasks={overdueTasks}
             shifts={shifts}
-            onToggle={handleTaskToggle}
-            emptyMessage="No upcoming tasks on the horizon."
+            onAcknowledge={handleAcknowledge}
+            onComplete={handleComplete}
+            emptyMessage="No overdue tasks. Well done!"
             emptyIcon={ClipboardCheck}
           />
            <TaskSection
@@ -195,17 +223,19 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
             icon={ClipboardCheck}
             tasks={todaysTasks}
             shifts={shifts}
-            onToggle={handleTaskToggle}
+            onAcknowledge={handleAcknowledge}
+            onComplete={handleComplete}
             emptyMessage="No tasks scheduled for today."
             emptyIcon={ClipboardCheck}
           />
-           <TaskSection
-            title="Overdue Tasks"
-            icon={CalendarX}
-            tasks={overdueTasks}
+          <TaskSection
+            title="Upcoming Tasks"
+            icon={CalendarClock}
+            tasks={upcomingTasks}
             shifts={shifts}
-            onToggle={handleTaskToggle}
-            emptyMessage="No overdue tasks. Well done!"
+            onAcknowledge={handleAcknowledge}
+            onComplete={handleComplete}
+            emptyMessage="No upcoming tasks on the horizon."
             emptyIcon={ClipboardCheck}
           />
            <TaskSection
@@ -213,7 +243,8 @@ export default function MyTasksView({ tasks, setTasks, shifts, currentUser }: My
             icon={CalendarCheck}
             tasks={sortedCompletedTasks}
             shifts={shifts}
-            onToggle={handleTaskToggle}
+            onAcknowledge={handleAcknowledge}
+            onComplete={handleComplete}
             emptyMessage="No tasks completed yet. Get to work!"
             emptyIcon={ClipboardCheck}
           />
