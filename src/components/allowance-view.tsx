@@ -665,12 +665,11 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                     const today = new Date();
                     
                     // This logic determines if the edit button should be shown for a user
-                    const isNextMonthView = startOfMonth(currentDate).getTime() > startOfMonth(today).getTime();
-                    const isCurrentMonthView = isSameMonth(currentDate, today);
+                    const isViewingNextMonth = isAfter(startOfMonth(currentDate), startOfMonth(today));
                     const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
                     
                     // A regular user can edit the *next* month's balance, but only during the current month's editing window.
-                    const canUserEditNextMonth = !isManager && isCurrentUser && isNextMonthView && isCurrentMonthView && isEditingWindowActive;
+                    const canUserEditNextMonth = !isManager && isCurrentUser && isViewingNextMonth && isEditingWindowActive;
 
                     // A manager can edit any balance at any time.
                     const canManagerEdit = isManager;
@@ -905,6 +904,7 @@ function EmailDialog({
 
 
     
+
 
 
 
