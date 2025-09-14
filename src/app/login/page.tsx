@@ -68,15 +68,7 @@ export default function LoginPage() {
                 />
             </div>
             <div className="grid gap-2">
-                 <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
-                    <Link
-                        href="/forgot-password"
-                        className="ml-auto inline-block text-sm underline"
-                    >
-                        Forgot your password?
-                    </Link>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input 
                  id="password" 
                  type="password" 
@@ -86,10 +78,16 @@ export default function LoginPage() {
                 />
             </div>
             </CardContent>
-            <CardFooter>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign in'}
-            </Button>
+            <CardFooter className="flex flex-col gap-4">
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Signing in...' : 'Sign in'}
+              </Button>
+              <Link
+                  href="/forgot-password"
+                  className="text-sm underline"
+              >
+                  Forgot your password?
+              </Link>
             </CardFooter>
         </form>
       </Card>
