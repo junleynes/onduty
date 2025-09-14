@@ -479,14 +479,14 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
     });
   };
 
-    const isMemberEditingAllowed = useMemo(() => {
-        if (isManager) return false;
-        const today = new Date();
-        const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
-        const nextMonth = addMonths(startOfMonth(today), 1);
-        const isViewingNextMonth = isSameMonth(currentDate, nextMonth);
-        return isEditingWindowActive && isViewingNextMonth;
-    }, [isManager, currentDate, editableStartDay, editableEndDay]);
+  const isMemberEditingAllowed = useMemo(() => {
+    if (isManager) return false;
+    const today = new Date();
+    // Compare the start of the months to avoid timezone issues.
+    const isViewingNextMonth = isSameMonth(startOfMonth(currentDate), startOfMonth(addMonths(today, 1)));
+    const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
+    return isEditingWindowActive && isViewingNextMonth;
+  }, [isManager, currentDate, editableStartDay, editableEndDay]);
 
 
   return (
@@ -540,7 +540,7 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                           {isMemberEditingAllowed && (
                             <Button variant="outline" onClick={() => handleOpenBalanceEditor(currentUser.id, currentDate)}>
                                 <Pencil className="mr-2 h-4 w-4" />
-                                Update My Balance
+                                Update
                             </Button>
                           )}
                       </div>
