@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Employee, CommunicationAllowance, SmtpSettings } from '@/types';
 import { format, subMonths, addMonths, isSameMonth, getDate, isFuture, startOfMonth, isToday, isAfter, startOfDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload, Send, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Settings, Pencil, FileText, ArrowUpDown, CheckCircle, XCircle, Upload, Send, Loader2, Trash2 } from 'lucide-react';
 import { cn, getInitialState } from '@/lib/utils';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
@@ -19,6 +19,8 @@ import { DatePicker } from './ui/date-picker';
 import { Separator } from './ui/separator';
 import { AllowanceImporter, type ImportedAllowance } from './allowance-importer';
 import { sendEmail } from '@/app/actions';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+
 
 const Dashboard = ({ membersInGroup, allowances, currentDate, loadLimitPercentage, currency }: { membersInGroup: Employee[], allowances: CommunicationAllowance[], currentDate: Date, loadLimitPercentage: number, currency: string }) => {
     const currentYear = currentDate.getFullYear();
@@ -462,6 +464,18 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
     // Disable if the next month to be viewed is beyond one month from the real current date.
     return isAfter(nextMonth, oneMonthFromNow);
   };
+  
+  const handleClearBalances = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    setAllowances(prev => prev.filter(a => !(a.year === year && a.month === month)));
+
+    toast({
+        title: 'Balances Cleared',
+        description: `All allowance records for ${format(currentDate, 'MMMM yyyy')} have been deleted.`,
+    });
+  };
 
 
   return (
@@ -514,7 +528,27 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                         </Button>
                     </div>
                     {isManager && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive">
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Clear Balances
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action will permanently delete all balance records for {format(currentDate, 'MMMM yyyy')}. This cannot be undone.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleClearBalances}>Continue</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                              <Button variant="outline" onClick={() => setIsImporterOpen(true)}>
                                 <Upload className="h-4 w-4 mr-2" />
                                 Import Balances
@@ -859,4 +893,5 @@ function EmailDialog({
 
 
     
+
 
