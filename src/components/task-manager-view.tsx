@@ -110,7 +110,7 @@ export default function TaskManagerView({ tasks, setTasks, currentUser, employee
   const employeeMap = useMemo(() => new Map(employees.map(e => [e.id, e])), [employees]);
 
   const managedTasks = useMemo(() => 
-    tasks.filter(t => t.createdBy === currentUser.id || (t.scope === 'global' && (currentUser.role === 'admin' || currentUser.role === 'manager')))
+    tasks.filter(t => t.scope !== 'shift' && (t.createdBy === currentUser.id || (t.scope === 'global' && (currentUser.role === 'admin' || currentUser.role === 'manager'))))
     .sort((a,b) => {
         const statusOrder = { 'pending': 1, 'acknowledged': 2, 'completed': 3 };
         return (statusOrder[a.status] - statusOrder[b.status]) || (new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime());
@@ -373,4 +373,3 @@ function TaskEditorDialog({ isOpen, setIsOpen, task, onSave, currentUser, employ
         </Dialog>
     )
 }
-
