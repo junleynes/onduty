@@ -37,8 +37,6 @@ export async function sendEmail(
     });
 
     try {
-        await transporter.verify();
-        
         await transporter.sendMail({
             from: {
                 name: smtpSettings.fromName,
@@ -451,4 +449,5 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
         return { success: false, error: (error as Error).message };
     }
 }
+
 
