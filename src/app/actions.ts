@@ -25,18 +25,18 @@ export async function sendEmail(
         return { success: false, error: 'SMTP settings are not fully configured.' };
     }
 
-    try {
-        const transporter = nodemailer.createTransport({
-            pool: false, // This can help prevent ECONNRESET errors by not reusing connections
-            host: smtpSettings.host,
-            port: smtpSettings.port,
-            secure: smtpSettings.secure,
-            auth: (smtpSettings.user && smtpSettings.pass) ? {
-                user: smtpSettings.user,
-                pass: smtpSettings.pass,
-            } : undefined,
-        });
+    const transporter = nodemailer.createTransport({
+        pool: false, // This is important to help prevent ECONNRESET errors
+        host: smtpSettings.host,
+        port: smtpSettings.port,
+        secure: smtpSettings.secure,
+        auth: (smtpSettings.user && smtpSettings.pass) ? {
+            user: smtpSettings.user,
+            pass: smtpSettings.pass,
+        } : undefined,
+    });
 
+    try {
         await transporter.verify();
         
         await transporter.sendMail({
@@ -60,6 +60,9 @@ export async function sendEmail(
     } catch (error) {
         console.error('Email sending failed:', error);
         return { success: false, error: (error as Error).message };
+    } finally {
+        // Explicitly close the connection to prevent pooling issues like ECONNRESET
+        transporter.close();
     }
 }
 
@@ -448,3 +451,4 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
         return { success: false, error: (error as Error).message };
     }
 }
+
