@@ -159,7 +159,7 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
-                    <FormControl><Input type="password" {...field} placeholder="your_password" /></FormControl>
+                    <FormControl><Input type="text" {...field} placeholder="your_password" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
