@@ -502,20 +502,20 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
                   <CardDescription>Overview for {format(currentDate, 'MMMM yyyy')}.</CardDescription>
               </CardHeader>
               <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-4 p-4 border rounded-lg">
-                          <CheckCircle className="h-8 w-8 text-green-500" />
-                          <div>
-                              <p className="text-muted-foreground">Will Receive Load</p>
-                              <p className="text-2xl font-bold">{monthlyStatus.willReceiveCount}</p>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-2">
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                              <p className="text-sm text-muted-foreground">Will Receive Load</p>
                           </div>
+                          <p className="text-lg font-bold">{monthlyStatus.willReceiveCount}</p>
                       </div>
-                      <div className="flex items-center gap-4 p-4 border rounded-lg">
-                          <XCircle className="h-8 w-8 text-red-500" />
-                          <div>
-                              <p className="text-muted-foreground">Will Not Receive</p>
-                              <p className="text-2xl font-bold">{monthlyStatus.willNotReceiveCount}</p>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                           <div className="flex items-center gap-2">
+                              <XCircle className="h-5 w-5 text-red-500" />
+                              <p className="text-sm text-muted-foreground">Will Not Receive</p>
                           </div>
+                          <p className="text-lg font-bold">{monthlyStatus.willNotReceiveCount}</p>
                       </div>
                   </div>
               </CardContent>
