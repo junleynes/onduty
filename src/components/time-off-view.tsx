@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format, isSameDay } from 'date-fns';
 import { getFullName } from '@/lib/utils';
-import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2 } from 'lucide-react';
+import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2, User, Calendar, Type, MessageSquare, Info } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,7 +43,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
 
   const myRequests = useMemo(() => 
-    leaveRequests.filter(req => req.employeeId === currentUser.id),
+    leaveRequests.filter(req => req.employeeId === currentUser.id).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()),
   [leaveRequests, currentUser.id]);
 
   const teamRequests = useMemo(() => 
@@ -51,7 +51,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
       ? leaveRequests.filter(req => {
           const employee = employees.find(e => e.id === req.employeeId);
           return employee?.group === currentUser.group;
-        })
+        }).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
       : [],
   [leaveRequests, employees, currentUser.group, isManager]);
   
@@ -145,70 +145,166 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
     setIsEmailDialogOpen(true);
   };
   
-  const RequestTable = ({ requests, forManagerView = false }: { requests: Leave[], forManagerView?: boolean }) => (
-     <Table>
-        <TableHeader>
-            <TableRow>
-            {forManagerView && <TableHead>Employee</TableHead>}
-            <TableHead>Type</TableHead>
-            <TableHead>Dates</TableHead>
-            <TableHead>Reason</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-            {requests.map(req => {
-              const employee = employees.find(e => e.id === req.employeeId);
-              const startDate = new Date(req.startDate);
-              const endDate = new Date(req.endDate);
-              const dateDisplay = isSameDay(startDate, endDate)
-                ? format(startDate, 'MMM d, yyyy')
-                : `${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`;
+  const RequestList = ({ requests, forManagerView = false }: { requests: Leave[], forManagerView?: boolean }) => {
 
-              return (
-                <TableRow key={req.id}>
-                    {forManagerView && <TableCell>{employee ? getFullName(employee) : 'Unknown'}</TableCell>}
-                    <TableCell className="font-medium">{req.type}</TableCell>
-                    <TableCell>{dateDisplay}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{req.reason}</TableCell>
-                    <TableCell><Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge></TableCell>
-                    <TableCell className="text-right">
-                        {forManagerView ? (
-                          req.status === 'pending' ? (
-                            <div className="flex gap-2 justify-end">
-                                <Button size="sm" variant="outline" className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => handleManageRequest(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
-                                <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => handleManageRequest(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
+    const renderActions = (req: Leave) => {
+        const employee = employees.find(e => e.id === req.employeeId);
+        if (forManagerView) {
+            if (req.status === 'pending') {
+                return (
+                    <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline" className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => handleManageRequest(req.id, 'approved')}><Check className="h-4 w-4 mr-1" />Approve</Button>
+                        <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => handleManageRequest(req.id, 'rejected')}><X className="h-4 w-4 mr-1" />Reject</Button>
+                    </div>
+                );
+            }
+            if (req.pdfDataUri) {
+                return (
+                    <div className="flex gap-2 justify-end flex-wrap">
+                        <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />View</Button></a>
+                        <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4 mr-1" />Download</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleOpenEmailDialog(req)}><Mail className="h-4 w-4 mr-1" />Email</Button>
+                    </div>
+                );
+            }
+        } else { // Not manager view
+            if (req.status === 'pending') {
+                return <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>Edit</Button>;
+            }
+            if (req.pdfDataUri) {
+                return (
+                    <div className="flex gap-2 justify-end">
+                        <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />View</Button></a>
+                        <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4 mr-1" />Download</Button>
+                    </div>
+                );
+            }
+        }
+        return null;
+    };
+    
+    return (
+        <div className="space-y-4 md:hidden">
+            {requests.map(req => {
+                 const employee = employees.find(e => e.id === req.employeeId);
+                 const startDate = new Date(req.startDate);
+                 const endDate = new Date(req.endDate);
+                 const dateDisplay = isSameDay(startDate, endDate)
+                    ? format(startDate, 'MMM d, yyyy')
+                    : `${format(startDate, 'MMM d')} - ${format(endDate, 'd, yyyy')}`;
+
+                return (
+                    <Card key={req.id}>
+                        <CardHeader className="p-4 flex flex-row items-center justify-between">
+                            <div>
+                                {forManagerView && <CardTitle className="text-base">{employee ? getFullName(employee) : 'Unknown'}</CardTitle>}
+                                <CardDescription className="flex items-center gap-2"><Calendar className="h-4 w-4"/> {dateDisplay}</CardDescription>
                             </div>
-                          ) : req.pdfDataUri && (
-                            <div className="flex gap-2 justify-end">
-                              <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
-                              <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4" /></Button>
-                              <Button size="sm" variant="outline" onClick={() => handleOpenEmailDialog(req)}><Mail className="h-4 w-4" /></Button>
+                            <Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0 space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                                <Type className="h-4 w-4 text-muted-foreground"/>
+                                <span className="font-medium">{req.type}</span>
                             </div>
-                          )
-                        ) : (
-                           req.status === 'pending' ? (
-                             <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>Edit</Button>
-                           ) : req.pdfDataUri && (
-                            <div className="flex gap-2 justify-end">
-                               <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
-                               <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4" /></Button>
+                            <div className="flex items-start gap-2">
+                                <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5"/>
+                                <p className="text-muted-foreground">{req.reason}</p>
                             </div>
-                           )
-                        )}
-                    </TableCell>
-                </TableRow>
-              )
+                            <div className="pt-2 flex justify-end">
+                                {renderActions(req)}
+                            </div>
+                        </CardContent>
+                    </Card>
+                );
             })}
-        </TableBody>
-    </Table>
-  );
+        </div>
+     );
+  };
+  
+  const RequestTable = ({ requests, forManagerView = false }: { requests: Leave[], forManagerView?: boolean }) => {
+    const renderActions = (req: Leave) => {
+        const employee = employees.find(e => e.id === req.employeeId);
+        if (forManagerView) {
+            if (req.status === 'pending') {
+                return (
+                    <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline" className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700" onClick={() => handleManageRequest(req.id, 'approved')}><Check className="h-4 w-4" /></Button>
+                        <Button size="sm" variant="outline" className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700" onClick={() => handleManageRequest(req.id, 'rejected')}><X className="h-4 w-4" /></Button>
+                    </div>
+                );
+            }
+            if (req.pdfDataUri) {
+                return (
+                    <div className="flex gap-2 justify-end">
+                        <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
+                        <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4" /></Button>
+                        <Button size="sm" variant="outline" onClick={() => handleOpenEmailDialog(req)}><Mail className="h-4 w-4" /></Button>
+                    </div>
+                );
+            }
+        } else { // Not manager view
+            if (req.status === 'pending') {
+                return <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>Edit</Button>;
+            }
+            if (req.pdfDataUri) {
+                return (
+                    <div className="flex gap-2 justify-end">
+                        <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
+                        <Button size="sm" variant="outline" onClick={() => handleDownloadPdf(req.pdfDataUri!, getFullName(employee!))}><FileDown className="h-4 w-4" /></Button>
+                    </div>
+                );
+            }
+        }
+        return null;
+    };
+    
+    return (
+        <div className="hidden md:block">
+         <Table>
+            <TableHeader>
+                <TableRow>
+                {forManagerView && <TableHead>Employee</TableHead>}
+                <TableHead>Type</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {requests.map(req => {
+                  const employee = employees.find(e => e.id === req.employeeId);
+                  const startDate = new Date(req.startDate);
+                  const endDate = new Date(req.endDate);
+                  const dateDisplay = isSameDay(startDate, endDate)
+                    ? format(startDate, 'MMM d, yyyy')
+                    : `${format(startDate, 'MMM d, yyyy')} - ${format(endDate, 'MMM d, yyyy')}`;
+
+                  return (
+                    <TableRow key={req.id}>
+                        {forManagerView && <TableCell>{employee ? getFullName(employee) : 'Unknown'}</TableCell>}
+                        <TableCell className="font-medium">{req.type}</TableCell>
+                        <TableCell>{dateDisplay}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{req.reason}</TableCell>
+                        <TableCell><Badge variant={req.status === 'approved' ? 'default' : req.status === 'rejected' ? 'destructive' : 'secondary'}>{req.status}</Badge></TableCell>
+                        <TableCell className="text-right">
+                           {renderActions(req)}
+                        </TableCell>
+                    </TableRow>
+                  )
+                })}
+            </TableBody>
+        </Table>
+        </div>
+    )
+  };
+
 
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <CardTitle>Time Off Requests</CardTitle>
             <CardDescription>Manage your leave requests and work extensions.</CardDescription>
@@ -233,11 +329,21 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
                     {isManager && <TabsTrigger value="team-requests">Team Requests</TabsTrigger>}
                 </TabsList>
                 <TabsContent value="my-requests">
-                    {myRequests.length > 0 ? <RequestTable requests={myRequests} /> : <p className="text-center text-muted-foreground p-8">You haven't made any requests yet.</p>}
+                    {myRequests.length > 0 ? (
+                        <>
+                           <RequestTable requests={myRequests} />
+                           <RequestList requests={myRequests} />
+                        </>
+                     ) : <p className="text-center text-muted-foreground p-8">You haven't made any requests yet.</p>}
                 </TabsContent>
                 {isManager && (
                     <TabsContent value="team-requests">
-                        {teamRequests.length > 0 ? <RequestTable requests={teamRequests} forManagerView /> : <p className="text-center text-muted-foreground p-8">Your team members haven't made any requests yet.</p>}
+                        {teamRequests.length > 0 ? (
+                            <>
+                                <RequestTable requests={teamRequests} forManagerView />
+                                <RequestList requests={teamRequests} forManagerView />
+                            </>
+                        ) : <p className="text-center text-muted-foreground p-8">Your team members haven't made any requests yet.</p>}
                     </TabsContent>
                 )}
             </Tabs>
