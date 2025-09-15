@@ -482,7 +482,6 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
   const isMemberEditingAllowed = useMemo(() => {
     if (isManager) return false;
     const today = new Date();
-    // Compare the start of the months to avoid timezone issues.
     const isViewingNextMonth = isSameMonth(startOfMonth(currentDate), startOfMonth(addMonths(today, 1)));
     const isEditingWindowActive = getDate(today) >= editableStartDay && getDate(today) <= editableEndDay;
     return isEditingWindowActive && isViewingNextMonth;
@@ -503,18 +502,14 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
               </CardHeader>
               <CardContent>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex items-center gap-2">
-                              <CheckCircle className="h-5 w-5 text-green-500" />
-                              <p className="text-sm text-muted-foreground">Will Receive Load</p>
-                          </div>
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          <p className="text-sm text-muted-foreground flex-1">Will Receive Load</p>
                           <p className="text-lg font-bold">{monthlyStatus.willReceiveCount}</p>
                       </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                           <div className="flex items-center gap-2">
-                              <XCircle className="h-5 w-5 text-red-500" />
-                              <p className="text-sm text-muted-foreground">Will Not Receive</p>
-                          </div>
+                      <div className="flex items-center gap-3 p-3 border rounded-lg">
+                          <XCircle className="h-5 w-5 text-red-500" />
+                          <p className="text-sm text-muted-foreground flex-1">Will Not Receive</p>
                           <p className="text-lg font-bold">{monthlyStatus.willNotReceiveCount}</p>
                       </div>
                   </div>
@@ -850,7 +845,7 @@ function EmailDialog({
                 }];
                 
                 toast({ title: 'Sending email...', description: `Sending report to ${to}.`});
-                const result = await sendEmail({ to, subject, htmlBody: body.replace(/\n/g, '<br>') }, smtpSettings);
+                const result = await sendEmail({ to, subject, htmlBody: body.replace(/\n/g, '<br>'), attachments }, smtpSettings);
 
                 if (result?.success) {
                     toast({ title: 'Email Sent', description: `Report sent to ${to}.` });

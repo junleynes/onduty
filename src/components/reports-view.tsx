@@ -260,34 +260,20 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 const isWorkingDay = dayData.status === 'SKE' || dayData.status === 'WFH';
                 const isNonWorkingDay = dayData.status === 'HOL OFF' || dayData.status === 'OFF' || dayData.leave !== null;
 
-                if (isWorkingDay) {
-                     if (dayData.shift) { // A specific shift is plotted
-                        scheduleInfo = {
-                            day_status: '',
-                            schedule_start: dayData.shift.startTime,
-                            schedule_end: dayData.shift.endTime,
-                            unpaidbreak_start: dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
-                            unpaidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
-                            paidbreak_start: !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
-                            paidbreak_end: !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
-                        };
-                    } else { // Should not happen if logic is correct, but as a fallback
-                        const defaultTemplate = getDefaultShiftTemplate(employee);
-                        scheduleInfo = {
-                             day_status: '',
-                            ...getScheduleFromTemplate(defaultTemplate),
-                        };
-                    }
-                } else if (isNonWorkingDay) { // A non-working day (Holiday, Leave, Day Off)
-                     const defaultTemplate = getDefaultShiftTemplate(employee);
-                     scheduleInfo = {
-                         day_status: '', // Keep status empty as requested
-                         ...getScheduleFromTemplate(defaultTemplate),
-                     };
-                } else { // A working day but no shift plotted, use default
+                if (isWorkingDay && dayData.shift) {
+                    scheduleInfo = {
+                        day_status: '',
+                        schedule_start: dayData.shift.startTime,
+                        schedule_end: dayData.shift.endTime,
+                        unpaidbreak_start: dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
+                        unpaidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
+                        paidbreak_start: !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
+                        paidbreak_end: !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
+                    };
+                } else {
                     const defaultTemplate = getDefaultShiftTemplate(employee);
                     scheduleInfo = {
-                         day_status: '',
+                         day_status: dayData.status || '',
                         ...getScheduleFromTemplate(defaultTemplate),
                     };
                 }
@@ -2042,7 +2028,7 @@ function EmailDialog({
                 }];
                 
                 toast({ title: 'Sending email...', description: `Sending report to ${to}.`});
-                const result = await sendEmail({ to, subject, htmlBody: body.replace(/\n/g, '<br>') }, smtpSettings);
+                const result = await sendEmail({ to, subject, htmlBody: body.replace(/\n/g, '<br>'), attachments }, smtpSettings);
 
                 if (result?.success) {
                     toast({ title: 'Email Sent', description: `Report sent to ${to}.` });
