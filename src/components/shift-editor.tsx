@@ -18,7 +18,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X, PlusCircle } from 'lucide-react';
+import { FileText, MoreHorizontal, Pencil, Copy, Trash2, X, PlusCircle, Repeat } from 'lucide-react';
 import { getFullName } from '@/lib/utils';
 import type { Employee, Shift, Task } from '@/types';
 import { Checkbox } from './ui/checkbox';
@@ -30,6 +30,8 @@ import { useToast } from '@/hooks/use-toast';
 import { DatePicker } from './ui/date-picker';
 import { Textarea } from './ui/textarea';
 import { v4 as uuidv4 } from 'uuid';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Separator } from './ui/separator';
 
 
 const shiftSchema = z.object({
@@ -45,12 +47,26 @@ const shiftSchema = z.object({
   breakStartTime: z.string().optional(),
   breakEndTime: z.string().optional(),
   isUnpaidBreak: z.boolean().optional(),
+  
+  // Repeat fields
+  repeat: z.boolean().optional(),
+  repeatType: z.enum(['occurrences', 'untilDate']).optional(),
+  repeatOccurrences: z.coerce.number().optional(),
+  repeatUntil: z.date().optional(),
 }).refine(data => {
     if (data.isDayOff || data.isHolidayOff) return true;
     return !!data.label && !!data.startTime && !!data.endTime;
 }, {
     message: "Label, start time, and end time are required for shifts.",
     path: ["label"],
+}).refine(data => {
+    if (!data.repeat) return true;
+    if (data.repeatType === 'occurrences') return data.repeatOccurrences && data.repeatOccurrences > 0;
+    if (data.repeatType === 'untilDate') return !!data.repeatUntil;
+    return false;
+}, {
+    message: "Please specify how to repeat the shift.",
+    path: ['repeatOccurrences'],
 });
 
 
@@ -66,11 +82,13 @@ export type ShiftTemplate = {
   isUnpaidBreak?: boolean;
 };
 
+export type ShiftWithRepeat = z.infer<typeof shiftSchema>;
+
 type ShiftEditorProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   shift: Shift | Partial<Shift> | null;
-  onSave: (shift: Shift | Partial<Shift>) => void;
+  onSave: (shift: ShiftWithRepeat) => void;
   onDelete: (shiftId: string) => void;
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
@@ -126,6 +144,9 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
         breakStartTime: shift?.breakStartTime || '',
         breakEndTime: shift?.breakEndTime || '',
         isUnpaidBreak: shift?.isUnpaidBreak || false,
+        repeat: false,
+        repeatType: 'occurrences',
+        repeatOccurrences: 1,
     },
   });
 
@@ -209,7 +230,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
         return;
     }
 
-    const finalValues = { ...values };
+    const finalValues: ShiftWithRepeat = { ...values };
     if (values.isDayOff) {
         finalValues.label = 'OFF';
         finalValues.startTime = '';
@@ -235,6 +256,8 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
   
   const isDayOff = form.watch('isDayOff');
   const isHolidayOff = form.watch('isHolidayOff');
+  const isRepeating = form.watch('repeat');
+  const repeatType = form.watch('repeatType');
 
   const handleTemplateClick = (template: ShiftTemplate) => {
     form.reset({
@@ -526,6 +549,63 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                             />
                         </>
                         )}
+                        
+                        {!shift?.id && !editingTemplate && (
+                            <>
+                            <Separator />
+                            <FormField
+                                control={form.control}
+                                name="repeat"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                    <FormControl>
+                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                    <FormLabel className="flex items-center gap-2">
+                                        <Repeat className="h-4 w-4" /> Repeat this shift
+                                    </FormLabel>
+                                    </div>
+                                </FormItem>
+                                )}
+                            />
+                            {isRepeating && (
+                                <div className="space-y-4 rounded-md border p-4">
+                                     <FormField
+                                        control={form.control}
+                                        name="repeatType"
+                                        render={({ field }) => (
+                                            <FormItem className="space-y-3">
+                                                <FormControl>
+                                                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                                                        <FormItem className="flex items-center space-x-3 space-y-0">
+                                                            <FormControl><RadioGroupItem value="occurrences" /></FormControl>
+                                                            <FormLabel className="font-normal">
+                                                                For the next <FormField control={form.control} name="repeatOccurrences" render={({ field: numField }) => (
+                                                                    <Input type="number" min="1" {...numField} className="inline-block w-20 mx-2 h-8" disabled={repeatType !== 'occurrences'} />
+                                                                )} /> occurrences, every day.
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                         <FormItem className="flex items-center space-x-3 space-y-0">
+                                                            <FormControl><RadioGroupItem value="untilDate" /></FormControl>
+                                                            <FormLabel className="font-normal flex items-center gap-2">
+                                                                Every day until <FormField control={form.control} name="repeatUntil" render={({ field: dateField }) => (
+                                                                     <DatePicker date={dateField.value} onDateChange={dateField.onChange} />
+                                                                )} />
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                    </RadioGroup>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            )}
+                            </>
+                        )}
+
+
                         <DialogFooter className="flex w-full flex-row sm:justify-between items-center">
                             <div className="flex items-center">
                                 {shift?.id && !editingTemplate && (

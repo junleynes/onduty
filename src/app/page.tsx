@@ -4,13 +4,13 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { UserRole, Employee, Shift, Leave, Notification, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, TardyRecord, RolePermissions } from '@/types';
-import type { ShiftTemplate } from '@/components/shift-editor';
+import type { ShiftTemplate, ShiftWithRepeat } from '@/components/shift-editor';
 import { SidebarProvider, Sidebar } from '@/components/ui/sidebar';
 import Header from '@/components/header';
 import SidebarNav from '@/components/sidebar-nav';
 import { useRouter } from 'next/navigation';
 import { useNotifications } from '@/hooks/use-notifications';
-import { isSameDay, getMonth, getDate, getYear, format, differenceInYears } from 'date-fns';
+import { isSameDay, getMonth, getDate, getYear, format, differenceInYears, addDays, isBefore } from 'date-fns';
 import { getData, saveAllData } from '@/lib/db-actions';
 import { addEmployee, updateEmployee } from '@/app/employee-actions';
 import { useToast } from '@/hooks/use-toast';
