@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
@@ -13,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from './ui/calendar';
 import { cn, getInitials, getBackgroundColor, getFullName } from '@/lib/utils';
-import { ShiftEditor, type ShiftTemplate } from './shift-editor';
+import { ShiftEditor, type ShiftTemplate, type ShiftWithRepeat } from './shift-editor';
 import { LeaveEditor } from './leave-editor';
 import { Progress } from './ui/progress';
 import { ShiftBlock } from './shift-block';
@@ -193,17 +192,55 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     }
   };
 
-  const handleSaveShift = (savedShift: Shift | Partial<Shift>) => {
+  const handleSaveShift = (savedShift: ShiftWithRepeat) => {
     if (isReadOnly) return;
-    const employee = employees.find(e => e.id === savedShift.employeeId)
+    const isEditing = !!savedShift.id;
+    const employee = employees.find(e => e.id === savedShift.employeeId);
     const employeeName = employee ? getFullName(employee) : 'Unassigned';
-    if ('id' in savedShift && savedShift.id) {
-      setShifts(shifts.map(s => s.id === savedShift.id ? { ...s, ...savedShift, status: 'draft' } as Shift : s));
-      addNotification({ message: `Shift for ${employeeName} on ${format(savedShift.date!, 'MMM d')} was updated.` });
+
+    if (isEditing) {
+        setShifts(shifts.map(s => s.id === savedShift.id ? { ...s, ...savedShift, status: 'draft' } as Shift : s));
+        addNotification({ message: `Shift for ${employeeName} on ${format(savedShift.date, 'MMM d')} was updated.` });
     } else {
-      const newShiftWithId = { ...savedShift, id: uuidv4(), status: 'draft' };
-      setShifts([...shifts, newShiftWithId as Shift]);
-      addNotification({ message: `New shift created for ${employeeName} on ${format(savedShift.date!, 'MMM d')}.` });
+        const newShifts: Shift[] = [];
+        const baseShift: Omit<Shift, 'id' | 'date'> = {
+            employeeId: savedShift.employeeId,
+            label: savedShift.label!,
+            startTime: savedShift.startTime!,
+            endTime: savedShift.endTime!,
+            color: savedShift.color,
+            isDayOff: savedShift.isDayOff,
+            isHolidayOff: savedShift.isHolidayOff,
+            status: 'draft',
+            breakStartTime: savedShift.breakStartTime,
+            breakEndTime: savedShift.breakEndTime,
+            isUnpaidBreak: savedShift.isUnpaidBreak,
+        };
+
+        if (savedShift.repeat) {
+            if (savedShift.repeatType === 'occurrences' && savedShift.repeatOccurrences) {
+                for (let i = 0; i < savedShift.repeatOccurrences; i++) {
+                    const shiftDate = addDays(savedShift.date, i);
+                    newShifts.push({ ...baseShift, id: uuidv4(), date: shiftDate });
+                }
+            } else if (savedShift.repeatType === 'untilDate' && savedShift.repeatUntil) {
+                let currentDate = savedShift.date;
+                while (currentDate <= savedShift.repeatUntil) {
+                    newShifts.push({ ...baseShift, id: uuidv4(), date: currentDate });
+                    currentDate = addDays(currentDate, 1);
+                }
+            }
+        } else {
+            newShifts.push({ ...baseShift, id: uuidv4(), date: savedShift.date });
+        }
+        
+        if (newShifts.length > 0) {
+            setShifts(prev => [...prev, ...newShifts]);
+            const notificationMessage = newShifts.length > 1 
+                ? `${newShifts.length} shifts created for ${employeeName}.`
+                : `New shift created for ${employeeName} on ${format(savedShift.date, 'MMM d')}.`;
+            addNotification({ message: notificationMessage });
+        }
     }
     setIsShiftEditorOpen(false);
     setEditingShift(null);
