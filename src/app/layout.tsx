@@ -5,6 +5,12 @@ import { Toaster } from "@/components/ui/toaster"
 export const metadata: Metadata = {
   title: 'OnDuty',
   description: 'Modern Duty Scheduling',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'OnDuty',
+  },
 };
 
 export default function RootLayout({
@@ -15,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="theme-color" content="#FFFFFF" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></link>
