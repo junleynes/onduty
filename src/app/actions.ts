@@ -2,7 +2,7 @@
 'use server';
 
 import type { SmtpSettings, Employee, Shift, AppVisibility, Leave } from '@/types';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { getDb } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
@@ -13,43 +13,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 type Attachment = {
     filename: string;
-    content: string; // base64 encoded content
-    contentType: string;
+    content: Buffer; // Use Buffer for content
 }
 
 export async function sendEmail(
     { to, subject, htmlBody, attachments }: { to: string, subject: string, htmlBody: string, attachments?: Attachment[] },
     smtpSettings: SmtpSettings
 ) {
-    if (!smtpSettings?.host || !smtpSettings?.port || !smtpSettings?.fromEmail || !smtpSettings?.fromName) {
-        return { success: false, error: 'SMTP settings are not fully configured.' };
-    }
-
-    const transporter = nodemailer.createTransport({
-        pool: false, // This is important to help prevent ECONNRESET errors
-        host: smtpSettings.host,
-        port: smtpSettings.port,
-        secure: smtpSettings.secure,
-        auth: (smtpSettings.user && smtpSettings.pass) ? {
-            user: smtpSettings.user,
-            pass: smtpSettings.pass,
-        } : undefined,
-    });
+    // Resend uses an API key, which we'll manage via an environment variable.
+    // For SMTP, we'll map the settings to the Resend SMTP transport options.
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     try {
-        await transporter.sendMail({
-            from: {
-                name: smtpSettings.fromName,
-                address: smtpSettings.fromEmail
-            },
-            to,
-            subject,
+        await resend.emails.send({
+            from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
+            to: to,
+            subject: subject,
             html: htmlBody,
             attachments: attachments?.map(att => ({
                 filename: att.filename,
                 content: att.content,
-                encoding: 'base64',
-                contentType: att.contentType,
             }))
         });
         
@@ -58,9 +41,6 @@ export async function sendEmail(
     } catch (error) {
         console.error('Email sending failed:', error);
         return { success: false, error: (error as Error).message };
-    } finally {
-        // Explicitly close the connection to prevent pooling issues like ECONNRESET
-        transporter.close();
     }
 }
 

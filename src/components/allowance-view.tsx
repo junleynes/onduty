@@ -836,12 +836,10 @@ function EmailDialog({
                     toast({ variant: 'destructive', title: 'Cannot Send', description: 'The report could not be generated.' });
                     return;
                 }
-                const excelData = excelBuffer.toString('base64');
 
                 const attachments = [{
                     filename: fileName,
-                    content: excelData,
-                    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    content: excelBuffer,
                 }];
                 
                 toast({ title: 'Sending email...', description: `Sending report to ${to}.`});

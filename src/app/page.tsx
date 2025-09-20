@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -525,7 +526,7 @@ function AppContent() {
                 }
             } else if (savedShift.repeatType === 'untilDate' && savedShift.repeatUntil) {
                 let currentDate = savedShift.date;
-                while (currentDate <= savedShift.repeatUntil) {
+                while (isBefore(currentDate, savedShift.repeatUntil) || isSameDay(currentDate, savedShift.repeatUntil)) {
                     newShifts.push({ ...baseShift, id: uuidv4(), date: currentDate });
                     currentDate = addDays(currentDate, 1);
                 }

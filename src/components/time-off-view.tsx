@@ -430,8 +430,7 @@ Onduty Admin`;
         startTransition(async () => {
             const attachment = {
                 filename: `Leave Application - ${requester ? getFullName(requester) : 'Unknown'}.pdf`,
-                content: leaveRequest.pdfDataUri!.split('base64,')[1],
-                contentType: 'application/pdf',
+                content: Buffer.from(leaveRequest.pdfDataUri!.split('base64,')[1], 'base64'),
             };
 
             toast({ title: 'Sending email...', description: `Sending leave form to ${to}` });

@@ -17,11 +17,13 @@ import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { sendEmail } from '@/app/actions';
 import { Loader2, Mail } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 const smtpSchema = z.object({
-  host: z.string().min(1, 'Host is required'),
-  port: z.coerce.number().min(1, 'Port is required'),
-  secure: z.boolean(),
+  host: z.string().optional(),
+  port: z.coerce.number().optional(),
+  secure: z.boolean().optional(),
   user: z.string().optional(),
   pass: z.string().optional(),
   fromEmail: z.string().email('Invalid email address'),
@@ -29,11 +31,12 @@ const smtpSchema = z.object({
 });
 
 const smtpTemplates = [
-    { name: 'Custom', host: '', port: 587, secure: true },
+    { name: 'Resend (Recommended)', host: 'smtp.resend.com', port: 465, secure: true },
+    { name: 'Custom SMTP', host: '', port: 587, secure: true },
     { name: 'Gmail', host: 'smtp.gmail.com', port: 465, secure: true },
-    { name: 'Outlook/Hotmail', host: 'smtp-mail.outlook.com', port: 587, secure: false }, // uses STARTTLS which is handled by nodemailer's `secure: false` on port 587
+    { name: 'Outlook/Hotmail', host: 'smtp-mail.outlook.com', port: 587, secure: false },
     { name: 'Yahoo', host: 'smtp.mail.yahoo.com', port: 465, secure: true },
-    { name: 'iCloud', host: 'smtp.mail.me.com', port: 587, secure: false }, // uses STARTTLS
+    { name: 'iCloud', host: 'smtp.mail.me.com', port: 587, secure: false },
 ];
 
 type SmtpSettingsViewProps = {
@@ -96,14 +99,22 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardHeader>
-            <CardTitle>SMTP Settings</CardTitle>
+            <CardTitle>Email Settings</CardTitle>
             <CardDescription>
-              Configure your external email server for sending notifications.
+              Configure your email service for sending notifications and reports. We recommend using Resend.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+             <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Resend API Key</AlertTitle>
+                <AlertDescription>
+                    To use Resend for sending emails, you must set the `RESEND_API_KEY` in your environment variables. The SMTP fields below can then be left blank. You can get an API key from your <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Resend dashboard</a>.
+                </AlertDescription>
+             </Alert>
+
              <div className="space-y-2">
-                <Label>Template</Label>
+                <Label>Template (for other providers)</Label>
                  <Select onValueChange={handleTemplateChange}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select a template..." />

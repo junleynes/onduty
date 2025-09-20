@@ -8,8 +8,7 @@
     "build": "next build",
     "start": "next start -p 30000",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "postinstall": "patch-package"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.7",
@@ -40,22 +39,20 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
-    "debug": "4.3.4",
     "embla-carousel-react": "^8.6.0",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "firebase": "^11.9.1",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
-    "nodemailer": "^6.9.14",
     "papaparse": "^5.4.1",
-    "patch-package": "^8.0.0",
     "pdf-lib": "^1.17.1",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",
     "recharts": "^2.15.1",
+    "resend": "^3.5.0",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",
@@ -65,7 +62,6 @@
     "@types/better-sqlite3": "^7.6.11",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
-    "@types/nodemailer": "^6.4.15",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -73,8 +69,5 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
-  },
-  "overrides": {
-    "debug": "4.3.4"
   }
 }
