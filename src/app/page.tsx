@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -233,6 +232,22 @@ function AppContent() {
     }
     loadDataAndAuth();
   }, [router, toast]);
+  
+    // Effect to register Service Worker
+    useEffect(() => {
+        if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(
+                    (registration) => {
+                        console.log('Service Worker registration successful with scope: ', registration.scope);
+                    },
+                    (err) => {
+                        console.log('Service Worker registration failed: ', err);
+                    }
+                );
+            });
+        }
+    }, []);
 
 
   // Effect for sending celebration notifications
