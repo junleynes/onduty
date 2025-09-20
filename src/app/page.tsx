@@ -534,18 +534,21 @@ function AppContent() {
         };
 
         if (savedShift.repeat) {
+            let dates: Date[] = [];
             if (savedShift.repeatType === 'occurrences' && savedShift.repeatOccurrences) {
                 for (let i = 0; i < savedShift.repeatOccurrences; i++) {
-                    const shiftDate = addDays(savedShift.date, i);
-                    newShifts.push({ ...baseShift, id: uuidv4(), date: shiftDate });
+                    dates.push(addDays(savedShift.date, i));
                 }
             } else if (savedShift.repeatType === 'untilDate' && savedShift.repeatUntil) {
                 let currentDate = savedShift.date;
                 while (isBefore(currentDate, savedShift.repeatUntil) || isSameDay(currentDate, savedShift.repeatUntil)) {
-                    newShifts.push({ ...baseShift, id: uuidv4(), date: currentDate });
+                    dates.push(currentDate);
                     currentDate = addDays(currentDate, 1);
                 }
             }
+            dates.forEach(date => {
+                newShifts.push({ ...baseShift, id: uuidv4(), date });
+            });
         } else {
             newShifts.push({ ...baseShift, id: uuidv4(), date: savedShift.date });
         }
@@ -906,4 +909,3 @@ export default function Home() {
     </SidebarProvider>
   );
 }
-
