@@ -35,6 +35,10 @@ export async function sendEmail(
             user: smtpSettings.user,
             pass: smtpSettings.pass,
         },
+        requireTLS: true,
+        tls: {
+            rejectUnauthorized: false
+        }
     });
 
     try {
@@ -449,4 +453,5 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
     
 
     
+
 
