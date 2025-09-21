@@ -2,7 +2,7 @@
 'use server';
 
 import type { SmtpSettings, Employee, Shift, AppVisibility, Leave } from '@/types';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { getDb } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
@@ -23,30 +23,36 @@ export async function sendEmail(
     if (!smtpSettings.fromEmail || !smtpSettings.fromName) {
         return { success: false, error: 'SMTP settings (From Email and From Name) are not configured.' };
     }
-    
-    // Use Resend API key if it's available in environment variables
-    if (process.env.RESEND_API_KEY) {
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        try {
-            await resend.emails.send({
-                from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
-                to: to,
-                subject: subject,
-                html: htmlBody,
-                attachments: attachments?.map(att => ({
-                    filename: att.filename,
-                    content: att.content,
-                }))
-            });
-            return { success: true };
-        } catch (error) {
-            console.error('Email sending with Resend API failed:', error);
-            return { success: false, error: (error as Error).message };
-        }
+    if (!smtpSettings.host || !smtpSettings.port || !smtpSettings.user || !smtpSettings.pass) {
+        return { success: false, error: 'SMTP connection settings (Host, Port, User, Pass) are not fully configured.' };
     }
 
-    // If no Resend API key is configured
-    return { success: false, error: 'Email sending is not configured. Please set the RESEND_API_KEY environment variable.' };
+    const transporter = nodemailer.createTransport({
+        host: smtpSettings.host,
+        port: smtpSettings.port,
+        secure: smtpSettings.secure, 
+        auth: {
+            user: smtpSettings.user,
+            pass: smtpSettings.pass,
+        },
+    });
+
+    try {
+        await transporter.sendMail({
+            from: `"${smtpSettings.fromName}" <${smtpSettings.fromEmail}>`,
+            to: to,
+            subject: subject,
+            html: htmlBody,
+            attachments: attachments?.map(att => ({
+                filename: att.filename,
+                content: att.content,
+            }))
+        });
+        return { success: true };
+    } catch (error) {
+        console.error('Email sending with nodemailer failed:', error);
+        return { success: false, error: (error as Error).message };
+    }
 }
 
 
@@ -443,3 +449,4 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
     
 
     
+

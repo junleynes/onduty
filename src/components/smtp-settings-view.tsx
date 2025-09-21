@@ -21,22 +21,22 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 
 const smtpSchema = z.object({
-  host: z.string().optional(),
-  port: z.coerce.number().optional(),
+  host: z.string().min(1, 'Host is required'),
+  port: z.coerce.number().min(1, 'Port is required'),
   secure: z.boolean().optional(),
-  user: z.string().optional(),
-  pass: z.string().optional(),
+  user: z.string().min(1, 'Username is required'),
+  pass: z.string().min(1, 'Password is required'),
   fromEmail: z.string().email('Invalid email address'),
   fromName: z.string().min(1, 'From name is required'),
 });
 
 const smtpTemplates = [
-    { name: 'Resend (Recommended)', host: 'smtp.resend.com', port: 465, secure: true },
     { name: 'Custom SMTP', host: '', port: 587, secure: true },
     { name: 'Gmail', host: 'smtp.gmail.com', port: 465, secure: true },
     { name: 'Outlook/Hotmail', host: 'smtp-mail.outlook.com', port: 587, secure: false },
     { name: 'Yahoo', host: 'smtp.mail.yahoo.com', port: 465, secure: true },
     { name: 'iCloud', host: 'smtp.mail.me.com', port: 587, secure: false },
+    { name: 'Resend', host: 'smtp.resend.com', port: 465, secure: true, user: 'resend' },
 ];
 
 type SmtpSettingsViewProps = {
@@ -69,6 +69,10 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
         form.setValue('host', template.host);
         form.setValue('port', template.port);
         form.setValue('secure', template.secure);
+        if (template.user) {
+            form.setValue('user', template.user);
+            form.setValue('pass', 'YOUR_RESEND_API_KEY');
+        }
     }
   };
 
@@ -101,20 +105,20 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
           <CardHeader>
             <CardTitle>Email Settings</CardTitle>
             <CardDescription>
-              Configure your email service for sending notifications and reports. We recommend using Resend.
+              Configure your SMTP email service for sending notifications and reports.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
              <Alert>
                 <Info className="h-4 w-4" />
-                <AlertTitle>Resend API Key</AlertTitle>
+                <AlertTitle>Using Resend?</AlertTitle>
                 <AlertDescription>
-                    To use Resend for sending emails, you must set the `RESEND_API_KEY` in your environment variables. The SMTP fields below can then be left blank. You can get an API key from your <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Resend dashboard</a>.
+                    Select the "Resend" template, enter "resend" as the username, and use your Resend API key as the password.
                 </AlertDescription>
              </Alert>
 
              <div className="space-y-2">
-                <Label>Template (for other providers)</Label>
+                <Label>Template</Label>
                  <Select onValueChange={handleTemplateChange}>
                     <SelectTrigger>
                         <SelectValue placeholder="Select a template..." />
@@ -169,7 +173,7 @@ export default function SmtpSettingsView({ settings, onSave }: SmtpSettingsViewP
                 name="pass"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Password / API Key</FormLabel>
                     <FormControl><Input type="text" {...field} placeholder="your_password" /></FormControl>
                     <FormMessage />
                   </FormItem>
