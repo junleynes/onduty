@@ -729,7 +729,7 @@ export function ShiftEditor(props: ShiftEditorProps) {
     }
     return (
         <Dialog open={props.isOpen} onOpenChange={props.setIsOpen}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-lg">
                 <ShiftEditorForm {...props} />
             </DialogContent>
         </Dialog>
