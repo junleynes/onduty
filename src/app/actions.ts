@@ -30,14 +30,13 @@ export async function sendEmail(
     const transporter = nodemailer.createTransport({
         host: smtpSettings.host,
         port: smtpSettings.port,
-        secure: smtpSettings.secure, 
+        secure: smtpSettings.port === 465, // Use SSL for port 465, otherwise STARTTLS
         auth: {
             user: smtpSettings.user,
             pass: smtpSettings.pass,
         },
-        requireTLS: true,
         tls: {
-            rejectUnauthorized: false
+            rejectUnauthorized: false // Often required for cloud environments
         }
     });
 
@@ -453,6 +452,7 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
     
 
     
+
 
 
 
