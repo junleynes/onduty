@@ -337,10 +337,10 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                 <TabsTrigger value="tasks" disabled={!shift?.id || isDayOff || isHolidayOff}>Tasks</TabsTrigger>
                 <TabsTrigger value="templates" disabled={!!editingTemplate}>Templates</TabsTrigger>
             </TabsList>
-            <TabsContent value="details" className="flex flex-col h-[60vh]">
+            <TabsContent value="details">
                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
-                        <ScrollArea className="flex-grow pr-6">
+                    <form onSubmit={form.handleSubmit(onSubmit)}>
+                        <ScrollArea className="h-[55vh] pr-6">
                             <div className="space-y-4 py-4">
                                 {!editingTemplate && (
                                     <>
@@ -609,7 +609,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                             </div>
                         </ScrollArea>
 
-                        <DialogFooter className="flex-shrink-0 flex w-full flex-row sm:justify-between items-center pt-4 mt-auto border-t">
+                        <DialogFooter className="flex-shrink-0 flex w-full flex-row sm:justify-between items-center pt-4 border-t">
                             <div className="flex items-center">
                                 {shift?.id && !editingTemplate && (
                                     <Button type="button" variant="destructive" onClick={handleDelete} className="mr-auto">
@@ -637,21 +637,21 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                 </Form>
             </TabsContent>
             <TabsContent value="tasks">
-                <div className="space-y-4 py-4">
-                    <Card>
-                        <CardContent className="p-4 space-y-2">
-                             <h4 className="font-semibold">{editingTask ? 'Edit Task' : 'Add New Task'}</h4>
-                             <Input placeholder="Task Title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
-                             <Textarea placeholder="Task Description (optional)" value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} />
-                             <div className="flex justify-end gap-2">
-                                 {editingTask && <Button variant="ghost" onClick={() => setEditingTask(null)}>Cancel Edit</Button>}
-                                 <Button onClick={handleSaveTask} disabled={!taskTitle}>{editingTask ? 'Save Changes' : 'Add Task'}</Button>
-                             </div>
-                        </CardContent>
-                    </Card>
-                    <h4 className="font-semibold pt-4">Assigned Tasks</h4>
-                    <ScrollArea className="h-48">
-                        <div className="space-y-2 pr-4">
+                <ScrollArea className="h-[55vh] pr-6">
+                    <div className="space-y-4 py-4">
+                        <Card>
+                            <CardContent className="p-4 space-y-2">
+                                <h4 className="font-semibold">{editingTask ? 'Edit Task' : 'Add New Task'}</h4>
+                                <Input placeholder="Task Title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
+                                <Textarea placeholder="Task Description (optional)" value={taskDescription} onChange={(e) => setTaskDescription(e.target.value)} />
+                                <div className="flex justify-end gap-2">
+                                    {editingTask && <Button variant="ghost" onClick={() => setEditingTask(null)}>Cancel Edit</Button>}
+                                    <Button onClick={handleSaveTask} disabled={!taskTitle}>{editingTask ? 'Save Changes' : 'Add Task'}</Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <h4 className="font-semibold pt-4">Assigned Tasks</h4>
+                        <div className="space-y-2">
                             {tasksForShift.length > 0 ? tasksForShift.map(task => (
                                 <Card key={task.id} className="p-3 group">
                                     <div className="flex justify-between items-start">
@@ -663,7 +663,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingTask(task)}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteTask(task.id)}>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteTask(task.id)}>
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -673,12 +673,12 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                                 <p className="text-sm text-muted-foreground text-center py-4">No tasks assigned to this shift yet.</p>
                             )}
                         </div>
-                    </ScrollArea>
-                </div>
+                    </div>
+                </ScrollArea>
             </TabsContent>
             <TabsContent value="templates">
-                <ScrollArea className="h-96">
-                    <div className="space-y-2 p-4">
+                <ScrollArea className="h-[55vh] pr-6">
+                    <div className="space-y-2 py-4">
                         {shiftTemplates.map((template) => (
                            <Card key={template.id} className="p-3 hover:bg-muted group">
                                <div className="flex items-center justify-between">
@@ -732,9 +732,11 @@ export function ShiftEditor(props: ShiftEditorProps) {
     }
     return (
         <Dialog open={props.isOpen} onOpenChange={props.setIsOpen}>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-lg">
                 <ShiftEditorForm {...props} />
             </DialogContent>
         </Dialog>
     );
 }
+
+    
