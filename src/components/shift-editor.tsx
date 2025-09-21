@@ -338,6 +338,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                 <TabsTrigger value="templates" disabled={!!editingTemplate}>Templates</TabsTrigger>
             </TabsList>
             <TabsContent value="details">
+              <ScrollArea className="max-h-[60vh] pr-6">
                  <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                         {!editingTemplate && (
@@ -606,7 +607,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                         )}
 
 
-                        <DialogFooter className="flex w-full flex-row sm:justify-between items-center">
+                        <DialogFooter className="flex w-full flex-row sm:justify-between items-center sticky bottom-0 bg-background py-4">
                             <div className="flex items-center">
                                 {shift?.id && !editingTemplate && (
                                     <Button type="button" variant="destructive" onClick={handleDelete} className="mr-auto">
@@ -632,6 +633,7 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                         </DialogFooter>
                     </form>
                 </Form>
+              </ScrollArea>
             </TabsContent>
             <TabsContent value="tasks">
                 <div className="space-y-4 py-4">
