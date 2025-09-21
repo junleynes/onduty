@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
 import type { LeaveTypeOption } from './leave-type-editor';
-import { generateLeavePdf, sendEmail } from '@/app/actions';
+import { generateLeavePdf, sendEmail, purgeData } from '@/app/actions';
 import type { SmtpSettings } from '@/types';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
@@ -39,6 +39,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [isPurging, startPurgeTransition] = useTransition();
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
   const [emailingRequest, setEmailingRequest] = useState<Leave | null>(null);
 
@@ -148,11 +149,15 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
   };
 
   const handleClearAllRequests = () => {
-    // This will only clear requests for the current manager's group in the `teamRequests` tab.
-    // My Requests will remain untouched.
-    const teamRequestIds = new Set(teamRequests.map(req => req.id));
-    setLeaveRequests(prev => prev.filter(req => !teamRequestIds.has(req.id)));
-    toast({ title: 'Team Requests Cleared', variant: 'destructive', description: 'All time off requests for your team have been deleted.' });
+    startPurgeTransition(async () => {
+        const result = await purgeData('leave');
+        if (result.success) {
+            setLeaveRequests([]);
+            toast({ title: 'All Requests Cleared', variant: 'destructive', description: 'All time off requests have been permanently deleted.' });
+        } else {
+            toast({ title: 'Clear Failed', description: result.error, variant: 'destructive' });
+        }
+    });
   }
   
   const RequestList = ({ requests, forManagerView = false }: { requests: Leave[], forManagerView?: boolean }) => {
@@ -323,8 +328,8 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
                 {isManager && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive">
-                                <Trash2 className="h-4 w-4 mr-2" />
+                            <Button variant="destructive" disabled={isPurging}>
+                                {isPurging ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
                                 Clear All
                             </Button>
                         </AlertDialogTrigger>
