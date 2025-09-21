@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format, isSameDay } from 'date-fns';
 import { getFullName } from '@/lib/utils';
-import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2, User, Calendar, Type, MessageSquare, Info } from 'lucide-react';
+import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2, User, Calendar, Type, MessageSquare, Info, Trash2 } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+
 
 type TimeOffViewProps = {
   leaveRequests: Leave[];
@@ -144,6 +146,14 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
     setEmailingRequest(leaveRequest);
     setIsEmailDialogOpen(true);
   };
+
+  const handleClearAllRequests = () => {
+    // This will only clear requests for the current manager's group in the `teamRequests` tab.
+    // My Requests will remain untouched.
+    const teamRequestIds = new Set(teamRequests.map(req => req.id));
+    setLeaveRequests(prev => prev.filter(req => !teamRequestIds.has(req.id)));
+    toast({ title: 'Team Requests Cleared', variant: 'destructive', description: 'All time off requests for your team have been deleted.' });
+  }
   
   const RequestList = ({ requests, forManagerView = false }: { requests: Leave[], forManagerView?: boolean }) => {
 
@@ -310,6 +320,28 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, currentUs
             <CardDescription>Manage your leave requests and work extensions.</CardDescription>
           </div>
            <div className="flex gap-2">
+                {isManager && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Clear All
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action will permanently delete all time off requests for your team. This cannot be undone.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleClearAllRequests}>Continue</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
                 {isManager && (
                     <Button variant="outline" onClick={onUploadAlaf}>
                         <Upload className="h-4 w-4 mr-2" />
