@@ -337,303 +337,304 @@ function ShiftEditorForm({ isOpen, setIsOpen, shift, onSave, onDelete, employees
                 <TabsTrigger value="tasks" disabled={!shift?.id || isDayOff || isHolidayOff}>Tasks</TabsTrigger>
                 <TabsTrigger value="templates" disabled={!!editingTemplate}>Templates</TabsTrigger>
             </TabsList>
-            <TabsContent value="details">
-              <ScrollArea className="max-h-[60vh] pr-6">
+            <TabsContent value="details" className="flex flex-col">
                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                        {!editingTemplate && (
-                            <>
-                            <FormField
-                                control={form.control}
-                                name="employeeId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Employee</FormLabel>
-                                    <Select onValueChange={(value) => field.onChange(value === 'unassigned' ? null : value)} defaultValue={field.value || 'unassigned'}>
-                                        <FormControl>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select an employee" />
-                                        </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                        <SelectItem value={'unassigned'}>Unassigned</SelectItem>
-                                        {employees.map(emp => (
-                                            <SelectItem key={emp.id} value={emp.id}>{getFullName(emp)}</SelectItem>
-                                        ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <FormMessage />
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
+                      <ScrollArea className="max-h-[60vh] flex-grow pr-6">
+                        <div className="space-y-4 py-4">
+                            {!editingTemplate && (
+                                <>
+                                <FormField
+                                    control={form.control}
+                                    name="employeeId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Employee</FormLabel>
+                                        <Select onValueChange={(value) => field.onChange(value === 'unassigned' ? null : value)} defaultValue={field.value || 'unassigned'}>
+                                            <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select an employee" />
+                                            </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                            <SelectItem value={'unassigned'}>Unassigned</SelectItem>
+                                            {employees.map(emp => (
+                                                <SelectItem key={emp.id} value={emp.id}>{getFullName(emp)}</SelectItem>
+                                            ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name="date"
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                      <FormLabel>Date</FormLabel>
+                                       <DatePicker
+                                            date={field.value}
+                                            onDateChange={field.onChange}
+                                        />
+                                      <FormMessage />
                                     </FormItem>
-                                )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="date"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                  <FormLabel>Date</FormLabel>
-                                   <DatePicker
-                                        date={field.value}
-                                        onDateChange={field.onChange}
-                                    />
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                             <div className="flex gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="isDayOff"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                            <FormControl>
-                                                <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={(checked) => {
-                                                    field.onChange(checked);
-                                                    if (checked) form.setValue('isHolidayOff', false);
-                                                }}
-                                                />
-                                            </FormControl>
-                                            <div className="space-y-1 leading-none">
-                                                <FormLabel>
-                                                OFF
-                                                </FormLabel>
-                                            </div>
-                                        </FormItem>
-                                    )}
+                                  )}
                                 />
-                                <FormField
-                                    control={form.control}
-                                    name="isHolidayOff"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                                            <FormControl>
-                                                <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={(checked) => {
-                                                    field.onChange(checked);
-                                                    if (checked) form.setValue('isDayOff', false);
-                                                }}
-                                                />
-                                            </FormControl>
-                                            <div className="space-y-1 leading-none">
-                                                <FormLabel>
-                                                HOL-OFF
-                                                </FormLabel>
-                                            </div>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                            </>
-                        )}
-                        
-
-                        {!isDayOff && !isHolidayOff && (
-                        <>
-                            <FormField
-                            control={form.control}
-                            name="label"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Shift Label</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="e.g., Morning Shift" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="startTime"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Start Time</FormLabel>
-                                            <FormControl>
-                                                <Input type="time" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="endTime"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>End Time</FormLabel>
-                                            <FormControl>
-                                                <Input type="time" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                             <div className="space-y-2 rounded-md border p-4">
-                                <div className="flex items-center justify-between">
-                                    <FormLabel>Break Time</FormLabel>
-                                     <FormField
+                                 <div className="flex gap-4">
+                                    <FormField
                                         control={form.control}
-                                        name="isUnpaidBreak"
+                                        name="isDayOff"
                                         render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
                                                 <FormControl>
                                                     <Checkbox
-                                                        checked={field.value}
-                                                        onCheckedChange={field.onChange}
+                                                    checked={field.value}
+                                                    onCheckedChange={(checked) => {
+                                                        field.onChange(checked);
+                                                        if (checked) form.setValue('isHolidayOff', false);
+                                                    }}
                                                     />
                                                 </FormControl>
-                                                <FormLabel className="text-sm font-normal">
-                                                    Unpaid Break
-                                                </FormLabel>
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 pt-2">
-                                     <FormField
-                                        control={form.control}
-                                        name="breakStartTime"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-xs text-muted-foreground">Break Start</FormLabel>
-                                                <FormControl>
-                                                    <Input type="time" {...field} />
-                                                </FormControl>
+                                                <div className="space-y-1 leading-none">
+                                                    <FormLabel>
+                                                    OFF
+                                                    </FormLabel>
+                                                </div>
                                             </FormItem>
                                         )}
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="breakEndTime"
+                                        name="isHolidayOff"
                                         render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-xs text-muted-foreground">Break End</FormLabel>
+                                            <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
                                                 <FormControl>
-                                                    <Input type="time" {...field} />
+                                                    <Checkbox
+                                                    checked={field.value}
+                                                    onCheckedChange={(checked) => {
+                                                        field.onChange(checked);
+                                                        if (checked) form.setValue('isDayOff', false);
+                                                    }}
+                                                    />
                                                 </FormControl>
+                                                <div className="space-y-1 leading-none">
+                                                    <FormLabel>
+                                                    HOL-OFF
+                                                    </FormLabel>
+                                                </div>
                                             </FormItem>
                                         )}
                                     />
                                 </div>
-                             </div>
-                            <FormField
-                            control={form.control}
-                            name="color"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Shift Color</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a color" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {shiftColorOptions.map(option => (
-                                        <SelectItem key={option.label} value={option.value}>
-                                        <div className="flex items-center gap-2">
-                                                {option.value && option.value !== 'default' && <div className="w-4 h-4 rounded-full border" style={{backgroundColor: option.value}} />}
-                                                <span>{option.label}</span>
-                                        </div>
-                                        </SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
+                                </>
                             )}
-                            />
-                        </>
-                        )}
-                        
-                        {!shift?.id && !editingTemplate && (
+                            
+
+                            {!isDayOff && !isHolidayOff && (
                             <>
-                            <Separator />
-                            <FormField
+                                <FormField
                                 control={form.control}
-                                name="repeat"
+                                name="label"
                                 render={({ field }) => (
-                                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                    <FormItem>
+                                    <FormLabel>Shift Label</FormLabel>
                                     <FormControl>
-                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                        <Input placeholder="e.g., Morning Shift" {...field} />
                                     </FormControl>
-                                    <div className="space-y-1 leading-none">
-                                    <FormLabel className="flex items-center gap-2">
-                                        <Repeat className="h-4 w-4" /> Repeat this shift
-                                    </FormLabel>
-                                    </div>
-                                </FormItem>
+                                    <FormMessage />
+                                    </FormItem>
                                 )}
-                            />
-                            {isRepeating && (
-                                <div className="space-y-4 rounded-md border p-4">
-                                     <FormField
+                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField
                                         control={form.control}
-                                        name="repeatType"
+                                        name="startTime"
                                         render={({ field }) => (
-                                            <FormItem className="space-y-3">
+                                            <FormItem>
+                                                <FormLabel>Start Time</FormLabel>
                                                 <FormControl>
-                                                    <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
-                                                        <FormItem className="flex items-center space-x-3 space-y-0">
-                                                            <FormControl><RadioGroupItem value="occurrences" /></FormControl>
-                                                            <FormLabel className="font-normal">
-                                                                For the next <FormField control={form.control} name="repeatOccurrences" render={({ field: numField }) => (
-                                                                    <Input type="number" min="1" {...numField} className="inline-block w-20 mx-2 h-8" disabled={repeatType !== 'occurrences'} />
-                                                                )} /> occurrences, every day.
-                                                            </FormLabel>
-                                                        </FormItem>
-                                                         <FormItem className="flex items-center space-x-3 space-y-0">
-                                                            <FormControl><RadioGroupItem value="untilDate" /></FormControl>
-                                                            <FormLabel className="font-normal flex items-center gap-2">
-                                                                Every day until <FormField control={form.control} name="repeatUntil" render={({ field: dateField }) => (
-                                                                     <DatePicker date={dateField.value} onDateChange={dateField.onChange} />
-                                                                )} />
-                                                            </FormLabel>
-                                                        </FormItem>
-                                                    </RadioGroup>
+                                                    <Input type="time" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="endTime"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>End Time</FormLabel>
+                                                <FormControl>
+                                                    <Input type="time" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
-                            )}
+                                 <div className="space-y-2 rounded-md border p-4">
+                                    <div className="flex items-center justify-between">
+                                        <FormLabel>Break Time</FormLabel>
+                                         <FormField
+                                            control={form.control}
+                                            name="isUnpaidBreak"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={field.value}
+                                                            onCheckedChange={field.onChange}
+                                                        />
+                                                    </FormControl>
+                                                    <FormLabel className="text-sm font-normal">
+                                                        Unpaid Break
+                                                    </FormLabel>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 pt-2">
+                                         <FormField
+                                            control={form.control}
+                                            name="breakStartTime"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs text-muted-foreground">Break Start</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="time" {...field} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="breakEndTime"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs text-muted-foreground">Break End</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="time" {...field} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                 </div>
+                                <FormField
+                                control={form.control}
+                                name="color"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Shift Color</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a color" />
+                                        </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                        {shiftColorOptions.map(option => (
+                                            <SelectItem key={option.label} value={option.value}>
+                                            <div className="flex items-center gap-2">
+                                                    {option.value && option.value !== 'default' && <div className="w-4 h-4 rounded-full border" style={{backgroundColor: option.value}} />}
+                                                    <span>{option.label}</span>
+                                            </div>
+                                            </SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
                             </>
-                        )}
-
-
-                        <DialogFooter className="flex w-full flex-row sm:justify-between items-center sticky bottom-0 bg-background py-4">
-                            <div className="flex items-center">
-                                {shift?.id && !editingTemplate && (
-                                    <Button type="button" variant="destructive" onClick={handleDelete} className="mr-auto">
-                                        <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete
-                                    </Button>
+                            )}
+                            
+                            {!shift?.id && !editingTemplate && (
+                                <>
+                                <Separator />
+                                <FormField
+                                    control={form.control}
+                                    name="repeat"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                                        <FormControl>
+                                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                        <FormLabel className="flex items-center gap-2">
+                                            <Repeat className="h-4 w-4" /> Repeat this shift
+                                        </FormLabel>
+                                        </div>
+                                    </FormItem>
+                                    )}
+                                />
+                                {isRepeating && (
+                                    <div className="space-y-4 rounded-md border p-4">
+                                         <FormField
+                                            control={form.control}
+                                            name="repeatType"
+                                            render={({ field }) => (
+                                                <FormItem className="space-y-3">
+                                                    <FormControl>
+                                                        <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex flex-col space-y-1">
+                                                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                                                <FormControl><RadioGroupItem value="occurrences" /></FormControl>
+                                                                <FormLabel className="font-normal">
+                                                                    For the next <FormField control={form.control} name="repeatOccurrences" render={({ field: numField }) => (
+                                                                        <Input type="number" min="1" {...numField} className="inline-block w-20 mx-2 h-8" disabled={repeatType !== 'occurrences'} />
+                                                                    )} /> occurrences, every day.
+                                                                </FormLabel>
+                                                            </FormItem>
+                                                             <FormItem className="flex items-center space-x-3 space-y-0">
+                                                                <FormControl><RadioGroupItem value="untilDate" /></FormControl>
+                                                                <FormLabel className="font-normal flex items-center gap-2">
+                                                                    Every day until <FormField control={form.control} name="repeatUntil" render={({ field: dateField }) => (
+                                                                         <DatePicker date={dateField.value} onDateChange={dateField.onChange} />
+                                                                    )} />
+                                                                </FormLabel>
+                                                            </FormItem>
+                                                        </RadioGroup>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                 )}
-                                {editingTemplate && (
-                                    <Button type="button" variant="ghost" onClick={cancelEditTemplate} className="mr-auto">
-                                        <X className="mr-2 h-4 w-4" />
-                                        Cancel Edit
-                                    </Button>
-                                )}
-                            </div>
-                            <div className="flex items-center gap-2">
-                               {!editingTemplate && (
-                                <Button type="button" variant="outline" onClick={handleSaveAsTemplate} disabled={isDayOff || isHolidayOff}>
-                                    Save as Template
-                                </Button>
-                               )}
-                               <Button type="submit">{editingTemplate ? "Save Template" : "Save Shift"}</Button>
-                            </div>
-                        </DialogFooter>
+                                </>
+                            )}
+                        </div>
+                      </ScrollArea>
+
+                      <DialogFooter className="flex-shrink-0 flex w-full flex-row sm:justify-between items-center pt-4 border-t">
+                          <div className="flex items-center">
+                              {shift?.id && !editingTemplate && (
+                                  <Button type="button" variant="destructive" onClick={handleDelete} className="mr-auto">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                  </Button>
+                              )}
+                              {editingTemplate && (
+                                  <Button type="button" variant="ghost" onClick={cancelEditTemplate} className="mr-auto">
+                                      <X className="mr-2 h-4 w-4" />
+                                      Cancel Edit
+                                  </Button>
+                              )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                             {!editingTemplate && (
+                              <Button type="button" variant="outline" onClick={handleSaveAsTemplate} disabled={isDayOff || isHolidayOff}>
+                                  Save as Template
+                              </Button>
+                             )}
+                             <Button type="submit">{editingTemplate ? "Save Template" : "Save Shift"}</Button>
+                          </div>
+                      </DialogFooter>
                     </form>
                 </Form>
-              </ScrollArea>
             </TabsContent>
             <TabsContent value="tasks">
                 <div className="space-y-4 py-4">
