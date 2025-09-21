@@ -45,29 +45,8 @@ export async function sendEmail(
         }
     }
 
-    // Fallback to SMTP transport if no API key is set
-    if (smtpSettings.host && smtpSettings.user && smtpSettings.pass) {
-         const resend = new Resend(); // Initialize without key for SMTP
-         try {
-            await resend.emails.send({
-                from: `${smtpSettings.fromName} <${smtpSettings.fromEmail}>`,
-                to: to,
-                subject: subject,
-                html: htmlBody,
-                attachments: attachments?.map(att => ({
-                    filename: att.filename,
-                    content: att.content,
-                }))
-            });
-            return { success: true };
-        } catch (error) {
-            console.error('Email sending with SMTP failed:', error);
-            return { success: false, error: (error as Error).message };
-        }
-    }
-    
-    // If neither method is configured
-    return { success: false, error: 'Email sending is not configured. Please set RESEND_API_KEY or configure SMTP settings in the admin panel.' };
+    // If no Resend API key is configured
+    return { success: false, error: 'Email sending is not configured. Please set the RESEND_API_KEY environment variable.' };
 }
 
 
