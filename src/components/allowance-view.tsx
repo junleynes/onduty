@@ -418,8 +418,8 @@ export default function AllowanceView({ employees, setEmployees, allowances, set
             });
         });
 
-        const buffer = await workbook.xlsx.writeBuffer();
-        return Buffer.from(buffer);
+        const arrayBuffer = await workbook.xlsx.writeBuffer();
+        return Buffer.from(arrayBuffer);
     } catch (error) {
         console.error("Error generating Excel report:", error);
         toast({
