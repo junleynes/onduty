@@ -65,12 +65,11 @@ export default function CelebrationsView({ employees }: CelebrationsViewProps) {
       }
       
       if(isWithinInterval(celebrationDateThisYear, interval)) {
-          const years = differenceInYears(celebrationDateThisYear, birthDate);
           upcomingBirthdays.push({
               employee,
               date: birthDate,
               type: 'birthday',
-              celebrationText: `Turns ${years}`
+              celebrationText: ''
           });
       }
     }
