@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 type Attachment = {
     filename: string;
-    content: Buffer; // Use Buffer for content
+    content: string; // Base64 encoded string
 }
 
 export async function sendEmail(
@@ -48,7 +48,7 @@ export async function sendEmail(
             html: htmlBody,
             attachments: attachments?.map(att => ({
                 filename: att.filename,
-                content: att.content,
+                content: Buffer.from(att.content, 'base64'), // Decode base64 to buffer
             }))
         });
         return { success: true };
@@ -452,6 +452,7 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
     
 
     
+
 
 
 

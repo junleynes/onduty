@@ -839,7 +839,7 @@ function EmailDialog({
 
                 const attachments = [{
                     filename: fileName,
-                    content: excelBuffer,
+                    content: excelBuffer.toString('base64'),
                 }];
                 
                 toast({ title: 'Sending email...', description: `Sending report to ${to}.`});
