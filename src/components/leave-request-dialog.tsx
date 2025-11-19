@@ -53,11 +53,13 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
     defaultValues: {},
   });
 
+  const availableLeaveTypes = leaveTypes.filter(lt => lt.type !== 'Work Extension');
+
   useEffect(() => {
     if (isOpen) {
       const fromDate = request?.startDate ? new Date(request.startDate) : new Date();
       const toDate = request?.endDate ? new Date(request.endDate) : fromDate;
-      const defaultType = request?.type || (leaveTypes.length > 0 ? leaveTypes[0].type : '');
+      const defaultType = request?.type || (availableLeaveTypes.length > 0 ? availableLeaveTypes[0].type : '');
       form.reset({
         type: defaultType,
         reason: request?.reason || '',
@@ -65,7 +67,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
         isAllDay: request?.isAllDay ?? true,
       });
     }
-  }, [request, isOpen, form, currentUser, leaveTypes]);
+  }, [request, isOpen, form, currentUser, availableLeaveTypes]);
 
   const onSubmit = (values: z.infer<typeof requestSchema>) => {
     const finalValues: Partial<Leave> = {
@@ -116,7 +118,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {leaveTypes.map(lt => (
+                      {availableLeaveTypes.map(lt => (
                         <SelectItem key={lt.type} value={lt.type}>{lt.type}</SelectItem>
                       ))}
                     </SelectContent>
