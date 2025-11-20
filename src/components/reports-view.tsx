@@ -223,8 +223,13 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         // Priority 4: Regular Shift
         if (shiftOnDay) {
             const shiftLabel = shiftOnDay.label?.trim().toUpperCase();
-            const status = (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') ? 'WFH' : 'SKE';
-            return { status: status, shift: shiftOnDay, leave: null };
+            if (shiftLabel === 'WORK FROM HOME' || shiftLabel === 'WFH') {
+                 return { status: 'WFH', shift: shiftOnDay, leave: null };
+            }
+            if (shiftLabel?.includes('10H')) {
+                return { status: 'SKE-10', shift: shiftOnDay, leave: null };
+            }
+            return { status: 'SKE', shift: shiftOnDay, leave: null };
         }
 
         // Default: No activity
@@ -257,7 +262,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     ...getScheduleFromTemplate(undefined)
                 };
 
-                const isWorkingDay = dayData.status === 'SKE' || dayData.status === 'WFH';
+                const isWorkingDay = dayData.status === 'SKE' || dayData.status === 'WFH' || dayData.status === 'SKE-10';
                 const isNonWorkingDay = dayData.status === 'HOL OFF' || dayData.status === 'OFF' || dayData.leave !== null;
 
                 if (isWorkingDay && dayData.shift) {
