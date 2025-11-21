@@ -72,6 +72,8 @@ export type Leave = {
   originalShiftDate?: Date;
   originalStartTime?: string;
   originalEndTime?: string;
+  workExtensionStatus?: 'not-claimed' | 'claimed' | 'expired';
+  claimedWorkExtensionId?: string;
 
   // New fields for PDF generation
   dateFiled: Date;
@@ -151,7 +153,7 @@ export type TardyRecord = {
 
 export type NavItemKey = 
   | 'dashboard' | 'my-schedule' | 'my-tasks'
-  | 'schedule' | 'onduty' | 'time-off' | 'allowance' | 'task-manager'
+  | 'schedule' | 'onduty' | 'time-off' | 'work-extensions' | 'allowance' | 'task-manager'
   | 'team' | 'org-chart' | 'celebrations' | 'holidays'
   | 'faq'
   | 'reports'

@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format, isSameDay, isWithinInterval, startOfDay, eachDayOfInterval } from 'date-fns';
-import { getFullName } from '@/lib/utils';
-import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2, User, Calendar, Type, MessageSquare, Info, Trash2, ChevronsUpDown } from 'lucide-react';
+import { getFullName, getInitialState } from '@/lib/utils';
+import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2, User, Calendar, Type, MessageSquare, Info, Trash2, ChevronsUpDown, Settings, Clock4 } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
 import { WorkExtensionRequestDialog } from './work-extension-request-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +25,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { OffsetRequestDialog } from './offset-request-dialog';
 
 
 type TimeOffViewProps = {
@@ -42,7 +43,7 @@ type TimeOffViewProps = {
 export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, setShifts, currentUser, employees, leaveTypes, smtpSettings, onUploadAlaf }: TimeOffViewProps) {
   const { toast } = useToast();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
-  const [isWorkExtensionDialogOpen, setIsWorkExtensionDialogOpen] = useState(false);
+  const [isOffsetDialogOpen, setIsOffsetDialogOpen] = useState(false);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
   const [isPurging, startPurgeTransition] = useTransition();
   const [editingRequest, setEditingRequest] = useState<Partial<Leave> | null>(null);
@@ -51,14 +52,14 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
   const isManager = currentUser.role === 'manager' || currentUser.role === 'admin';
 
   const myRequests = useMemo(() => 
-    leaveRequests.filter(req => req.employeeId === currentUser.id).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()),
+    leaveRequests.filter(req => req.employeeId === currentUser.id && req.type !== 'Work Extension').sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()),
   [leaveRequests, currentUser.id]);
 
   const teamRequests = useMemo(() => 
     isManager 
       ? leaveRequests.filter(req => {
           const employee = employees.find(e => e.id === req.employeeId);
-          return employee?.group === currentUser.group;
+          return employee?.group === currentUser.group && req.type !== 'Work Extension';
         }).sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
       : [],
   [leaveRequests, employees, currentUser.group, isManager]);
@@ -67,10 +68,10 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
     setEditingRequest(null);
     setIsRequestDialogOpen(true);
   };
-  
-  const handleNewWorkExtensionRequest = () => {
+
+  const handleNewOffsetRequest = () => {
     setEditingRequest(null);
-    setIsWorkExtensionDialogOpen(true);
+    setIsOffsetDialogOpen(true);
   };
   
   const handleEditRequest = (request: Leave) => {
@@ -79,8 +80,8 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
         return;
     }
     setEditingRequest(request);
-    if (request.type === 'Work Extension') {
-      setIsWorkExtensionDialogOpen(true);
+    if (request.type === 'Offset') {
+      setIsOffsetDialogOpen(true);
     } else {
       setIsRequestDialogOpen(true);
     }
@@ -110,53 +111,65 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
       toast({ title: 'Request Submitted' });
     }
     setIsRequestDialogOpen(false);
-    setIsWorkExtensionDialogOpen(false);
+    setIsOffsetDialogOpen(false);
   };
   
-  const handleManageRequest = async (requestId: string, newStatus: 'approved' | 'rejected') => {
+  const handleManageRequest = (requestId: string, newStatus: 'approved' | 'rejected') => {
     let updatedRequest: Leave | undefined;
 
     setLeaveRequests(prevLeaveRequests => {
-      const newLeaveRequests = prevLeaveRequests.map(req => {
-        if (req.id === requestId) {
-          const leaveTypeDetails = leaveTypes.find(lt => lt.type === req.type);
-          updatedRequest = {
-            ...req,
+        const newLeaveRequests = [...prevLeaveRequests];
+        const requestIndex = newLeaveRequests.findIndex(r => r.id === requestId);
+        if (requestIndex === -1) return prevLeaveRequests;
+        
+        const originalRequest = newLeaveRequests[requestIndex];
+        const leaveTypeDetails = leaveTypes.find(lt => lt.type === originalRequest.type);
+
+        updatedRequest = {
+            ...originalRequest,
             status: newStatus,
             managedBy: currentUser.id,
             managedAt: new Date(),
             managerSignature: currentUser.signature,
-            color: req.type === 'Work Extension' ? '#f39c12' : (leaveTypeDetails?.color || req.color)
-          };
-          return updatedRequest;
-        }
-        return req;
-      });
+            color: leaveTypeDetails?.color || originalRequest.color
+        };
+        newLeaveRequests[requestIndex] = updatedRequest;
 
-      if (newStatus === 'approved' && updatedRequest) {
-        const leaveStart = startOfDay(new Date(updatedRequest.startDate));
-        const leaveEnd = startOfDay(new Date(updatedRequest.endDate));
-        const leaveInterval = { start: leaveStart, end: leaveEnd };
-        
-        setShifts(prevShifts =>
-          prevShifts.filter(shift => {
-            if (shift.employeeId !== updatedRequest!.employeeId) {
-              return true;
+        // If it's an approved Offset, update the corresponding Work Extension
+        if (newStatus === 'approved' && updatedRequest.type === 'Offset' && updatedRequest.claimedWorkExtensionId) {
+            const weIndex = newLeaveRequests.findIndex(r => r.id === updatedRequest!.claimedWorkExtensionId);
+            if (weIndex > -1) {
+                newLeaveRequests[weIndex] = {
+                    ...newLeaveRequests[weIndex],
+                    workExtensionStatus: 'claimed',
+                };
             }
-            const shiftDate = startOfDay(new Date(shift.date));
-            return !isWithinInterval(shiftDate, leaveInterval);
-          })
-        );
-      }
-      
-      return newLeaveRequests;
+        }
+        
+        // This must run after state update
+        if (newStatus === 'approved' && updatedRequest.type !== 'Work Extension') {
+            const leaveStart = startOfDay(new Date(updatedRequest!.startDate));
+            const leaveEnd = startOfDay(new Date(updatedRequest!.endDate));
+            const leaveInterval = { start: leaveStart, end: leaveEnd };
+            
+            setShifts(prevShifts =>
+                prevShifts.filter(shift => {
+                    if (shift.employeeId !== updatedRequest!.employeeId) {
+                        return true;
+                    }
+                    const shiftDate = startOfDay(new Date(shift.date));
+                    return !isWithinInterval(shiftDate, leaveInterval);
+                })
+            );
+        }
+        return newLeaveRequests;
     });
 
     // We need to wait for state to update to get the correct `updatedRequest`
     // So we use a short timeout before PDF generation
     setTimeout(async () => {
         const finalUpdatedRequest = leaveRequests.find(r => r.id === requestId);
-        if (newStatus === 'approved' && finalUpdatedRequest && finalUpdatedRequest.type !== 'Work Extension') {
+        if (newStatus === 'approved' && finalUpdatedRequest && finalUpdatedRequest.type !== 'Work Extension' && finalUpdatedRequest.type !== 'Offset') {
             toast({ title: "Request Approved & Generating PDF...", description: "Please wait a moment." });
             const result = await generateLeavePdf(finalUpdatedRequest);
             if (result.success && result.pdfDataUri) {
@@ -211,7 +224,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
                     </div>
                 );
             }
-            if (req.pdfDataUri && req.type !== 'Work Extension') {
+            if (req.pdfDataUri && req.type !== 'Work Extension' && req.type !== 'Offset') {
                 return (
                     <div className="flex gap-2 justify-end flex-wrap">
                         <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />View</Button></a>
@@ -224,7 +237,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
             if (req.status === 'pending') {
                 return <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>Edit</Button>;
             }
-            if (req.pdfDataUri && req.type !== 'Work Extension') {
+            if (req.pdfDataUri && req.type !== 'Work Extension' && req.type !== 'Offset') {
                 return (
                     <div className="flex gap-2 justify-end">
                         <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4 mr-1" />View</Button></a>
@@ -287,7 +300,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
                     </div>
                 );
             }
-            if (req.pdfDataUri && req.type !== 'Work Extension') {
+            if (req.pdfDataUri && req.type !== 'Work Extension' && req.type !== 'Offset') {
                 return (
                     <div className="flex gap-2 justify-end">
                         <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
@@ -300,7 +313,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
             if (req.status === 'pending') {
                 return <Button size="sm" variant="outline" onClick={() => handleEditRequest(req)}>Edit</Button>;
             }
-            if (req.pdfDataUri && req.type !== 'Work Extension') {
+            if (req.pdfDataUri && req.type !== 'Work Extension' && req.type !== 'Offset') {
                 return (
                     <div className="flex gap-2 justify-end">
                         <a href={req.pdfDataUri} target="_blank" rel="noopener noreferrer"><Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button></a>
@@ -360,7 +373,7 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <CardTitle>Time Off Requests</CardTitle>
-            <CardDescription>Manage your leave requests and work extensions.</CardDescription>
+            <CardDescription>Manage your leave requests and offsets.</CardDescription>
           </div>
            <div className="flex gap-2">
                 {isManager && (
@@ -403,8 +416,8 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
                       <DropdownMenuItem onClick={handleNewTimeOffRequest}>
                           Time Off Request
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleNewWorkExtensionRequest}>
-                          Work Extension Request
+                       <DropdownMenuItem onClick={handleNewOffsetRequest}>
+                          Offset Request
                       </DropdownMenuItem>
                   </DropdownMenuContent>
               </DropdownMenu>
@@ -447,12 +460,13 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
         currentUser={currentUser}
       />
 
-      <WorkExtensionRequestDialog
-        isOpen={isWorkExtensionDialogOpen}
-        setIsOpen={setIsWorkExtensionDialogOpen}
+       <OffsetRequestDialog
+        isOpen={isOffsetDialogOpen}
+        setIsOpen={setIsOffsetDialogOpen}
         onSave={handleSaveRequest}
         request={editingRequest}
         currentUser={currentUser}
+        allLeaveRequests={leaveRequests}
       />
 
       {emailingRequest && (

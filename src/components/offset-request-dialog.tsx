@@ -20,15 +20,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { Leave, Employee } from '@/types';
 import { Textarea } from './ui/textarea';
 import { Input } from './ui/input';
-import type { LeaveTypeOption } from './leave-type-editor';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { cn, getInitialState } from '@/lib/utils';
+import { format, addDays } from 'date-fns';
 
 const requestSchema = z.object({
-  type: z.string().min(1, { message: 'Leave type is required.' }),
+  claimedWorkExtensionId: z.string().min(1, { message: 'You must select a work extension to claim.'}),
   reason: z.string().min(1, 'Reason is required.'),
   dateRange: z.object({
       from: z.date({ required_error: "A start date is required."}),
@@ -38,42 +37,52 @@ const requestSchema = z.object({
 });
 
 
-type LeaveRequestDialogProps = {
+type OffsetRequestDialogProps = {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   request: Partial<Leave> | null;
   onSave: (request: Partial<Leave>) => void;
-  leaveTypes: LeaveTypeOption[];
   currentUser: Employee;
+  allLeaveRequests: Leave[];
 };
 
-export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTypes, currentUser }: LeaveRequestDialogProps) {
+export function OffsetRequestDialog({ isOpen, setIsOpen, request, onSave, currentUser, allLeaveRequests }: OffsetRequestDialogProps) {
+  const expiryDays = getInitialState('workExtensionExpiryDays', 30);
+  
   const form = useForm<z.infer<typeof requestSchema>>({
     resolver: zodResolver(requestSchema),
     defaultValues: {},
   });
+  
+  const availableWorkExtensions = useMemo(() => {
+    return allLeaveRequests.filter(l => 
+        l.employeeId === currentUser.id &&
+        l.type === 'Work Extension' &&
+        l.status === 'approved' &&
+        l.workExtensionStatus === 'not-claimed' &&
+        l.managedAt &&
+        new Date() <= addDays(new Date(l.managedAt), expiryDays)
+    );
+  }, [allLeaveRequests, currentUser.id, expiryDays]);
 
-  const availableLeaveTypes = useMemo(() => 
-    leaveTypes.filter(lt => lt.type !== 'Work Extension' && lt.type !== 'Offset'), 
-  [leaveTypes]);
 
   useEffect(() => {
     if (isOpen) {
       const fromDate = request?.startDate ? new Date(request.startDate) : new Date();
       const toDate = request?.endDate ? new Date(request.endDate) : fromDate;
-      const defaultType = request?.type || (availableLeaveTypes.length > 0 ? availableLeaveTypes[0].type : '');
       form.reset({
-        type: defaultType,
+        claimedWorkExtensionId: request?.claimedWorkExtensionId || '',
         reason: request?.reason || '',
         dateRange: { from: fromDate, to: toDate },
         isAllDay: request?.isAllDay ?? true,
       });
     }
-  }, [request, isOpen, form, currentUser, availableLeaveTypes]);
+  }, [request, isOpen, form, currentUser]);
 
   const onSubmit = (values: z.infer<typeof requestSchema>) => {
     const finalValues: Partial<Leave> = {
-      type: values.type,
+      type: 'Offset',
+      claimedWorkExtensionId: values.claimedWorkExtensionId,
       reason: values.reason,
       startDate: values.dateRange.from,
       endDate: values.dateRange.to || values.dateRange.from,
@@ -86,9 +95,9 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{request?.id ? 'Edit Request' : 'New Time Off Request'}</DialogTitle>
+          <DialogTitle>{request?.id ? 'Edit' : 'New'} Offset Request</DialogTitle>
           <DialogDescription>
-            {request?.id ? 'Update the details for your request.' : 'Fill in the details for your request.'}
+            Claim an approved work extension by filing for an offset.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -109,20 +118,26 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
              </div>
             <FormField
               control={form.control}
-              name="type"
+              name="claimedWorkExtensionId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Leave Type</FormLabel>
+                  <FormLabel>Claim Work Extension</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a request type" />
+                        <SelectValue placeholder="Select an approved work extension..." />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {availableLeaveTypes.map(lt => (
-                        <SelectItem key={lt.type} value={lt.type}>{lt.type}</SelectItem>
-                      ))}
+                      {availableWorkExtensions.length > 0 ? (
+                        availableWorkExtensions.map(we => (
+                          <SelectItem key={we.id} value={we.id}>
+                            {format(new Date(we.startDate), 'MMM d, yyyy')} ({we.startTime}-{we.endTime})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-4 text-sm text-muted-foreground text-center">No claimable work extensions found.</div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -134,7 +149,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
                 name="dateRange"
                 render={({ field }) => (
                     <FormItem className="flex flex-col">
-                        <FormLabel>Dates of Leave</FormLabel>
+                        <FormLabel>Dates of Offset</FormLabel>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <FormControl>

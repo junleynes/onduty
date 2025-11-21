@@ -28,6 +28,7 @@ import {
     Home,
     Newspaper,
     HelpCircle,
+    Clock4,
 } from 'lucide-react';
 import { SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarContent, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import type { UserRole, RolePermissions } from '@/types';
@@ -80,6 +81,7 @@ const allNavItems: Record<string, NavGroup[]> = {
                 { view: 'schedule', label: 'Schedule', icon: CalendarDays, iconColor: 'bg-orange-500' },
                 { view: 'onduty', label: 'On Duty', icon: Clock, iconColor: 'bg-indigo-500' },
                 { view: 'time-off', label: 'Time Off', icon: Plane, iconColor: 'bg-blue-500' },
+                { view: 'work-extensions', label: 'Work Extensions', icon: Clock4, iconColor: 'bg-orange-500' },
                 { view: 'allowance', label: 'Mobile Load', icon: Smartphone, iconColor: 'bg-teal-500' },
                 { view: 'task-manager', label: 'Task Manager', icon: ListChecks, iconColor: 'bg-indigo-500' },
             ]

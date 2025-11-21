@@ -49,6 +49,7 @@ import FaqView from '@/components/faq-view';
 import NewsFeedsView from '@/components/news-feeds-view';
 import ChatView from '@/components/chat-view';
 import { AlafTemplateUploader } from '@/components/alaf-template-uploader';
+import WorkExtensionsView from '@/components/work-extensions-view';
 
 
 export type NavItem = NavItemKey;
@@ -738,6 +739,14 @@ function AppContent() {
                   smtpSettings={smtpSettings}
                   onUploadAlaf={() => setIsAlafUploaderOpen(true)}
                />;
+        case 'work-extensions':
+        return <WorkExtensionsView
+                  leaveRequests={leave}
+                  setLeaveRequests={setLeave}
+                  currentUser={currentUser}
+                  employees={employees}
+                  smtpSettings={smtpSettings}
+                />;
       case 'allowance':
         return <AllowanceView 
                   employees={employees}
