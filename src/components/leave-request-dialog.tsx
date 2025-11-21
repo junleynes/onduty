@@ -53,10 +53,10 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
     defaultValues: {},
   });
 
-  const availableLeaveTypes = leaveTypes.filter(lt => lt.type !== 'Work Extension');
 
   useEffect(() => {
     if (isOpen) {
+      const availableLeaveTypes = leaveTypes.filter(lt => lt.type !== 'Work Extension');
       const fromDate = request?.startDate ? new Date(request.startDate) : new Date();
       const toDate = request?.endDate ? new Date(request.endDate) : fromDate;
       const defaultType = request?.type || (availableLeaveTypes.length > 0 ? availableLeaveTypes[0].type : '');
@@ -67,7 +67,7 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
         isAllDay: request?.isAllDay ?? true,
       });
     }
-  }, [request, isOpen, form, currentUser, availableLeaveTypes]);
+  }, [request, isOpen, form, currentUser, leaveTypes]);
 
   const onSubmit = (values: z.infer<typeof requestSchema>) => {
     const finalValues: Partial<Leave> = {
@@ -79,6 +79,8 @@ export function LeaveRequestDialog({ isOpen, setIsOpen, request, onSave, leaveTy
     };
     onSave(finalValues);
   };
+  
+  const availableLeaveTypes = leaveTypes.filter(lt => lt.type !== 'Work Extension');
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
