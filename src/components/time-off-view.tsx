@@ -3,12 +3,12 @@
 'use client';
 
 import React, { useState, useMemo, useTransition } from 'react';
-import type { Leave, Employee, LeaveRequestStatus } from '@/types';
+import type { Leave, Employee, LeaveRequestStatus, Shift } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { format, isSameDay, isWithinInterval, startOfDay } from 'date-fns';
+import { format, isSameDay, isWithinInterval, startOfDay, eachDayOfInterval } from 'date-fns';
 import { getFullName } from '@/lib/utils';
 import { PlusCircle, Check, X, FileDown, Mail, Eye, Upload, Loader2, User, Calendar, Type, MessageSquare, Info, Trash2, ChevronsUpDown } from 'lucide-react';
 import { LeaveRequestDialog } from './leave-request-dialog';
@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { v4 as uuidv4 } from 'uuid';
 import type { LeaveTypeOption } from './leave-type-editor';
 import { generateLeavePdf, sendEmail, purgeData } from '@/app/actions';
-import type { SmtpSettings, Shift } from '@/types';
+import type { SmtpSettings } from '@/types';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -30,8 +30,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 type TimeOffViewProps = {
   leaveRequests: Leave[];
   setLeaveRequests: React.Dispatch<React.SetStateAction<Leave[]>>;
-  shifts: Shift[]; // Need shifts to remove conflicts
-  setShifts: React.Dispatch<React.SetStateAction<Shift[]>>; // Need setShifts to update state
+  shifts: Shift[];
+  setShifts: React.Dispatch<React.SetStateAction<Shift[]>>;
   currentUser: Employee;
   employees: Employee[];
   leaveTypes: LeaveTypeOption[];
@@ -115,57 +115,62 @@ export default function TimeOffView({ leaveRequests, setLeaveRequests, shifts, s
   
   const handleManageRequest = async (requestId: string, newStatus: 'approved' | 'rejected') => {
     let updatedRequest: Leave | undefined;
-    
-    setLeaveRequests(prev => {
-        const newLeaveRequests = prev.map(req => {
-            if (req.id === requestId) {
-                const leaveTypeDetails = leaveTypes.find(lt => lt.type === req.type);
-                updatedRequest = { 
-                    ...req, 
-                    status: newStatus, 
-                    managedBy: currentUser.id, 
-                    managedAt: new Date(),
-                    managerSignature: currentUser.signature,
-                    color: req.type === 'Work Extension' ? '#f39c12' : (leaveTypeDetails?.color || req.color)
-                };
-                return updatedRequest;
+
+    setLeaveRequests(prevLeaveRequests => {
+      const newLeaveRequests = prevLeaveRequests.map(req => {
+        if (req.id === requestId) {
+          const leaveTypeDetails = leaveTypes.find(lt => lt.type === req.type);
+          updatedRequest = {
+            ...req,
+            status: newStatus,
+            managedBy: currentUser.id,
+            managedAt: new Date(),
+            managerSignature: currentUser.signature,
+            color: req.type === 'Work Extension' ? '#f39c12' : (leaveTypeDetails?.color || req.color)
+          };
+          return updatedRequest;
+        }
+        return req;
+      });
+
+      if (newStatus === 'approved' && updatedRequest) {
+        const leaveStart = startOfDay(new Date(updatedRequest.startDate));
+        const leaveEnd = startOfDay(new Date(updatedRequest.endDate));
+        const leaveInterval = { start: leaveStart, end: leaveEnd };
+        
+        setShifts(prevShifts =>
+          prevShifts.filter(shift => {
+            if (shift.employeeId !== updatedRequest!.employeeId) {
+              return true;
             }
-            return req;
-        });
-        return newLeaveRequests;
+            const shiftDate = startOfDay(new Date(shift.date));
+            return !isWithinInterval(shiftDate, leaveInterval);
+          })
+        );
+      }
+      
+      return newLeaveRequests;
     });
 
-    if (newStatus === 'approved' && updatedRequest) {
-      // Remove conflicting shifts
-      const leaveStart = startOfDay(new Date(updatedRequest.startDate));
-      const leaveEnd = startOfDay(new Date(updatedRequest.endDate));
-      setShifts(prevShifts => 
-          prevShifts.filter(shift => {
-              if (shift.employeeId !== updatedRequest!.employeeId) {
-                  return true; // Keep shifts for other employees
-              }
-              const shiftDate = startOfDay(new Date(shift.date));
-              return !isWithinInterval(shiftDate, { start: leaveStart, end: leaveEnd });
-          })
-      );
-      
-      // PDF Generation for non-extension leaves
-      if (updatedRequest.type !== 'Work Extension') {
-          toast({ title: "Request Approved & Generating PDF...", description: "Please wait a moment." });
-          const result = await generateLeavePdf(updatedRequest);
-          if (result.success && result.pdfDataUri) {
-              setLeaveRequests(prev => prev.map(req => req.id === requestId ? { ...req, pdfDataUri: result.pdfDataUri } : req));
-              toast({ title: "PDF Generated", description: "The leave form has been created." });
-          } else {
-              toast({ variant: 'destructive', title: 'PDF Generation Failed', description: result.error });
-          }
-      } else {
-          toast({ title: "Request Approved" });
-      }
-    } else {
-        toast({ title: `Request ${newStatus}` });
-    }
+    // We need to wait for state to update to get the correct `updatedRequest`
+    // So we use a short timeout before PDF generation
+    setTimeout(async () => {
+        const finalUpdatedRequest = leaveRequests.find(r => r.id === requestId);
+        if (newStatus === 'approved' && finalUpdatedRequest && finalUpdatedRequest.type !== 'Work Extension') {
+            toast({ title: "Request Approved & Generating PDF...", description: "Please wait a moment." });
+            const result = await generateLeavePdf(finalUpdatedRequest);
+            if (result.success && result.pdfDataUri) {
+                setLeaveRequests(prev => prev.map(req => req.id === requestId ? { ...req, pdfDataUri: result.pdfDataUri } : req));
+                toast({ title: "PDF Generated", description: "The leave form has been created." });
+            } else {
+                toast({ variant: 'destructive', title: 'PDF Generation Failed', description: result.error });
+            }
+        } else {
+            toast({ title: `Request ${newStatus}` });
+        }
+    }, 100);
   };
+
 
   const handleDownloadPdf = (pdfDataUri: string, employeeName: string) => {
     const link = document.createElement('a');

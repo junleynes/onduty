@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -729,6 +730,8 @@ function AppContent() {
         return <TimeOffView
                   leaveRequests={leave}
                   setLeaveRequests={setLeave}
+                  shifts={shifts}
+                  setShifts={setShifts}
                   currentUser={currentUser}
                   employees={employees}
                   leaveTypes={leaveTypes}
