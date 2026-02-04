@@ -1,5 +1,4 @@
 
-
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
@@ -11,6 +10,14 @@ const DB_PATH = path.join(process.cwd(), 'local.db');
 export let dbInstance: Database.Database | null = null;
 
 function initializeDatabase() {
+    // Check if the directory is writable
+    const dir = path.dirname(DB_PATH);
+    try {
+        fs.accessSync(dir, fs.constants.W_OK);
+    } catch (e) {
+        console.error(`CRITICAL: The directory ${dir} is not writable. SQLite requires write access to the directory to create journal files.`);
+    }
+
     const db = new Database(DB_PATH);
 
     // Run schema to create tables if they don't exist
@@ -19,7 +26,10 @@ function initializeDatabase() {
         try {
             const schema = fs.readFileSync(schemaPath, 'utf8');
             db.exec(schema);
-        } catch(e) {
+        } catch(e: any) {
+            if (e.code === 'SQLITE_READONLY') {
+                console.error('CRITICAL: Database is read-only. Ensure the app has write permissions to local.db and its parent directory.');
+            }
             console.error('Failed to initialize database from schema:', e);
             throw e;
         }
@@ -29,34 +39,21 @@ function initializeDatabase() {
     }
 
     // Run migrations to add new columns if they don't exist
-    try {
-        db.exec("ALTER TABLE employees ADD COLUMN gender TEXT;");
-        console.log("Migration successful: Added 'gender' column to 'employees' table.");
-    } catch (e: any) {
-        if (!e.message.includes('duplicate column name')) {
-            console.error("Error migrating 'gender' column:", e.message);
+    const runMigration = (query: string, description: string) => {
+        try {
+            db.exec(query);
+            console.log(`Migration successful: ${description}`);
+        } catch (e: any) {
+            if (!e.message.includes('duplicate column name')) {
+                console.error(`Error running migration (${description}):`, e.message);
+            }
         }
-    }
+    };
+
+    runMigration("ALTER TABLE employees ADD COLUMN gender TEXT;", "Added 'gender' to 'employees'");
+    runMigration("ALTER TABLE employees ADD COLUMN employeeClassification TEXT;", "Added 'employeeClassification' to 'employees'");
+    runMigration("ALTER TABLE employees ADD COLUMN personnelNumber TEXT;", "Added 'personnelNumber' to 'employees'");
     
-    try {
-        db.exec("ALTER TABLE employees ADD COLUMN employeeClassification TEXT;");
-        console.log("Migration successful: Added 'employeeClassification' column to 'employees' table.");
-    } catch (e: any) {
-         if (!e.message.includes('duplicate column name')) {
-            console.error("Error migrating 'employeeClassification' column:", e.message);
-        }
-    }
-    
-    try {
-        db.exec("ALTER TABLE employees ADD COLUMN personnelNumber TEXT;");
-        console.log("Migration successful: Added 'personnelNumber' column to 'employees' table.");
-    } catch (e: any) {
-         if (!e.message.includes('duplicate column name')) {
-            console.error("Error migrating 'personnelNumber' column:", e.message);
-        }
-    }
-    
-    // Migrations for Leave PDF feature
     const leaveColumns = [
         { name: 'dateFiled', type: 'TEXT' },
         { name: 'department', type: 'TEXT' },
@@ -68,26 +65,10 @@ function initializeDatabase() {
     ];
     
     leaveColumns.forEach(col => {
-         try {
-            db.exec(`ALTER TABLE leave ADD COLUMN ${col.name} ${col.type};`);
-            console.log(`Migration successful: Added '${col.name}' column to 'leave' table.`);
-        } catch (e: any) {
-             if (!e.message.includes('duplicate column name')) {
-                console.error(`Error migrating '${col.name}' column:`, e.message);
-            }
-        }
+        runMigration(`ALTER TABLE leave ADD COLUMN ${col.name} ${col.type};`, `Added '${col.name}' to 'leave'`);
     });
 
-    // Migration for Task Acknowledgment
-    try {
-        db.exec("ALTER TABLE tasks ADD COLUMN acknowledgedAt TEXT;");
-        console.log("Migration successful: Added 'acknowledgedAt' column to 'tasks' table.");
-    } catch (e: any) {
-        if (!e.message.includes('duplicate column name')) {
-            console.error("Error migrating 'acknowledgedAt' column:", e.message);
-        }
-    }
-
+    runMigration("ALTER TABLE tasks ADD COLUMN acknowledgedAt TEXT;", "Added 'acknowledgedAt' to 'tasks'");
 
     return db;
 }
@@ -116,12 +97,10 @@ export function getDb() {
                 console.log('Corrupted database file deleted.');
             } catch (unlinkError) {
                 console.error('Failed to delete corrupted database file:', unlinkError);
-                throw unlinkError; // If we can't delete it, we can't continue.
+                throw unlinkError; 
             }
-            // Retry initialization
             dbInstance = initializeDatabase();
         } else {
-            // Re-throw other errors
             throw error;
         }
     }
