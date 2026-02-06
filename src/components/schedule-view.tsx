@@ -308,7 +308,11 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const handleClearWeek = () => {
     if (isReadOnly) return;
     setShifts(shifts.filter(shift => !displayedDays.some(day => isSameDay(new Date(shift.date), day))));
-    setLeave(leave.filter(l => !l.endDate || !displayedDays.some(day => isWithinInterval(day, { start: new Date(l.startDate), end: new Date(l.endDate) } ))));
+    setLeave(leave.filter(l => {
+        const startDate = new Date(l.startDate);
+        const endDate = new Date(l.endDate || l.startDate);
+        return !displayedDays.some(day => isWithinInterval(startOfDay(day), { start: startOfDay(startDate), end: startOfDay(endDate) }));
+    }));
     toast({ title: "Week Cleared", description: "All shifts and time off for the current week have been removed." });
   };
   
@@ -515,6 +519,8 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
   const handleEmployeeDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (isReadOnly) return;
     e.preventDefault();
+    const draggedEmployeeId = e.dataTransfer.getData('draggedEmployeeId');
+    if (!draggedEmployeeId) return;
     e.dataTransfer.dropEffect = 'move';
   };
   
@@ -576,7 +582,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 try {
                     const start = parse(shift.startTime, 'HH:mm', new Date());
                     const end = parse(shift.endTime, 'HH:mm', new Date());
-                    if (isNaN(start.getTime()) || isNaN(end.getTime())) return acc;
+                    if (isNaN(start.getTime()) || iisNaN(end.getTime())) return acc;
 
                     let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                     if (diff < 0) diff += 24; // Account for overnight shifts
@@ -709,7 +715,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     <div 
         className="contents" 
         key={employee.id} 
-        onDragOver={handleEmployeeDragOver}
+        onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleEmployeeDrop(e, employee.id)}
         >
         {/* Employee Cell */}
