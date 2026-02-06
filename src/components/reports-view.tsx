@@ -231,8 +231,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             return { status: 'SKE', shift: shiftOnDay, leave: null };
         }
 
-        // Default: No activity
-        return { status: null, shift: null, leave: null };
+        // Default: If no activity found, it's a FREE day
+        return { status: 'FREE', shift: null, leave: null };
     };
 
 
