@@ -203,7 +203,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             return { status: 'HOL OFF', shift: shiftOnDay, leave: null };
         }
         if (shiftOnDay?.isDayOff) {
-            return { status: 'OFF', shift: shiftOnDay, leave: null };
+            return { status: 'FREE', shift: shiftOnDay, leave: null };
         }
 
         // Priority 3: Any Leave Request
@@ -267,12 +267,12 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 let paidbreak_end = '';
                 let day_status = '';
 
-                if (dayData.status === 'OFF') {
-                    day_status = 'OFF';
+                if (dayData.status === 'FREE') {
+                    day_status = 'FREE';
                     // Times remain empty as initialized
                 } else {
                     // It's a working day or "other timeoff" (Leave, HOL OFF)
-                    day_status = ''; // Per requirement: status should not be displayed if not "OFF"
+                    day_status = ''; // Status should not be displayed if not "FREE" (per requirement)
 
                     if (dayData.shift && (dayData.status === 'SKE' || dayData.status === 'WFH' || dayData.status === 'SKE-10')) {
                         // Actual scheduled shift
@@ -283,7 +283,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         paidbreak_start = !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '';
                         paidbreak_end = !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '';
                     } else {
-                        // "Other timeoff" or leave -> retain display of regular duration
+                        // "Other timeoff" or leave -> retain display of regular duration but hide label
                         schedule_start = templateSched.schedule_start;
                         schedule_end = templateSched.schedule_end;
                         unpaidbreak_start = templateSched.unpaidbreak_start;
@@ -797,7 +797,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 includeRow = false; // Ignore days with no activity
             }
             
-            if (dayData.status === 'OFF' || dayData.status === 'HOL OFF') {
+            if (dayData.status === 'FREE' || dayData.status === 'HOL OFF') {
                 includeRow = false;
             }
 
@@ -1034,7 +1034,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             });
     
             if (templateRowNumber === -1) {
-                throw new Error("Template row with `{{employee_name}}` not found.");
+                throw new Error("Template row with `{{employee_name}}` found.");
             }
             
             const templateRow = worksheet.getRow(templateRowNumber);
