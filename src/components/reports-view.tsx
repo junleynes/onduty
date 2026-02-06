@@ -1,8 +1,6 @@
-
-
 'use client';
 
-import React, from 'react';
+import React from 'react';
 import type { Employee, Shift, Leave, Holiday, TardyRecord, RolePermissions, SmtpSettings } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from './ui/button';
@@ -107,7 +105,7 @@ const ALL_CLASSIFICATIONS = ['Rank-and-File', 'Confidential', 'Managerial'];
 
 export default function ReportsView({ employees, shifts, leave, holidays, currentUser, tardyRecords, setTardyRecords, templates, setTemplates, shiftTemplates, leaveTypes, permissions, smtpSettings }: ReportsViewProps) {
     const { toast } = useToast();
-    const [selectedReportType, setSelectedReportType] = React.useState<ReportType>('wfh');
+    const [selectedReportType, setSelectedReportType] = React.useState<ReportType>('workSchedule');
     
     // Date states
     const [workScheduleDateRange, setWorkScheduleDateRange] = React.useState<DateRange | undefined>();
@@ -211,6 +209,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         // Priority 3: Any Leave Request
         const leaveOnDay = leave.find(l => {
             if (l.employeeId !== employee.id) return false;
+            if (l.status !== 'approved') return false;
             const leaveStart = l.startDate ? startOfDay(new Date(l.startDate)) : null;
             const leaveEnd = l.endDate ? startOfDay(new Date(l.endDate)) : null;
             if (!leaveStart || !leaveEnd) return false;
@@ -257,36 +256,53 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         groupEmployees.forEach((employee) => {
             daysInInterval.forEach(day => {
                 const dayData = findDataForDay(day, employee);
-                let scheduleInfo = {
-                    day_status: '',
-                    ...getScheduleFromTemplate(undefined)
-                };
+                const defaultTemplate = getDefaultShiftTemplate(employee);
+                const templateSched = getScheduleFromTemplate(defaultTemplate);
 
-                const isWorkingDay = dayData.status === 'SKE' || dayData.status === 'WFH' || dayData.status === 'SKE-10';
-                const isNonWorkingDay = dayData.status === 'HOL OFF' || dayData.status === 'OFF' || dayData.leave !== null;
+                let schedule_start = '';
+                let schedule_end = '';
+                let unpaidbreak_start = '';
+                let unpaidbreak_end = '';
+                let paidbreak_start = '';
+                let paidbreak_end = '';
+                let day_status = '';
 
-                if (isWorkingDay && dayData.shift) {
-                    scheduleInfo = {
-                        day_status: '',
-                        schedule_start: dayData.shift.startTime,
-                        schedule_end: dayData.shift.endTime,
-                        unpaidbreak_start: dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
-                        unpaidbreak_end: dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
-                        paidbreak_start: !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '',
-                        paidbreak_end: !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '',
-                    };
+                if (dayData.status === 'OFF') {
+                    day_status = 'OFF';
+                    // Times remain empty as initialized
                 } else {
-                    const defaultTemplate = getDefaultShiftTemplate(employee);
-                    scheduleInfo = {
-                         day_status: dayData.status || '',
-                        ...getScheduleFromTemplate(defaultTemplate),
-                    };
+                    // It's a working day or "other timeoff" (Leave, HOL OFF)
+                    day_status = ''; // Per requirement: status should not be displayed if not "OFF"
+
+                    if (dayData.shift && (dayData.status === 'SKE' || dayData.status === 'WFH' || dayData.status === 'SKE-10')) {
+                        // Actual scheduled shift
+                        schedule_start = dayData.shift.startTime;
+                        schedule_end = dayData.shift.endTime;
+                        unpaidbreak_start = dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '';
+                        unpaidbreak_end = dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '';
+                        paidbreak_start = !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '';
+                        paidbreak_end = !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '';
+                    } else {
+                        // "Other timeoff" or leave -> retain display of regular duration
+                        schedule_start = templateSched.schedule_start;
+                        schedule_end = templateSched.schedule_end;
+                        unpaidbreak_start = templateSched.unpaidbreak_start;
+                        unpaidbreak_end = templateSched.unpaidbreak_end;
+                        paidbreak_start = templateSched.paidbreak_start;
+                        paidbreak_end = templateSched.paidbreak_end;
+                    }
                 }
 
                 rows.push({
                     employee_name: `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
                     date: format(day, 'M/d/yyyy'),
-                    ...scheduleInfo
+                    day_status,
+                    schedule_start,
+                    schedule_end,
+                    unpaidbreak_start,
+                    unpaidbreak_end,
+                    paidbreak_start,
+                    paidbreak_end
                 });
             });
         });
@@ -576,6 +592,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             
             const leaveInRange = leave.filter(l => 
                 l.employeeId === employee.id &&
+                l.status === 'approved' &&
                 l.startDate && l.endDate &&
                 isWithinInterval(new Date(l.startDate), { start: summaryDateRange.from!, end: summaryDateRange.to! })
             );
@@ -654,7 +671,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         // 1. Get TARDY leave requests
         const tardyLeave = leave
-            .filter(l => l.type === 'TARDY' && l.startDate && isWithinInterval(new Date(l.startDate), {start: tardyDateRange.from!, end: tardyDateRange.to!}))
+            .filter(l => l.type === 'TARDY' && l.status === 'approved' && l.startDate && isWithinInterval(new Date(l.startDate), {start: tardyDateRange.from!, end: tardyDateRange.to!}))
             .map(l => {
                 const employee = employees.find(e => e.id === l.employeeId);
                 const shift = shifts.find(s => s.employeeId === l.employeeId && l.startDate && isSameDay(new Date(s.date), new Date(l.startDate)));
@@ -958,6 +975,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
         const extensionRequests = leave.filter(l => 
             l.type === 'Work Extension' &&
+            l.status === 'approved' &&
             l.originalShiftDate &&
             isWithinInterval(new Date(l.originalShiftDate), { start: workExtensionDateRange.from!, end: workExtensionDateRange.to! })
         );
@@ -1084,6 +1102,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 const workExtensionsOnDay = leave.filter(l =>
                     l.employeeId === employee.id &&
                     l.type === 'Work Extension' &&
+                    l.status === 'approved' &&
                     l.startDate &&
                     isSameDay(new Date(l.startDate), day)
                 );
