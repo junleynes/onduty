@@ -1,13 +1,12 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
-import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth, getDate, parse, isWithinInterval, startOfDay } from 'date-fns';
+import { addDays, format, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth, getDay, addMonths, isToday, getISOWeek, eachWeekOfInterval, lastDayOfMonth, getDate, parse, isWithinInterval, startOfDay, startOfYear, endOfYear } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Employee, Shift, Leave, Notification, Note, Holiday, Task, SmtpSettings } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper, Mail, Loader2 } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Upload, Settings, Save, Send, MoreVertical, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, StickyNote, PartyPopper, Mail, Loader2, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from './ui/calendar';
@@ -320,6 +319,20 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
     setShifts(shifts.filter(shift => new Date(shift.date) < monthStart || new Date(shift.date) > monthEnd));
     setLeave(leave.filter(l => !l.endDate || new Date(l.endDate) < monthStart || new Date(l.startDate) > monthEnd));
     toast({ title: "Month Cleared", description: "All shifts and time off for the current month have been removed." });
+  };
+
+  const handleClearYear = () => {
+    if (isReadOnly) return;
+    const currentYear = currentDate.getFullYear();
+    setShifts(shifts.filter(shift => new Date(shift.date).getFullYear() !== currentYear));
+    setLeave(leave.filter(l => new Date(l.startDate).getFullYear() !== currentYear));
+    toast({ title: "Year Cleared", description: `All shifts and time off for ${currentYear} have been removed.` });
+  };
+
+  const handleClearDraft = () => {
+    if (isReadOnly) return;
+    setShifts(shifts.filter(shift => shift.status !== 'draft'));
+    toast({ title: "Drafts Cleared", description: "All unpublished shifts have been removed." });
   };
 
 
@@ -849,10 +862,25 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                         </DropdownMenuGroup>
                          <DropdownMenuSeparator />
                          <DropdownMenuGroup>
-                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={viewMode === 'month' ? handleClearMonth : handleClearWeek}>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={handleClearWeek}>
                                 <CircleSlash className="mr-2 h-4 w-4" />
-                                <span>Clear {viewMode === 'month' ? 'Month' : 'Week'}</span>
+                                <span>Clear Week</span>
                             </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={handleClearMonth}>
+                                <CircleSlash className="mr-2 h-4 w-4" />
+                                <span>Clear Month</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={handleClearYear}>
+                                <CircleSlash className="mr-2 h-4 w-4" />
+                                <span>Clear Year</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={handleClearDraft}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Clear All Drafts</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
                              <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={viewMode === 'month' ? handleUnassignMonth : handleUnassignWeek}>
                                 <UserX className="mr-2 h-4 w-4" />
                                 <span>Unassign {viewMode === 'month' ? 'Month' : 'Week'}</span>
