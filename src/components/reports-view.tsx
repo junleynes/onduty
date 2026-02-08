@@ -329,7 +329,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
                 rows.push({
                     employee_name: `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
-                    date: format(day, 'M/d/yyyy'),
+                    date: format(day, 'yyyy-MM-dd'),
                     day_status,
                     schedule_start,
                     schedule_end,
@@ -388,8 +388,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 row.eachCell({ includeEmpty: true }, (cell) => {
                     if (cell.value && typeof cell.value === 'string') {
                         let cellText = cell.value;
-                        cellText = cellText.replace(/{{start_date}}/g, format(workScheduleDateRange.from!, 'MM/dd/yyyy'));
-                        cellText = cellText.replace(/{{end_date}}/g, format(workScheduleDateRange.to!, 'yyyy-MM/dd'));
+                        cellText = cellText.replace(/{{start_date}}/g, format(workScheduleDateRange.from!, 'yyyy-MM-dd'));
+                        cellText = cellText.replace(/{{end_date}}/g, format(workScheduleDateRange.to!, 'yyyy-MM-dd'));
                         cell.value = cellText;
                     }
                 });
