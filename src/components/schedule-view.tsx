@@ -582,7 +582,7 @@ export default function ScheduleView({ employees, setEmployees, shifts, setShift
                 try {
                     const start = parse(shift.startTime, 'HH:mm', new Date());
                     const end = parse(shift.endTime, 'HH:mm', new Date());
-                    if (isNaN(start.getTime()) || iisNaN(end.getTime())) return acc;
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) return acc;
 
                     let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
                     if (diff < 0) diff += 24; // Account for overnight shifts

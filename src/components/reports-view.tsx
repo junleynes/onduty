@@ -184,9 +184,9 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
     
     const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
-        const preferredName = employee.role === 'manager' ? "manager shift" : "mid shift";
+        const isMgr = employee.role === 'manager' || employee.role === 'admin';
+        const preferredName = isMgr ? "manager shift" : "mid shift";
         const preferred = shiftTemplates.find(t => t.name.toLowerCase().includes(preferredName));
-        // Fallback to the first available template if the preferred one is not found
         return preferred || shiftTemplates[0];
     };
 
@@ -785,8 +785,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
                     let breakHours = 0;
                     if (dayData.shift.isUnpaidBreak && dayData.shift.breakStartTime && dayData.shift.breakEndTime) {
-                        const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
-                        const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
+                        const breakStart = parse(dayData.shift.breakStartTime, 'HH:mm', new Date());
+                        const breakEnd = parse(dayData.shift.breakEndTime, 'HH:mm', new Date());
                         if (!isNaN(breakStart.getTime()) || !isNaN(breakEnd.getTime())) {
                            let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
                             if (breakDiff < 0) breakDiff += 24;
