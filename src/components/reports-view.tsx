@@ -184,8 +184,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
     };
     
     const getDefaultShiftTemplate = (employee: Employee): ShiftTemplate | undefined => {
-        const defaultShiftName = employee.role === 'manager' ? "manager shift" : "mid shift";
-        return shiftTemplates.find(t => t.name.toLowerCase().includes(defaultShiftName));
+        const preferredName = employee.role === 'manager' ? "manager shift" : "mid shift";
+        const preferred = shiftTemplates.find(t => t.name.toLowerCase().includes(preferredName));
+        // Fallback to the first available template if the preferred one is not found
+        return preferred || shiftTemplates[0];
     };
 
     const findDataForDay = (day: Date, employee: Employee) => {
@@ -272,10 +274,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                     // Times remain empty as initialized
                 } else {
                     // It's a working day or "other timeoff" (Leave, HOL OFF)
-                    day_status = ''; // Status should not be displayed if not "FREE" (per requirement)
+                    day_status = ''; // Hidden per requirement for leaves and holidays
 
                     if (dayData.shift && (dayData.status === 'SKE' || dayData.status === 'WFH' || dayData.status === 'SKE-10')) {
-                        // Actual scheduled shift
+                        // Actual scheduled working shift
                         schedule_start = dayData.shift.startTime;
                         schedule_end = dayData.shift.endTime;
                         unpaidbreak_start = dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '';
@@ -283,7 +285,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         paidbreak_start = !dayData.shift.isUnpaidBreak ? dayData.shift.breakStartTime || '' : '';
                         paidbreak_end = !dayData.shift.isUnpaidBreak ? dayData.shift.breakEndTime || '' : '';
                     } else {
-                        // "Other timeoff" or leave -> retain display of regular duration but hide label
+                        // "Other timeoff" (Leave or HOL OFF) -> show default duration but no label
                         schedule_start = templateSched.schedule_start;
                         schedule_end = templateSched.schedule_end;
                         unpaidbreak_start = templateSched.unpaidbreak_start;
@@ -783,8 +785,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
                     let breakHours = 0;
                     if (dayData.shift.isUnpaidBreak && dayData.shift.breakStartTime && dayData.shift.breakEndTime) {
-                        const breakStart = parse(dayData.shift.breakStartTime, 'HH:mm', new Date());
-                        const breakEnd = parse(dayData.shift.breakEndTime, 'HH:mm', new Date());
+                        const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
+                        const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
                         if (!isNaN(breakStart.getTime()) || !isNaN(breakEnd.getTime())) {
                            let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
                             if (breakDiff < 0) breakDiff += 24;
