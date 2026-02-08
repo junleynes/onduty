@@ -329,7 +329,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
                 rows.push({
                     employee_name: `${employee.lastName}, ${employee.firstName} ${employee.middleInitial || ''}`.toUpperCase(),
-                    date: format(day, 'yyyy-MM-dd'),
+                    date: format(day, 'MM/dd/yyyy'),
                     day_status,
                     schedule_start,
                     schedule_end,
@@ -388,8 +388,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 row.eachCell({ includeEmpty: true }, (cell) => {
                     if (cell.value && typeof cell.value === 'string') {
                         let cellText = cell.value;
-                        cellText = cellText.replace(/{{start_date}}/g, format(workScheduleDateRange.from!, 'yyyy-MM-dd'));
-                        cellText = cellText.replace(/{{end_date}}/g, format(workScheduleDateRange.to!, 'yyyy-MM-dd'));
+                        cellText = cellText.replace(/{{start_date}}/g, format(workScheduleDateRange.from!, 'MM/dd/yyyy'));
+                        cellText = cellText.replace(/{{end_date}}/g, format(workScheduleDateRange.to!, 'MM/dd/yyyy'));
                         cell.value = cellText;
                     }
                 });
@@ -468,7 +468,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const buffer = await generateWorkScheduleBuffer(generateWorkScheduleData());
         if (buffer) {
             const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `Regular Work Schedule - ${format(workScheduleDateRange!.from!, 'yyyy-MM-dd')} to ${format(workScheduleDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+            saveAs(blob, `Regular Work Schedule - ${format(workScheduleDateRange!.from!, 'MM-dd-yyyy')} to ${format(workScheduleDateRange!.to!, 'MM-dd-yyyy')}.xlsx`);
         }
     }
     
@@ -1344,7 +1344,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         const buffer = await generateOvertimeBuffer(generateOvertimeData());
         if(buffer) {
             const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-            saveAs(blob, `Overtime and ND Report - ${format(overtimeDateRange!.from!, 'yyyy-MM-dd')} to ${format(overtimeDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
+            saveAs(blob, `Overtime and Night Differential Report - ${format(overtimeDateRange!.from!, 'yyyy-MM-dd')} to ${format(overtimeDateRange!.to!, 'yyyy-MM-dd')}.xlsx`);
         }
     }
 
@@ -1361,7 +1361,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
             const rawData = generateWorkScheduleData();
             data = generateWorkSchedulePreviewData(rawData);
             if (data && workScheduleDateRange?.from && workScheduleDateRange?.to) {
-                title = `Regular Work Schedule (${format(workScheduleDateRange!.from!, 'LLL d')} - ${format(workScheduleDateRange!.to!, 'LLL d, y')})`;
+                title = `Regular Work Schedule (${format(workScheduleDateRange!.from!, 'MM/dd/yyyy')} - ${format(workScheduleDateRange!.to!, 'MM/dd/yyyy')})`;
                 generator = () => handleDownloadWorkSchedule();
                 emailGen = () => generateWorkScheduleBuffer(rawData);
             }
@@ -1485,11 +1485,11 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                         {workScheduleDateRange?.from ? (
                         workScheduleDateRange.to ? (
                             <>
-                            {format(workScheduleDateRange.from, "LLL dd, y")} -{" "}
-                            {format(workScheduleDateRange.to, "LLL dd, y")}
+                            {format(workScheduleDateRange.from, "MM/dd/yyyy")} -{" "}
+                            {format(workScheduleDateRange.to, "MM/dd/yyyy")}
                             </>
                         ) : (
-                            format(workScheduleDateRange.from, "LLL dd, y")
+                            format(workScheduleDateRange.from, "MM/dd/yyyy")
                         )
                         ) : (
                         <span>Pick a date range</span>
@@ -1823,7 +1823,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         switch (selectedReportType) {
             case 'workSchedule':
                 generator = () => generateWorkScheduleBuffer(generateWorkScheduleData());
-                title = `Regular Work Schedule - ${format(workScheduleDateRange!.from!, 'yyyy-MM-dd')} to ${format(workScheduleDateRange!.to!, 'yyyy-MM-dd')}`;
+                title = `Regular Work Schedule - ${format(workScheduleDateRange!.from!, 'MM-dd-yyyy')} to ${format(workScheduleDateRange!.to!, 'MM-dd-yyyy')}`;
                 break;
             case 'attendance':
                 generator = () => generateAttendanceSheetBuffer(generateAttendanceSheetData());
