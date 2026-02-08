@@ -209,7 +209,7 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
         if (commonDuration === 11) {
             preferred = shiftTemplates.find(t => t.name.toLowerCase().includes("10hour manager shift1"));
         } else if (commonDuration === 10) {
-            preferred = shiftTemplates.find(t => t.name.toLowerCase().includes("10hour manager shift3"));
+            preferred = shiftTemplates.find(t => t.name.toLowerCase().includes("10hour mid shift"));
         }
 
         if (preferred) return preferred;
@@ -817,8 +817,8 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
 
                     let breakHours = 0;
                     if (dayData.shift.isUnpaidBreak && dayData.shift.breakStartTime && dayData.shift.breakEndTime) {
-                        const breakStart = parse(shift.breakStartTime, 'HH:mm', new Date());
-                        const breakEnd = parse(shift.breakEndTime, 'HH:mm', new Date());
+                        const breakStart = parse(dayData.shift.breakStartTime, 'HH:mm', new Date());
+                        const breakEnd = parse(dayData.shift.breakEndTime, 'HH:mm', new Date());
                         if (!isNaN(breakStart.getTime()) || !isNaN(breakEnd.getTime())) {
                            let breakDiff = (breakEnd.getTime() - breakStart.getTime()) / (1000 * 60 * 60);
                             if (breakDiff < 0) breakDiff += 24;
