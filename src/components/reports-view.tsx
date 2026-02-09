@@ -499,6 +499,10 @@ export default function ReportsView({ employees, shifts, leave, holidays, curren
                 if (scheduleCode === 'HOL OFF') {
                     scheduleCode = 'HOL OFF';
                 }
+                // For Attendance Sheet, map 'FREE' to 'OFF'
+                if (scheduleCode === 'FREE') {
+                    scheduleCode = 'OFF';
+                }
                 row.push(scheduleCode);
             });
             rows.push(row);
