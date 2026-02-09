@@ -252,6 +252,7 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
             reason: leaveRequest.reason || '',
             contact_info: leaveRequest.contactInfo || '',
             approval_date: leaveRequest.managedAt ? format(new Date(leaveRequest.managedAt), 'yyyy-MM-dd') : '',
+            manager_name: manager ? `${manager.firstName} ${manager.lastName}` : '',
         };
 
         for (const [fieldName, fieldValue] of Object.entries(fields)) {
@@ -259,42 +260,51 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
                 const field = form.getTextField(fieldName);
                 field.setText(fieldValue);
             } catch (e) {
-                console.warn(`Could not find or set text field: ${fieldName}`);
+                // Ignore missing fields
             }
         }
         
-        // Handle Leave Type Checkbox
+        // Handle Leave Type Checkbox - try several variations
         if (leaveRequest.type) {
-            try {
-                const checkbox = form.getCheckBox(leaveRequest.type);
-                checkbox.check();
-            } catch (e) {
-                console.warn(`Could not find checkbox for leave type: "${leaveRequest.type}". It may have been deleted.`);
+            const typesToTry = [
+                leaveRequest.type, 
+                leaveRequest.type.toUpperCase(), 
+                leaveRequest.type.toLowerCase(),
+                leaveRequest.type.replace(/\s+/g, '_').toLowerCase()
+            ];
+            
+            let checked = false;
+            for (const t of typesToTry) {
+                try {
+                    const checkbox = form.getCheckBox(t);
+                    checkbox.check();
+                    checked = true;
+                    break;
+                } catch (e) {}
             }
-        } else {
-            console.warn(`Leave request has an undefined leave type. Cannot check box in PDF.`);
+            if (!checked) console.warn(`Could not find checkbox for leave type: "${leaveRequest.type}"`);
         }
         
         // Handle Approval Status Checkbox
         if (leaveRequest.status === 'approved' || leaveRequest.status === 'rejected') {
-            try {
-                const statusCheckbox = form.getCheckBox(leaveRequest.status);
-                statusCheckbox.check();
-            } catch (e) {
-                console.warn(`Could not find checkbox for approval status: "${leaveRequest.status}". Trying to set "approval_status" text field as fallback.`);
+            const statusKey = leaveRequest.status; // 'approved' or 'rejected'
+            const variations = [statusKey, statusKey.toUpperCase(), statusKey.charAt(0).toUpperCase() + statusKey.slice(1)];
+            
+            let checked = false;
+            for (const v of variations) {
+                try {
+                    const checkbox = form.getCheckBox(v);
+                    checkbox.check();
+                    checked = true;
+                    break;
+                } catch (e) {}
+            }
+
+            if (!checked) {
+                // Fallback to text field
                 try {
                     form.getTextField('approval_status').setText(leaveRequest.status.toUpperCase());
-                } catch (textFieldError) {
-                    console.warn(`Could not find fallback text field "approval_status" either.`);
-                }
-            }
-        } else {
-            // For 'pending' or other statuses, you might want to set a text field if it exists
-            try {
-                form.getTextField('approval_status').setText(leaveRequest.status.toUpperCase());
-            } catch (e) {
-                // It's okay if this field doesn't exist, just log a warning.
-                console.warn('No "approval_status" text field found to indicate pending status.');
+                } catch (e) {}
             }
         }
 
@@ -303,20 +313,26 @@ export async function generateLeavePdf(leaveRequest: Leave): Promise<{ success: 
         if (leaveRequest.employeeSignature) {
             try {
                 const signatureField = form.getButton('employee_signature');
-                const pngImage = await pdfDoc.embedPng(leaveRequest.employeeSignature);
+                const sigBase64 = leaveRequest.employeeSignature.includes('base64,') 
+                    ? leaveRequest.employeeSignature.split('base64,')[1] 
+                    : leaveRequest.employeeSignature;
+                const pngImage = await pdfDoc.embedPng(Buffer.from(sigBase64, 'base64'));
                 signatureField.setImage(pngImage);
             } catch (e) {
-                console.warn("Could not find or set employee signature field: employee_signature");
+                console.warn("Could not set employee signature: employee_signature field missing or invalid.");
             }
         }
         
         if (leaveRequest.managerSignature) {
             try {
                 const signatureField = form.getButton('manager_signature');
-                const pngImage = await pdfDoc.embedPng(leaveRequest.managerSignature);
+                const sigBase64 = leaveRequest.managerSignature.includes('base64,') 
+                    ? leaveRequest.managerSignature.split('base64,')[1] 
+                    : leaveRequest.managerSignature;
+                const pngImage = await pdfDoc.embedPng(Buffer.from(sigBase64, 'base64'));
                 signatureField.setImage(pngImage);
             } catch (e) {
-                console.warn("Could not find or set manager signature field: manager_signature");
+                console.warn("Could not set manager signature: manager_signature field missing or invalid.");
             }
         }
 
@@ -446,14 +462,3 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
         return { success: false, error: (error as Error).message };
     }
 }
-
-    
-
-    
-
-    
-
-
-
-
-
