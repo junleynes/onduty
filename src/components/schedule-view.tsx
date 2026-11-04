@@ -1030,6 +1030,7 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         isOpen={isSmartSchedulingOpen}
         setIsOpen={setIsSmartSchedulingOpen}
         shifts={shifts}
+        leave={leave}
         employees={employees}
         shiftTemplates={shiftTemplates}
         aiConfig={aiConfig}

@@ -12,10 +12,11 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Loader2, Sparkles, CheckCircle2, AlertTriangle, User, Clock,
   CalendarRange, ChevronDown, ChevronRight, Info,
-} from 'lucide-react';import type { Shift, Employee } from '@/types';
+} from 'lucide-react';import type { Shift, Employee, Leave } from '@/types';
 import type { ShiftTemplate } from './shift-editor';
 import type { AiConfig } from '@/app/actions';
 import { generateAiSchedule } from '@/app/actions';
+import { generateRuleSchedule } from '@/lib/rule-scheduler';
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addWeeks, addMonths, subMonths, eachDayOfInterval,
@@ -31,6 +32,7 @@ type Props = {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
   shifts: Shift[];
+  leave?: Leave[];
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
   onAccept: (newShifts: Shift[]) => void;
@@ -102,7 +104,7 @@ const DEFAULT_BASE_URLS: Record<string, string> = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SmartSchedulingDialog({
-  isOpen, setIsOpen, shifts, employees, shiftTemplates, onAccept, aiConfig,
+  isOpen, setIsOpen, shifts, leave, employees, shiftTemplates, onAccept, aiConfig,
 }: Props) {
   const { toast } = useToast();
   const today = new Date();
@@ -138,6 +140,8 @@ export function SmartSchedulingDialog({
     baseUrl: aiConfig?.baseUrl || DEFAULT_BASE_URLS[aiConfig?.provider ?? 'openrouter'],
   }), [aiConfig]);
 
+  // 'rules' = deterministic generator (no AI, no network); 'ai' = configured LLM provider
+  const [mode, setMode] = useState<'rules' | 'ai'>('rules');
   const [isGenerating, setIsGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedShift[] | null>(null);
   const [warnings, setWarnings] = useState<ConstraintWarning[]>([]);
@@ -163,7 +167,44 @@ export function SmartSchedulingDialog({
     [employees, constraintExcludeManagers]
   );
 
+  const handleGenerateRules = () => {
+    const result = generateRuleSchedule({
+      rangeStart,
+      rangeEnd,
+      employees: eligibleEmployees,
+      shifts,
+      leave: leave ?? [],
+      templates: shiftTemplates.map(t => ({
+        id: t.id, label: t.label, startTime: t.startTime, endTime: t.endTime, color: t.color,
+      })),
+      weeklyCap: emp => (constraintProbyHours && isProbationary(emp)) ? 48
+                      : constraintWeeklyHours ? 40
+                      : null,
+      maxShiftHours: constraintMaxShift ? 14 : null,
+      followPattern: constraintPattern,
+    });
+
+    if (result.shifts.length === 0) {
+      setSuggestions(null);
+      setWarnings([]);
+      toast({
+        title: 'Nothing to schedule',
+        description: result.warnings[0]?.message
+          ?? 'Every eligible employee already has an entry on their working days in this range.',
+        duration: 8000,
+      });
+      return;
+    }
+
+    setSuggestions(result.shifts);
+    setWarnings(result.warnings);
+    setCheckedShifts(new Set(result.shifts.map((_, i) => i)));
+    setExpandedEmp(new Set(result.shifts.map(s => s.employeeId)));
+  };
+
   const handleGenerate = async () => {
+    if (mode === 'rules') { handleGenerateRules(); return; }
+
     if (!effectiveConfig.apiKey && effectiveConfig.provider !== 'ollama') {
       toast({ variant: 'destructive', title: 'No API Key', description: 'Please set your API key in API & Integrations → AI Configuration.' });
       return;
@@ -346,11 +387,31 @@ Reply ONLY with a JSON array, no markdown:
             Smart Scheduling
           </DialogTitle>
           <DialogDescription>
-            AI-suggested schedule based on the past month's patterns. Using <strong>{providerLabel}</strong>.
+            {mode === 'rules'
+              ? <>Schedule built from each employee's pattern over the previous 4 weeks. <strong>No AI</strong> — runs locally.</>
+              : <>AI-suggested schedule based on the past month's patterns. Using <strong>{providerLabel}</strong>.</>}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
+
+          {/* Method */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              Method
+            </Label>
+            <div className="flex gap-2 flex-wrap">
+              <Button type="button" size="sm" variant={mode === 'rules' ? 'default' : 'outline'}
+                onClick={() => { setMode('rules'); setSuggestions(null); setWarnings([]); }}>
+                Rules (no AI)
+              </Button>
+              <Button type="button" size="sm" variant={mode === 'ai' ? 'default' : 'outline'}
+                onClick={() => { setMode('ai'); setSuggestions(null); setWarnings([]); }}>
+                AI ({providerLabel})
+              </Button>
+            </div>
+          </div>
 
           {/* Target range */}
           <div className="space-y-2">
