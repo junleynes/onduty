@@ -1,14 +1,17 @@
 /**
- * auth.ts — NextAuth configuration
+ * auth.ts — full NextAuth configuration (Node.js runtime only)
  *
- * IMPORTANT: This file is imported by middleware which runs in Edge Runtime.
- * It must NOT import anything that uses Node.js APIs (fs, path, better-sqlite3).
- * DB access happens only in the authorize() callback which runs server-side only.
+ * Do NOT import this from middleware. Middleware uses src/auth.config.ts,
+ * which is Edge-safe. This file adds the DB-backed Credentials provider.
  *
  * Rate limiting is handled by src/lib/rate-limit.ts (single shared Map).
  */
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import { authConfig } from './auth.config';
+import bcrypt from 'bcryptjs';
+import { getDb } from '@/lib/db';
+import { isLocked, trackFailed, clearAttempts } from '@/lib/rate-limit';
 
 if (!process.env.NEXTAUTH_SECRET) {
     throw new Error(
@@ -18,6 +21,7 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+    ...authConfig,
     providers: [
         Credentials({
             name: 'credentials',
@@ -32,12 +36,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 if (!email || !password) return null;
 
                 try {
-                    // All Node.js-dependent imports are dynamic so they never
-                    // get bundled into the Edge Runtime middleware
-                    const { getDb }                         = await import('@/lib/db');
-                    const bcrypt                            = await import('bcryptjs');
-                    const { isLocked, trackFailed, clearAttempts } = await import('@/lib/rate-limit');
-
                     if (isLocked(email)) return null;
 
                     const db   = getDb();
@@ -80,43 +78,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }),
     ],
 
-    callbacks: {
-        async jwt({ token, user }) {
-            if (user) {
-                token.id             = (user as any).id;
-                token.role           = (user as any).role;
-                token.firstName      = (user as any).firstName;
-                token.lastName       = (user as any).lastName;
-                token.group          = (user as any).group;
-                token.employeeNumber = (user as any).employeeNumber;
-                token.position       = (user as any).position;
-                token.phone          = (user as any).phone;
-            }
-            return token;
-        },
-        async session({ session, token }) {
-            session.user.id             = token.id             as string;
-            session.user.role           = token.role           as string;
-            session.user.firstName      = token.firstName      as string;
-            session.user.lastName       = token.lastName       as string;
-            session.user.group          = token.group          as string;
-            session.user.employeeNumber = token.employeeNumber as string;
-            session.user.position       = token.position       as string;
-            session.user.phone          = token.phone          as string;
-            return session;
-        },
-    },
-
-    pages: {
-        signIn: '/login',
-        error:  '/login',
-    },
-
-    session: {
-        strategy: 'jwt',
-        maxAge:   8 * 60 * 60, // 8 hours
-    },
-
-    trustHost: true,
-    secret: process.env.NEXTAUTH_SECRET,
 });
