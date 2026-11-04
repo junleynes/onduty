@@ -1,4 +1,5 @@
-import { auth } from '@/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/auth.config';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -49,6 +50,8 @@ function hasApiKey(req: NextRequest): boolean {
 function isMaintenanceOn(req: NextRequest): boolean {
     return req.cookies.get('onduty_maintenance')?.value === '1';
 }
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
     const { pathname } = req.nextUrl;
