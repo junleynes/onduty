@@ -301,19 +301,8 @@ function initializeDatabase() {
     `, "Created 'notifications' table");
     runMigration(`CREATE INDEX IF NOT EXISTS idx_notif_emp ON notifications(employee_id, is_read);`, "idx_notif_emp");
 
-    runMigration(`
-        CREATE TABLE IF NOT EXISTS ai_config (
-            id      INTEGER PRIMARY KEY DEFAULT 1,
-            provider TEXT NOT NULL DEFAULT 'anthropic',
-            base_url TEXT,
-            api_key  TEXT,
-            model    TEXT,
-            enabled  INTEGER NOT NULL DEFAULT 0
-        );
-    `, "Created 'ai_config' table");
-
-    // Ensure exactly one row exists
-    runMigration(`INSERT OR IGNORE INTO ai_config (id, provider, enabled) VALUES (1, 'anthropic', 0);`, "Seed ai_config row");
+    // AI configuration was removed; drop the old table (also deletes any stored API key).
+    runMigration(`DROP TABLE IF EXISTS ai_config;`, "Dropped legacy 'ai_config' table");
 
     // Migrate existing base64 blobs from DB columns to disk files (runs once)
     try { migrateBase64ToFiles(db); } catch (e: any) { console.error('Migration warning (base64->files):', e.message); }
