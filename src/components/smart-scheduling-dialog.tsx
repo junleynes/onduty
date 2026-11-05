@@ -10,12 +10,10 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Loader2, Sparkles, CheckCircle2, AlertTriangle, User, Clock,
+  Sparkles, CheckCircle2, AlertTriangle, User, Clock,
   CalendarRange, ChevronDown, ChevronRight, Info,
 } from 'lucide-react';import type { Shift, Employee, Leave } from '@/types';
 import type { ShiftTemplate } from './shift-editor';
-import type { AiConfig } from '@/app/actions';
-import { generateAiSchedule } from '@/app/actions';
 import { generateRuleSchedule } from '@/lib/rule-scheduler';
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
@@ -36,7 +34,6 @@ type Props = {
   employees: Employee[];
   shiftTemplates: ShiftTemplate[];
   onAccept: (newShifts: Shift[]) => void;
-  aiConfig?: AiConfig;
 };
 
 type SuggestedShift = {
@@ -95,16 +92,10 @@ function buildPatternSummary(emp: Employee, pastShifts: Shift[]): string {
     .join(' | ');
 }
 
-const DEFAULT_BASE_URLS: Record<string, string> = {
-  anthropic:   'https://api.anthropic.com',
-  openrouter:  'https://openrouter.ai/api/v1',
-  ollama:      'http://localhost:11434',
-};
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SmartSchedulingDialog({
-  isOpen, setIsOpen, shifts, leave, employees, shiftTemplates, onAccept, aiConfig,
+  isOpen, setIsOpen, shifts, leave, employees, shiftTemplates, onAccept,
 }: Props) {
   const { toast } = useToast();
   const today = new Date();
@@ -131,18 +122,6 @@ export function SmartSchedulingDialog({
     [rangeStart, rangeEnd]
   );
 
-  // ── AI Config override (in case user wants to change for this session) ──
-  const effectiveConfig: AiConfig = useMemo(() => ({
-    provider: 'openrouter',
-    baseUrl: DEFAULT_BASE_URLS['openrouter'],
-    ...aiConfig,
-    // Auto-fill base URL if not set
-    baseUrl: aiConfig?.baseUrl || DEFAULT_BASE_URLS[aiConfig?.provider ?? 'openrouter'],
-  }), [aiConfig]);
-
-  // 'rules' = deterministic generator (no AI, no network); 'ai' = configured LLM provider
-  const [mode, setMode] = useState<'rules' | 'ai'>('rules');
-  const [isGenerating, setIsGenerating] = useState(false);
   const [suggestions, setSuggestions] = useState<SuggestedShift[] | null>(null);
   const [warnings, setWarnings] = useState<ConstraintWarning[]>([]);
   const [expandedEmp, setExpandedEmp] = useState<Set<string>>(new Set());
@@ -167,7 +146,7 @@ export function SmartSchedulingDialog({
     [employees, constraintExcludeManagers]
   );
 
-  const handleGenerateRules = () => {
+  const handleGenerate = () => {
     const result = generateRuleSchedule({
       rangeStart,
       rangeEnd,
@@ -202,130 +181,6 @@ export function SmartSchedulingDialog({
     setExpandedEmp(new Set(result.shifts.map(s => s.employeeId)));
   };
 
-  const handleGenerate = async () => {
-    if (mode === 'rules') { handleGenerateRules(); return; }
-
-    if (!effectiveConfig.apiKey && effectiveConfig.provider !== 'ollama') {
-      toast({ variant: 'destructive', title: 'No API Key', description: 'Please set your API key in API & Integrations → AI Configuration.' });
-      return;
-    }
-
-    setIsGenerating(true);
-    setSuggestions(null);
-    setWarnings([]);
-
-    // Compact employee context — only include pattern if constraint is on
-    const empContext = eligibleEmployees.map(emp => ({
-      id: emp.id,
-      name: `${emp.firstName} ${emp.lastName}`,
-      position: emp.position,
-      proby: isProbationary(emp),
-      maxHrs: constraintProbyHours && isProbationary(emp) ? 48
-            : constraintWeeklyHours ? 40
-            : null,
-      pattern: constraintPattern ? buildPatternSummary(emp, pastShifts) : undefined,
-    }));
-
-    // Deduplicate templates by label+startTime+endTime to reduce tokens
-    const seen = new Set<string>();
-    const templateContext = shiftTemplates
-      .filter(t => {
-        const key = `${t.label}|${t.startTime}|${t.endTime}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .map(t => ({ id: t.id, label: t.label, start: t.startTime, end: t.endTime }));
-
-    const rangeLabel = `${format(rangeStart, 'MMM d')} – ${format(rangeEnd, 'MMM d, yyyy')}`;
-
-    // For ranges > 2 weeks, just specify the date range — don't list every day
-    // (listing 90 dates blows up the token count)
-    const daysNote = targetDays.length <= 14
-      ? `Dates: ${targetDays.map(d => format(d, 'yyyy-MM-dd (EEE)')).join(', ')}`
-      : `Date range: ${format(rangeStart, 'yyyy-MM-dd')} to ${format(rangeEnd, 'yyyy-MM-dd')} (${targetDays.length} days). Generate for ALL days in this range, respecting each employee's typical rest days.`;
-
-    const activeRules = [
-      constraintWeeklyHours && 'Max 40h/week per regular employee',
-      constraintProbyHours  && 'Max 48h/week for probationary employees',
-      constraintMaxShift    && 'Max 14h per single shift',
-      constraintPattern     && 'Follow each employee\'s historical shift pattern and rest days',
-      constraintExcludeManagers && 'Do not schedule managerial staff',
-    ].filter(Boolean).join('. ');
-
-    const prompt = `You are a workforce scheduler. Generate a schedule for ${rangeLabel}.
-
-${daysNote}
-
-RULES: ${activeRules || 'No constraints — schedule freely.'}
-
-EMPLOYEES: ${JSON.stringify(empContext)}
-
-TEMPLATES: ${JSON.stringify(templateContext)}
-
-Reply ONLY with a JSON array, no markdown:
-[{"employeeId":"","employeeName":"","date":"yyyy-MM-dd","startTime":"HH:MM","endTime":"HH:MM","label":"","templateId":"or null","color":"or null","warning":"or null"}]`;
-
-    const result = await generateAiSchedule(prompt, effectiveConfig);
-    setIsGenerating(false);
-
-    if (!result.success || !result.result) {
-      let desc = result.error ?? 'Unknown error';
-      if (desc.includes('429')) {
-        desc += '\n\nThis usually means: (1) rate limit hit — wait a moment and retry, (2) prompt too large — try a shorter range like 1 or 2 weeks, or (3) insufficient API credits on your account.';
-      }
-      toast({ variant: 'destructive', title: 'Generation Failed', description: desc, duration: 15000 });
-      return;
-    }
-
-    let parsed: SuggestedShift[];
-    try {
-      const cleaned = result.result.replace(/```json|```/g, '').trim();
-      parsed = JSON.parse(cleaned);
-      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Empty result');
-    } catch {
-      toast({ variant: 'destructive', title: 'Parse Failed', description: `Could not read AI response. Raw: ${result.result.slice(0, 200)}`, duration: 10000 });
-      return;
-    }
-
-    // Constraint validation (only check what's enabled)
-    const constraintWarnings: ConstraintWarning[] = [];
-    const grouped: Record<string, SuggestedShift[]> = {};
-    for (const s of parsed) {
-      if (!grouped[s.employeeId]) grouped[s.employeeId] = [];
-      grouped[s.employeeId].push(s);
-    }
-
-    for (const [empId, empShifts] of Object.entries(grouped)) {
-      const emp = eligibleEmployees.find(e => e.id === empId);
-      if (!emp) continue;
-      const name = `${emp.firstName} ${emp.lastName}`;
-
-      if (constraintWeeklyHours || constraintProbyHours) {
-        const maxHours = (constraintProbyHours && isProbationary(emp)) ? 48
-                       : constraintWeeklyHours ? 40
-                       : Infinity;
-        const total = empShifts.reduce((sum, s) => sum + shiftDurationHours(s.startTime, s.endTime), 0);
-        if (total > maxHours) {
-          constraintWarnings.push({ employeeId: empId, employeeName: name, message: `${total.toFixed(1)}h — exceeds ${maxHours}h weekly limit`, type: 'hours' });
-        }
-      }
-
-      if (constraintMaxShift) {
-        for (const s of empShifts) {
-          const dur = shiftDurationHours(s.startTime, s.endTime);
-          if (dur > 14) {
-            constraintWarnings.push({ employeeId: empId, employeeName: name, message: `${format(parseISO(s.date), 'EEE MMM d')}: ${dur.toFixed(1)}h shift exceeds 14h`, type: 'duration' });
-          }
-        }
-      }
-    }
-
-    setSuggestions(parsed);
-    setWarnings(constraintWarnings);
-    setCheckedShifts(new Set(parsed.map((_, i) => i)));
-    setExpandedEmp(new Set(parsed.map(s => s.employeeId)));
-  };
 
   const handleAccept = () => {
     if (!suggestions) return;
@@ -367,7 +222,6 @@ Reply ONLY with a JSON array, no markdown:
     setCheckedShifts(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; });
 
   const selectedCount = checkedShifts.size;
-  const providerLabel = effectiveConfig.provider === 'openrouter' ? 'OpenRouter' : effectiveConfig.provider === 'anthropic' ? 'Anthropic' : 'Ollama';
 
   const RANGE_OPTIONS: { value: TargetRange; label: string }[] = [
     { value: '1w', label: '1 Week' },
@@ -387,31 +241,11 @@ Reply ONLY with a JSON array, no markdown:
             Smart Scheduling
           </DialogTitle>
           <DialogDescription>
-            {mode === 'rules'
-              ? <>Schedule built from each employee's pattern over the previous 4 weeks. <strong>No AI</strong> — runs locally.</>
-              : <>AI-suggested schedule based on the past month's patterns. Using <strong>{providerLabel}</strong>.</>}
+            Schedule built from each employee's pattern over the previous 4 weeks. Runs locally — no external services.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">
-
-          {/* Method */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5" />
-              Method
-            </Label>
-            <div className="flex gap-2 flex-wrap">
-              <Button type="button" size="sm" variant={mode === 'rules' ? 'default' : 'outline'}
-                onClick={() => { setMode('rules'); setSuggestions(null); setWarnings([]); }}>
-                Rules (no AI)
-              </Button>
-              <Button type="button" size="sm" variant={mode === 'ai' ? 'default' : 'outline'}
-                onClick={() => { setMode('ai'); setSuggestions(null); setWarnings([]); }}>
-                AI ({providerLabel})
-              </Button>
-            </div>
-          </div>
 
           {/* Target range */}
           <div className="space-y-2">
@@ -544,8 +378,8 @@ Reply ONLY with a JSON array, no markdown:
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="ghost" onClick={() => setIsOpen(false)} className="sm:mr-auto">Close</Button>
-          <Button variant="outline" onClick={handleGenerate} disabled={isGenerating}>
-            {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+          <Button variant="outline" onClick={handleGenerate}>
+            <Sparkles className="mr-2 h-4 w-4" />
             {suggestions ? 'Regenerate' : 'Generate Schedule'}
           </Button>
           {suggestions && (

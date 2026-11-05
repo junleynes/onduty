@@ -25,7 +25,6 @@ import { ScheduleImporter } from './schedule-importer';
 import { GoogleSheetSyncDialog } from './google-sheet-sync-dialog';
 import { SmartSchedulingDialog } from './smart-scheduling-dialog';
 import { CoverageGapDialog } from './coverage-gap-dialog';
-import type { AiConfig } from '@/app/actions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { DatePicker } from './ui/date-picker';
@@ -58,10 +57,9 @@ type ScheduleViewProps = {
   leaveTypes: LeaveTypeOption[];
   monthlyEmployeeOrder: Record<string, string[]>;
   setMonthlyEmployeeOrder: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
-  aiConfig?: AiConfig;
 }
 
-export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, notes, holidays, tasks, setTasks, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, shiftTemplates, setShiftTemplates, leaveTypes, monthlyEmployeeOrder, setMonthlyEmployeeOrder, aiConfig }: ScheduleViewProps) {
+export default function ScheduleView({ employees, shifts, setShifts, leave, setLeave, notes, holidays, tasks, setTasks, currentUser, onPublish, addNotification, onViewNote, onEditNote, onManageHolidays, shiftTemplates, setShiftTemplates, leaveTypes, monthlyEmployeeOrder, setMonthlyEmployeeOrder }: ScheduleViewProps) {
   const isReadOnly = currentUser?.role === 'member';
   
   const visibleEmployees = useMemo(() => employees.filter(e => e.visibility?.schedule !== false), [employees]);
@@ -1033,7 +1031,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         leave={leave}
         employees={employees}
         shiftTemplates={shiftTemplates}
-        aiConfig={aiConfig}
         onAccept={(newShifts) => {
           setShifts(prev => [...prev, ...newShifts]);
           setIsSmartSchedulingOpen(false);
