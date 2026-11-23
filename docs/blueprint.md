@@ -6,7 +6,6 @@
 - Shift Viewing: Employee mobile app: View personal shift schedules.
 - Shift Notifications: Notifications: Receive alerts for shift creation or modifications.
 - Availability Input: Availability Submission: A method for employees to communicate their working availabilities to the managers.
-- Automated Shift Creation: Smart Scheduling Tool: Automatically generates shift schedules based on employee availability, demand, and pre-configured organizational rules.
 - Role-based Access: User authentication and role management (Admin, Manager, Employee).
 
 ## Style Guidelines:
