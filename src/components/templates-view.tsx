@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Upload, FileText, Settings2, CalendarDays } from 'lucide-react';
@@ -48,9 +49,17 @@ export default function TemplatesView({ templates, setTemplates, groups, shiftTe
   const [isLeaveTypeImporterOpen, setIsLeaveTypeImporterOpen] = useState(false);
   const [selectedLeaveGroup, setSelectedLeaveGroup] = useState<string | null>(groups[0] ?? null);
 
-  const handleSave = (key: string, data: string) => {
-    setTemplates(prev => ({ ...prev, [key]: data }));
-    saveTemplate(key, data).catch(() => {});
+  const { toast } = useToast();
+
+  // Only mark a template as uploaded once the server confirmed it was saved.
+  const handleSave = async (key: string, data: string) => {
+    try {
+      const res = await saveTemplate(key, data);
+      if (!res.success) throw new Error(res.error || 'Upload failed');
+      setTemplates(prev => ({ ...prev, [key]: data }));
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Template not saved', description: e?.message || 'The server could not save the template.', duration: 10000 });
+    }
   };
 
   const templateStatus = (key: string) =>

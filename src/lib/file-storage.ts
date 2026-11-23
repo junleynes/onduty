@@ -28,10 +28,20 @@ const DIRS = {
 };
 
 // Ensure all upload directories exist
+let uploadDirChecked = false;
 export function ensureUploadDirs() {
     Object.values(DIRS).forEach(dir => {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     });
+    if (!uploadDirChecked) {
+        uploadDirChecked = true;
+        try {
+            fs.accessSync(DIRS.templates, fs.constants.W_OK);
+            console.log(`Upload directory: ${UPLOAD_DIR}`);
+        } catch {
+            console.error(`UPLOAD DIRECTORY NOT WRITABLE: ${UPLOAD_DIR} — uploads (templates, avatars, signatures) will fail. Fix ownership or set UPLOAD_DIR.`);
+        }
+    }
 }
 
 /**
@@ -154,19 +164,51 @@ export function deleteSignature(employeeId: string) {
 
 // ── PDF Template ──────────────────────────────────────────────────────────────
 
+/**
+ * Report templates are PDF (ALAF/Offset) or Excel (.xlsx) files. The ".pdf"
+ * extension on disk is historical; the bytes are whatever was uploaded.
+ */
+function looksLikeTemplate(buf: Buffer): boolean {
+    if (buf.length < 8) return false;
+    const pdf = buf.subarray(0, 5).toString('latin1') === '%PDF-';
+    const zip = buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04; // xlsx/docx
+    return pdf || zip;
+}
+
 export function saveTemplate(key: string, base64: string): string {
+    ensureUploadDirs();
+    if (!/^[A-Za-z0-9_-]+$/.test(key)) throw new Error('Invalid template key');
     // Templates may be raw base64 or data URIs
-    const filename = `${key}.pdf`;
-    const filePath = path.join(DIRS.templates, filename);
-    const match = base64.match(/^data:[^;]+;base64,(.+)$/);
+    const match = base64.match(/^data:[^;]+;base64,([\s\S]+)$/);
     const rawBase64 = match ? match[1] : base64;
-    fs.writeFileSync(filePath, Buffer.from(rawBase64, 'base64'));
+    const buffer = Buffer.from(rawBase64, 'base64');
+    if (!looksLikeTemplate(buffer)) {
+        throw new Error('Template is not a valid PDF or Excel file (got unexpected content). Nothing was saved.');
+    }
+    const filePath = path.join(DIRS.templates, `${key}.pdf`);
+    // Write atomically so a crash mid-write can never leave a truncated template.
+    const tmp = `${filePath}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, buffer);
+    fs.renameSync(tmp, filePath);
     return filePath;
 }
 
 export function readTemplate(key: string): string | null {
     const filePath = path.join(DIRS.templates, `${key}.pdf`);
     return readAsRawBase64(filePath);
+}
+
+/**
+ * The database keeps a "file:<key>.pdf" pointer for templates stored on disk.
+ * Clients need the real content, so resolve pointers here. Returns null when
+ * the pointer's file is missing (so the UI shows "not set" instead of trying
+ * to open pointer text as a document).
+ */
+export function resolveTemplateValue(key: string, value: string | null): string | null {
+    if (typeof value === 'string' && value.startsWith('file:') && /Template$/.test(key)) {
+        return readTemplate(key);
+    }
+    return value;
 }
 
 export function templateExists(key: string): boolean {
