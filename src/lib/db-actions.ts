@@ -3,7 +3,7 @@
 
 import { getDb } from './db';
 import type { Employee, Shift, Leave, Note, Holiday, Task, CommunicationAllowance, SmtpSettings, AppVisibility, TardyRecord, RolePermissions, NavItemKey, FaqItem, PreferredAvl } from '@/types';
-import { readAvatar, readSignature, ensureUploadDirs } from '@/lib/file-storage';
+import { readAvatar, readSignature, ensureUploadDirs, resolveTemplateValue } from '@/lib/file-storage';
 import { requireAuth } from '@/lib/auth-guard';
 import type { ShiftTemplate } from '@/components/shift-editor';
 import type { LeaveTypeOption } from '@/components/leave-type-editor';
@@ -138,7 +138,8 @@ export async function getData() {
       } else if (row.key === 'avlLocks') {
         avlLockData = row.value;
       } else {
-        templatesMap[row.key] = row.value;
+        // Resolve disk pointers (file:<key>.pdf) to real content for the client
+        templatesMap[row.key] = resolveTemplateValue(row.key, row.value);
       }
     });
 
@@ -551,7 +552,10 @@ export async function saveAllData({
 
         // ── Key-value store: upsert ───────────────────────────────────────────
         const kvStmt = db.prepare('INSERT INTO key_value_store (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
-        for (const [key, value] of Object.entries(templates)) { if (value) kvStmt.run({ key, value }); }
+        // Report templates ("*Template" keys) are written only by the saveTemplate action
+        // (disk file + pointer). Writing them here would overwrite the pointer with a stale
+        // client copy, and the next startup would then rewrite the file from it.
+        for (const [key, value] of Object.entries(templates)) { if (value && !/Template$/.test(key)) kvStmt.run({ key, value }); }
         kvStmt.run({ key: 'monthlyEmployeeOrder', value: JSON.stringify(monthlyEmployeeOrder) });
         kvStmt.run({ key: 'faqs', value: JSON.stringify(faqs) });
         kvStmt.run({ key: 'avlLocks', value: JSON.stringify(avlLocks) });

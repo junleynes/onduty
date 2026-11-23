@@ -190,6 +190,14 @@ EnvironmentFile=/var/www/onduty/.env
 WantedBy=multi-user.target
 ```
 
+**Uploads:** templates, avatars, signatures and generated PDFs are stored on disk, not in the
+database. By default that is `<WorkingDirectory>/uploads`. The folder must be writable by the
+service user (`User=onduty` above); the app logs `Upload directory: <path>` at startup, or
+`UPLOAD DIRECTORY NOT WRITABLE` if it can't write there. To keep uploads outside the repo, set
+`UPLOAD_DIR=/var/lib/onduty/uploads` in `.env`, and move the existing `uploads/` folder there first
+(`sudo mv uploads /var/lib/onduty/ && sudo chown -R onduty:onduty /var/lib/onduty`). Back up
+`local.db` and this folder together.
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable onduty

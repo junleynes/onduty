@@ -405,7 +405,7 @@ export const db = getDb();
 // Run once: moves existing avatar/signature/template blobs from SQLite to disk.
 // Safe to run on every start — skips records that are already file references.
 function migrateBase64ToFiles(db: any) {
-    const { saveAvatar, saveSignature, saveTemplate: saveTemplateFile, savePdf, saveScreenshot, ensureUploadDirs } = require('./file-storage');
+    const { saveAvatar, saveSignature, saveTemplate: saveTemplateFile, templateExists, savePdf, saveScreenshot, ensureUploadDirs } = require('./file-storage');
     ensureUploadDirs();
 
     // Employees — avatar and signature
@@ -442,8 +442,14 @@ function migrateBase64ToFiles(db: any) {
     const templates = db.prepare("SELECT key, value FROM key_value_store WHERE key LIKE '%Template%'").all() as any[];
     for (const t of templates) {
         if (t.value && !t.value.startsWith('file:') && t.value.length > 1000) {
-            saveTemplateFile(t.key, t.value);
-            db.prepare("UPDATE key_value_store SET value = ? WHERE key = ?").run(`file:${t.key}.pdf`, t.key);
+            try {
+                // Never overwrite a file that already exists: it is the source of truth
+                // (uploaded via saveTemplate); a database copy may be stale.
+                if (!templateExists(t.key)) saveTemplateFile(t.key, t.value);
+                db.prepare("UPDATE key_value_store SET value = ? WHERE key = ?").run(`file:${t.key}.pdf`, t.key);
+            } catch (e: any) {
+                console.error(`Template migration skipped for '${t.key}':`, e.message);
+            }
         }
     }
 
