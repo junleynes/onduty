@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import type { Employee, Shift, Leave, Notification, Note, Holiday, Task, SmtpSettings } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
-import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Settings, Save, Send, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, Trash2, FileSpreadsheet, Settings2, Upload, AlertTriangle, Palmtree, Clipboard, ClipboardPaste, CheckSquare, Square, Sparkles, Search } from 'lucide-react';
+import { PlusCircle, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, CircleSlash, UserX, Download, Settings, Save, Send, ChevronsUpDown, Users, Clock, Briefcase, GripVertical, Trash2, FileSpreadsheet, Settings2, Upload, AlertTriangle, Palmtree, Clipboard, ClipboardPaste, CheckSquare, Square, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -23,7 +23,6 @@ import { saveAs } from 'file-saver';
 import { v4 as uuidv4 } from 'uuid';
 import { ScheduleImporter } from './schedule-importer';
 import { GoogleSheetSyncDialog } from './google-sheet-sync-dialog';
-import { SmartSchedulingDialog } from './smart-scheduling-dialog';
 import { CoverageGapDialog } from './coverage-gap-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
@@ -70,7 +69,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
   const [editingShift, setEditingShift] = useState<Shift | Partial<Shift> | null>(null);
   const [isScheduleImporterOpen, setIsScheduleImporterOpen] = useState(false);
   const [isGoogleSheetSyncOpen, setIsGoogleSheetSyncOpen] = useState(false);
-  const [isSmartSchedulingOpen, setIsSmartSchedulingOpen] = useState(false);
   const [isCoverageGapOpen, setIsCoverageGapOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportPreset, setExportPreset] = useState<'current-view' | 'this-week' | 'this-month' | 'custom'>('current-view');
@@ -900,9 +898,8 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
                             <DropdownMenuItem onClick={handleLoadTemplate} disabled={!weekTemplate || viewMode !== 'week'}><Upload className="mr-2 h-4 w-4" /><span>Load Template</span></DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Smart Tools</DropdownMenuLabel>
+                        <DropdownMenuLabel>Tools</DropdownMenuLabel>
                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={() => setIsSmartSchedulingOpen(true)}><Sparkles className="mr-2 h-4 w-4" /><span>Smart Scheduling</span></DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setIsCoverageGapOpen(true)}><Search className="mr-2 h-4 w-4" /><span>Gap Detector</span></DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
@@ -1021,19 +1018,6 @@ export default function ScheduleView({ employees, shifts, setShifts, leave, setL
         onImport={(data) => {
           handleScheduleImportResult(data);
           setIsGoogleSheetSyncOpen(false);
-        }}
-      />
-
-      <SmartSchedulingDialog
-        isOpen={isSmartSchedulingOpen}
-        setIsOpen={setIsSmartSchedulingOpen}
-        shifts={shifts}
-        leave={leave}
-        employees={employees}
-        shiftTemplates={shiftTemplates}
-        onAccept={(newShifts) => {
-          setShifts(prev => [...prev, ...newShifts]);
-          setIsSmartSchedulingOpen(false);
         }}
       />
 
